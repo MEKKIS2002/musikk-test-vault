@@ -88,41 +88,6 @@
   // ── EXPOSE ───────────────────────────────────────────────────────────
   window.r2Storage = { upload, remove, move, getUrl, ready };
 
-  // ── HOOK INTO EXISTING AUDIO UPLOAD ──────────────────────────────────
-  // Wraps the existing createBeatFromFile to also upload to R2
-  const _origCreate = window.createBeatFromFile;
-  if (typeof _origCreate === 'function') {
-    window.createBeatFromFile = async function (file, albumId) {
-      // Call original and capture the returned beat object
-      const beat = await _origCreate(file, albumId);
-
-      // Upload to R2 in the background — don't block the beat from being added to mixtape/album
-      if (beat && ready()) {
-        (async () => {
-          try {
-            showToast('⬆ Laster opp til R2...');
-            const url = await upload(beat.id, file, !!beat.archived, pct => {
-              if (pct === 50 || pct === 100) showToast(`⬆ ${pct}%`);
-            });
-            beat.audio_url = url;
-            beat.r2_key = r2Key(beat.id, !!beat.archived);
-            saveState();
-            if (window.supabaseClient && window.isAdminMode && typeof pushToSupabase === 'function') {
-              pushToSupabase();
-            }
-            showToast('✓ Lastet opp til R2');
-          } catch (e) {
-            console.error('R2 opplasting feilet:', e);
-            showToast('⚠ R2 opplasting feilet — lydfil lagret lokalt');
-          }
-        })();
-      }
-
-      // Always return the beat so addBeatToMixtape/addBeatToAlbum works correctly
-      return beat;
-    };
-  }
-
   // ── HOOK INTO ARCHIVE/RESTORE ─────────────────────────────────────────
   // Moves file in R2 when a beat is archived or restored
   const _origToggle = window.toggleArchiveItem;
