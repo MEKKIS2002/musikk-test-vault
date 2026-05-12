@@ -1,4 +1,4 @@
-// === unnamed-script-1 ===
+// === main-script-1 ===
 // ── IndexedDB audio store ──
 const audioDB=(()=>{
   let db=null;

@@ -1,4 +1,4 @@
-// === unnamed-script-2 ===
+// === main-script-2 ===
 (function(){
   const PRODUCER_TABS=["mixtapes","pipeline"];
   function safeTab(tab){return PRODUCER_TABS.includes(tab)?tab:"mixtapes";}
@@ -414,7 +414,7 @@
   ensureFullData(); setTimeout(()=>{try{runFullEnhancements(); renderQueueDrawer();}catch(e){console.error(e)}},120);
 })();
 
-// === unnamed-script-3 ===
+// === main-script-3 ===
 (function(){
   // Full arkiv-funksjon: arkiverte elementer skjules fra statistikk og vanlige lister,
   // men vises samlet under egen fane "Arkivert".
