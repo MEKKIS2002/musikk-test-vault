@@ -93,27 +93,33 @@
   const _origCreate = window.createBeatFromFile;
   if (typeof _origCreate === 'function') {
     window.createBeatFromFile = async function (file, albumId) {
-      await _origCreate(file, albumId);
-      // Find the beat that was just created (newest)
-      const beat = [...(state.beats || [])].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))[0];
+      // Call original and capture the returned beat object
+      const beat = await _origCreate(file, albumId);
+
+      // Upload to R2 in the background — don't block the beat from being added to mixtape/album
       if (beat && ready()) {
-        try {
-          showToast('⬆ Laster opp til R2...');
-          const url = await upload(beat.id, file, !!beat.archived, pct => {
-            if (pct % 25 === 0) showToast(`⬆ ${pct}%`);
-          });
-          beat.audio_url = url;
-          beat.r2_key = r2Key(beat.id, !!beat.archived);
-          saveState();
-          if (window.supabaseClient && window.isAdminMode && typeof pushToSupabase === 'function') {
-            pushToSupabase();
+        (async () => {
+          try {
+            showToast('⬆ Laster opp til R2...');
+            const url = await upload(beat.id, file, !!beat.archived, pct => {
+              if (pct === 50 || pct === 100) showToast(`⬆ ${pct}%`);
+            });
+            beat.audio_url = url;
+            beat.r2_key = r2Key(beat.id, !!beat.archived);
+            saveState();
+            if (window.supabaseClient && window.isAdminMode && typeof pushToSupabase === 'function') {
+              pushToSupabase();
+            }
+            showToast('✓ Lastet opp til R2');
+          } catch (e) {
+            console.error('R2 opplasting feilet:', e);
+            showToast('⚠ R2 opplasting feilet — lydfil lagret lokalt');
           }
-          showToast('✓ Lastet opp til R2');
-        } catch (e) {
-          console.error('R2 opplasting feilet:', e);
-          showToast('⚠ R2 opplasting feilet — lydfil lagret lokalt');
-        }
+        })();
       }
+
+      // Always return the beat so addBeatToMixtape/addBeatToAlbum works correctly
+      return beat;
     };
   }
 
