@@ -1214,23 +1214,39 @@ function addBeatToAlbum(beat){
   if(album&&!album.beatIds.includes(beat.id))album.beatIds.push(beat.id);
   saveState();
 }
+
+// ── R2 upload helper (called after beat is added to state) ──
+async function uploadBeatToR2(beat, file) {
+  if (!window.r2Storage || !window.r2Storage.ready()) return;
+  try {
+    showToast('⬆ Laster opp til R2...');
+    const url = await window.r2Storage.upload(beat.id, file, !!beat.archived);
+    beat.audio_url = url;
+    beat.r2_key = beat.id;
+    saveState();
+    showToast('✓ Lastet opp til R2');
+  } catch (e) {
+    console.error('[R2] Opplasting feilet:', e);
+    showToast('⚠ R2 feilet — lydfil lagret lokalt');
+  }
+}
 async function handleMixtapeDrop(e){
   e.preventDefault();document.getElementById("mixtapeDrop").classList.remove("drag-over");
   const files=[...e.dataTransfer.files].filter(f=>f.type.startsWith("audio")||/\.(mp3|wav|flac|m4a|ogg|aac)$/i.test(f.name));
   if(!files.length){showToast("Ingen lydfiler funnet");return;}
-  for(const f of files)addBeatToMixtape(await createBeatFromFile(f));
+  for(const f of files){const b=await createBeatFromFile(f);addBeatToMixtape(b);uploadBeatToR2(b,f);}
   renderMixtapeDetail();showToast(`✓ ${files.length} beat${files.length===1?"":"s"} lagt til`);
 }
 async function handleAlbumDrop(e){
   e.preventDefault();document.getElementById("albumDrop").classList.remove("drag-over");
   const files=[...e.dataTransfer.files].filter(f=>f.type.startsWith("audio")||/\.(mp3|wav|flac|m4a|ogg|aac)$/i.test(f.name));
   if(!files.length){showToast("Ingen lydfiler funnet");return;}
-  for(const f of files)addBeatToAlbum(await createBeatFromFile(f));
+  for(const f of files){const b=await createBeatFromFile(f);addBeatToAlbum(b);uploadBeatToR2(b,f);}
   renderAlbumDetail();showToast(`✓ ${files.length} beat${files.length===1?"":"s"} lagt til`);
 }
 document.getElementById("mixtapeUploadInput").addEventListener("change",async e=>{
   const files=[...e.target.files].filter(f=>f.type.startsWith("audio")||/\.(mp3|wav|flac|m4a|ogg|aac)$/i.test(f.name));
-  for(const f of files)addBeatToMixtape(await createBeatFromFile(f));
+  for(const f of files){const b=await createBeatFromFile(f);addBeatToMixtape(b);uploadBeatToR2(b,f);}
   renderMixtapeDetail();showToast(`✓ ${files.length} beat${files.length===1?"":"s"} lagt til`);
   e.target.value="";
 });
@@ -1246,7 +1262,7 @@ document.getElementById("mixtapeCoverInput").addEventListener("change",e=>{
 });
 document.getElementById("albumUploadInput").addEventListener("change",async e=>{
   const files=[...e.target.files].filter(f=>f.type.startsWith("audio")||/\.(mp3|wav|flac|m4a|ogg|aac)$/i.test(f.name));
-  for(const f of files)addBeatToAlbum(await createBeatFromFile(f));
+  for(const f of files){const b=await createBeatFromFile(f);addBeatToAlbum(b);uploadBeatToR2(b,f);}
   renderAlbumDetail();showToast(`✓ ${files.length} beat${files.length===1?"":"s"} lagt til`);
   e.target.value="";
 });
