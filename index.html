@@ -498,11 +498,15 @@ Active areas to know:
   <!-- Supabase CDN -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
+  <!-- R2 config — set this to your deployed Cloudflare Worker URL -->
+  <script>window.R2_WORKER_URL = '';</script>
+
   <!-- App scripts (load order matters) -->
   <script src="js/lock.js"></script>
   <script src="js/db.js"></script>
   <script src="js/app.js"></script>
   <script src="js/track-cards.js"></script>
+  <script src="js/r2-storage.js"></script>
   <script src="js/archive.js"></script>
   <script src="js/mixtape.js"></script>
   <script src="js/supabase.js"></script>
