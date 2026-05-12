@@ -1203,9 +1203,12 @@ async function createBeatFromFile(file){
   return await createBeatFromFileIDB(file);
 }
 function addBeatToMixtape(beat){
+  console.log('[MIX] addBeatToMixtape kalt. beat.id:', beat?.id, '| currentMixtapeId:', currentMixtapeId);
+  if(!beat){console.error('[MIX] FEIL: beat er undefined!');return;}
   if(!state.beats.find(b=>b.id===beat.id))state.beats.push(beat);
   const mt=state.mixtapes.find(x=>x.id===currentMixtapeId);
-  if(mt&&!mt.beatIds.includes(beat.id))mt.beatIds.push(beat.id);
+  if(mt&&!mt.beatIds.includes(beat.id)){mt.beatIds.push(beat.id);console.log('[MIX] Beat lagt til mixtape:', mt.name);}
+  else if(!mt){console.error('[MIX] FEIL: Ingen mixtape funnet for ID:', currentMixtapeId);}
   saveState();
 }
 function addBeatToAlbum(beat){
@@ -1217,10 +1220,15 @@ function addBeatToAlbum(beat){
 
 // ── R2 upload helper (called after beat is added to state) ──
 async function uploadBeatToR2(beat, file) {
-  if (!window.r2Storage || !window.r2Storage.ready()) return;
+  console.log('[R2] uploadBeatToR2 kalt. beat.id:', beat?.id, '| r2Storage ready:', window.r2Storage?.ready());
+  if (!window.r2Storage || !window.r2Storage.ready()) {
+    console.warn('[R2] r2Storage ikke klar — R2_WORKER_URL satt?', window.R2_WORKER_URL);
+    return;
+  }
   try {
     showToast('⬆ Laster opp til R2...');
     const url = await window.r2Storage.upload(beat.id, file, !!beat.archived);
+    console.log('[R2] Opplasting OK. URL:', url);
     beat.audio_url = url;
     beat.r2_key = beat.id;
     saveState();
