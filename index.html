@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<!--
+AI / MARCUS MAINTENANCE NOTES
+This file is a single-file Music Vault app. Keep edits small and targeted.
+
+Active areas to know:
+1. Core app CSS/HTML/JS lives near the top and middle of the file.
+2. Later
+
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/ui.css">
+  <link rel="stylesheet" href="css/track-cards.css">
+  <link rel="stylesheet" href="css/archive.css">
+  <link rel="stylesheet" href="css/mixtape.css">
+</head>
+<body>
+<!-- PASSWORD SCREEN -->
+<div id="lockScreen" style="position:fixed;inset:0;background:radial-gradient(circle at 30% 20%,rgba(168,85,247,.3),transparent 40%),radial-gradient(circle at 80% 80%,rgba(34,211,238,.2),transparent 40%),#09090f;display:flex;align-items:center;justify-content:center;z-index:9999;flex-direction:column;gap:24px">
+  <div style="text-align:center;margin-bottom:8px">
+    <div style="font-size:48px;margin-bottom:12px">🎵</div>
+    <div style="font-size:28px;font-weight:800;letter-spacing:-.05em;color:#f6f4ff">Music Vault</div>
+    <div style="font-size:13px;color:#aaa4bd;margin-top:4px">Logg inn med passord, eller fortsett som produsent</div>
+  </div>
+  <div style="background:linear-gradient(135deg,rgba(255,255,255,.11),rgba(255,255,255,.055));border:1px solid rgba(255,255,255,.14);border-radius:20px;padding:28px 32px;width:min(360px,90vw);display:grid;gap:14px;backdrop-filter:blur(18px);box-shadow:0 24px 80px rgba(0,0,0,.45)">
+    <input id="pwInput" type="password" placeholder="Passord" onkeydown="if(event.key==='Enter')checkPw()" style="background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.18);border-radius:14px;padding:13px 16px;color:#f6f4ff;font-size:16px;outline:none;width:100%;font-family:inherit" />
+    <button onclick="checkPw()" style="background:linear-gradient(135deg,#f4a443,#cb6e1a);border:none;border-radius:14px;padding:13px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;letter-spacing:.2px">Lås opp</button>
+    <button onclick="loginProducer()" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.16);border-radius:14px;padding:13px;color:#f6f4ff;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;letter-spacing:.2px">Logg inn som produsent</button>
+    <div id="pwError" style="color:#fb7185;font-size:13px;text-align:center;display:none">Feil passord</div>
+  </div>
+</div>
+<main class="app">
+<button id="producerLoginBtn" class="producer-login-btn" onclick="returnToPasswordScreen()">Logg inn</button>
+
+<section class="hero">
+  <div class="hero-main glass">
+    <div class="eyebrow">Music Vault</div>
+    <h1>Beats, demoer og&nbsp;releases.</h1>
+    <p>Organiser beats i albumer, følg demoer gjennom pipeline, og se hvilke låter som bør ferdigstilles først.</p>
+    <div class="hero-vinyl" aria-hidden="true">
+      <div class="hero-vinyl-glow"></div>
+      <div class="hero-vinyl-disc">
+        <div class="hero-vinyl-surface"></div>
+        <div class="hero-vinyl-highlight"></div>
+        <div class="hero-vinyl-label">
+          <div class="hero-vinyl-label-ring"></div>
+          <div class="hero-vinyl-marker"></div>
+        </div>
+        <div class="hero-vinyl-hole"></div>
+        <span class="hero-vinyl-speck s1"></span>
+        <span class="hero-vinyl-speck s2"></span>
+        <span class="hero-vinyl-speck s3"></span>
+        <span class="hero-vinyl-speck s4"></span>
+        <span class="hero-vinyl-scuff c1"></span>
+        <span class="hero-vinyl-scuff c2"></span>
+      </div>
+      <div class="hero-vinyl-softblur"></div>
+    </div>
+  </div>
+  <aside class="stats-card glass">
+    <div class="section-title"><h3>Status</h3><span class="hint">Synkes med Supabase</span></div>
+    <div class="stat-grid">
+      <div class="stat"><strong id="beatCount">0</strong><span>Beats</span></div>
+      <div class="stat"><strong id="favCount">0</strong><span>Favoritter</span></div>
+      <div class="stat"><strong id="demoCount">0</strong><span>Demoer</span></div>
+      <div class="stat"><strong id="avgDone">0%</strong><span>Snitt ferdig</span></div>
+    </div>
+    <button class="ghost-btn" id="exportBtn">Eksporter backup</button>
+    <label class="ghost-btn" style="text-align:center">Importer backup<input id="importInput" type="file" accept="application/json" hidden /></label>
+  </aside>
+</section>
+
+<nav class="tabs">
+  <button class="tab-btn active" data-tab="mixtapes">📼 Mixtapes</button>
+  <button class="tab-btn" data-tab="albums">📁 Albumer</button>
+  <button class="tab-btn" data-tab="pipeline">📊 Pipeline</button>
+  <button class="tab-btn" data-tab="integrations">🔌 Integrasjoner</button>
+</nav>
+
+<!-- BEATS -->
+<section id="mixtapesTab" class="tab-view">
+  <div class="content-panel glass">
+    <div id="mixtapesListView">
+      <div class="section-title">
+        <h2>Mixtapes</h2>
+        <button class="primary-btn" id="newMixtapeBtn" onclick="openNewMixtapeModal()">+ Ny mixtape</button>
+      </div>
+      <p class="hint" style="margin-bottom:24px">Organiser beats i kasetter. Klikk på en kasett for å åpne den.</p>
+      <div id="mixtapeGrid" class="mixtape-grid"></div>
+    </div>
+    <div id="mixtapeDetailView" class="hidden">
+      <div style="margin-bottom:18px"><button class="ghost-btn" id="backToMixtapesBtn">← Tilbake til mixtapes</button></div>
+      <div class="album-detail-hd" id="mixtapeDetailHd"></div>
+      <div class="toolbar" style="margin-bottom:18px">
+        <button class="primary-btn" id="addBeatsToMixtapeBtn">+ Legg til eksisterende</button>
+        <label class="ghost-btn" style="cursor:pointer">📂 Last opp filer<input id="mixtapeUploadInput" type="file" accept="audio/*" multiple hidden /></label>
+        <select id="mixtapeSortSelect" class="mixtape-sort-select" title="Sorter beats">
+          <option value="custom">Sorter: Egen rekkefølge</option>
+          <option value="favorite">Favoritter først</option>
+          <option value="rating">Høyest rating</option>
+          <option value="newest">Nyest først</option>
+          <option value="name">Navn A–Å</option>
+        </select>
+        <label class="ghost-btn" style="cursor:pointer">🖼️ Kassettbilde<input id="mixtapeCoverInput" type="file" accept="image/*" hidden /></label>
+        <button class="ghost-btn" id="archiveMixtapeBtn" onclick="archiveCurrentCollection('mixtape')">Arkiver mixtape</button>
+        <button class="small-btn danger" id="deleteMixtapeBtn">Slett mixtape</button>
+      </div>
+      <div id="mixtapeDrop" class="drop-zone" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="handleMixtapeDrop(event)">
+        <div class="drop-hint">🎵 Slipp lydfiler her for å legge til beats</div>
+      </div>
+      <div id="mixtapeBeatList" class="beat-list"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ALBUMER -->
+<section id="albumsTab" class="tab-view hidden">
+  <div class="content-panel glass">
+    <div id="albumsListView">
+      <div class="section-title">
+        <h2>Albumer</h2>
+        <button class="primary-btn" id="newAlbumBtn">+ Nytt album</button>
+      </div>
+      <p class="hint" style="margin-bottom:20px">Organiser beats i mapper. Klikk på et album for å åpne det og se innholdet.</p>
+      <div id="albumGrid" class="album-grid"></div>
+    </div>
+    <div id="albumDetailView" class="hidden">
+      <div style="margin-bottom:18px"><button class="ghost-btn" id="backToAlbumsBtn">← Tilbake til albumer</button></div>
+      <div class="album-detail-hd" id="albumDetailHd"></div>
+      <div class="toolbar" style="margin-bottom:18px">
+        <button class="primary-btn" id="addBeatsToAlbumBtn">+ Legg til eksisterende</button>
+        <label class="ghost-btn" style="cursor:pointer">📂 Last opp filer<input id="albumUploadInput" type="file" accept="audio/*" multiple hidden /></label>
+        <label class="ghost-btn" style="cursor:pointer">🖼️ Bytt albumbilde<input id="albumCoverInput" type="file" accept="image/*" hidden /></label>
+        <button class="ghost-btn" id="archiveAlbumBtn" onclick="archiveCurrentCollection('album')">Arkiver album</button>
+        <button class="small-btn danger" id="deleteAlbumBtn">Slett album</button>
+      </div>
+      <div id="albumDrop" class="drop-zone" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="handleAlbumDrop(event)">
+        <div class="drop-hint">🎵 Slipp lydfiler her for å legge til beats</div>
+      </div>
+      <div id="albumBeatList" class="beat-list"></div>
+    </div>
+  </div>
+</section>
+
+<!-- PIPELINE -->
+<section id="pipelineTab" class="tab-view hidden">
+  <section class="content-panel glass">
+    <div class="section-title"><h2>Album-pipeline</h2><span class="hint">Fremgang per sang i hvert album, basert på ferdigstillelse %.</span></div>
+    <div id="pipelineBoard"></div>
+  </section>
+</section>
+
+</section>
+
+<!-- INTEGRASJONER -->
+<section id="integrationsTab" class="tab-view hidden">
+  <div class="layout">
+    <aside class="sidebar glass">
+      <div class="section-title"><h2>Legg til beat</h2></div>
+      <p class="hint">Beats opprettes herfra og legges deretter inn i albumer eller mixtapes.</p>
+      <div class="input-group"><label>Lokale filer</label><input id="beatFiles" type="file" accept="audio/*" multiple /></div>
+      <div class="input-group">
+        <label>URL / Drive-lenke</label>
+        <input id="beatNameInput" placeholder="Beat-navn" />
+        <input id="beatUrlInput" placeholder="Direkte lydlenke eller Drive-delelenke" />
+        <button class="primary-btn" id="addBeatUrlBtn">Legg til beat</button>
+      </div>
+      <div class="section-title" style="margin-top:16px"><h2>Google Drive API</h2></div>
+      <p class="hint">Lagre innstillinger for Drive-integrasjon.</p>
+      <div class="input-group"><label>Drive Mappe ID</label><input id="driveFolderId" placeholder="ID fra Drive-mappen" /></div>
+      <div class="input-group"><label>Google API Key</label><input id="driveApiKey" placeholder="AIza..." /></div>
+      <button class="primary-btn" id="saveDriveSettingsBtn">Lagre</button>
+      <button class="ghost-btn" id="mockDriveImportBtn" style="margin-top:8px">Simuler Drive-import</button>
+    </aside>
+    <section class="content-panel glass">
+      <div class="settings-card" style="margin-bottom:14px">
+        <h2>💾 Trygg lagring av beats</h2>
+        <p class="hint" style="font-size:13px;line-height:1.65">Beats lastet opp via fil-upload lagres fortsatt som midlertidige <strong>object URLs</strong> i nettleseren. Disse <strong>forsvinner når du lukker fanen</strong> — men tekster, ratings og metadata beholdes i localStorage.<br><br>For trygg, varig lagring anbefaler vi:</p>
+        <div style="display:grid;gap:10px;margin-top:4px">
+          <div style="background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.25);border-radius:12px;padding:12px 14px">
+            <div style="font-size:13px;font-weight:700;margin-bottom:3px">☁️ Google Drive (anbefalt)</div>
+            <div class="hint">Last opp beats til Drive-mappen, legg inn lenken i "URL / Drive-lenke"-feltet. Beats spilles av direkte fra Drive og overlever alle sesjoner.</div>
+          </div>
+          <div style="background:rgba(34,211,238,.08);border:1px solid rgba(34,211,238,.2);border-radius:12px;padding:12px 14px">
+            <div style="font-size:13px;font-weight:700;margin-bottom:3px">🖥️ Lokal server (teknisk)</div>
+            <div class="hint">Kjør en enkel lokal server (f.eks. med Node.js) i mappen der beatsa ligger. Lenk til <code style="background:rgba(255,255,255,.1);padding:1px 5px;border-radius:4px">http://localhost:3000/beat.mp3</code> — fungerer så lenge serveren er oppe.</div>
+          </div>
+          <div style="background:rgba(168,85,247,.08);border:1px solid rgba(168,85,247,.2);border-radius:12px;padding:12px 14px">
+            <div style="font-size:13px;font-weight:700;margin-bottom:3px">📤 Eksporter backup regelmessig</div>
+            <div class="hint">Bruk "Eksporter backup"-knappen øverst for å lagre alt til en JSON-fil. Tekster, ratings og metadata er alltid trygge der.</div>
+          </div>
+        </div>
+      </div>
+      <div class="settings-card">
+        <h2>SoundCloud oEmbed</h2>
+        <p class="hint">Hentes direkte uten proxy for offentlige tracks. Private tracks krever proxy.</p>
+        <div class="input-group"><label>Proxy URL (valgfritt)</label><input id="soundcloudProxy" placeholder="https://din-server.no/oembed?url=" /></div>
+        <button class="primary-btn" id="saveSCSettingsBtn">Lagre</button>
+      </div>
+    </section>
+  </div>
+</section>
+
+</main>
+
+<div id="bottomPlayer" class="bottom-player" aria-live="polite">
+  <div class="bp-track">
+    <div id="bpCover" class="bp-cover">🎵</div>
+    <div class="bp-meta">
+      <div id="bpTitle" class="bp-title">Ingen sang valgt</div>
+      <div id="bpSub" class="bp-sub">Trykk play på en beat, et album eller en mixtape</div>
+    </div>
+  </div>
+  <div class="bp-center">
+    <div class="bp-controls">
+      <button class="bp-btn" onclick="bottomPrev()" title="Forrige">⏮</button>
+      <button id="bpPlayBtn" class="bp-btn bp-play" onclick="bottomTogglePlay()" title="Play / pause">▶</button>
+      <button class="bp-btn" onclick="bottomNext()" title="Neste">⏭</button>
+    </div>
+    <div class="bp-progress">
+      <span id="bpCurrent" class="bp-time">0:00</span>
+      <input id="bpSeek" class="bp-seek" type="range" min="0" max="1000" value="0" oninput="bottomSeek(this.value)" />
+      <span id="bpDuration" class="bp-time">0:00</span>
+    </div>
+  </div>
+  <div class="bp-actions">
+    <span style="color:var(--muted);font-size:15px">🔊</span>
+    <input id="bpVolume" class="bp-vol" type="range" min="0" max="1" step="0.01" value="1" oninput="bottomSetVolume(this.value)" />
+    <button class="bp-btn bp-close" onclick="bottomStop()" title="Stopp og lukk">✕</button>
+  </div>
+</div>
+
+<!-- DEMO EDIT MODAL -->
+<div id="editDemoModal" class="modal">
+  <div class="modal-card">
+    <div class="modal-hd">
+      <div class="modal-hd-left">
+        <h2 id="editModalTitle">Demo</h2>
+        <div class="hint" id="editModalSub"></div>
+      </div>
+      <div class="modal-hd-right">
+        <div class="modal-score-wrap">
+          <div class="modal-score-num" id="editModalScore">—</div>
+          <div class="modal-score-lbl">Release Score</div>
+        </div>
+        <button class="close-btn" id="closeModalBtn">×</button>
+      </div>
+    </div>
+    <div class="modal-tabs">
+      <button class="mtab active" data-mtab="overview">Oversikt</button>
+      <button class="mtab" data-mtab="versions">Versjonslogg</button>
+      <button class="mtab" data-mtab="notes">Notater</button>
+    </div>
+    <input id="editDemoId" type="hidden" />
+
+    <div id="mtab-overview" class="mtab-content active">
+      <div id="editEmbedWrap" style="margin-bottom:18px"></div>
+      <div class="input-group" style="margin-bottom:16px">
+        <label>Pipeline Stage</label>
+        <div class="pipeline-sel" id="editPipelineSel"></div>
+      </div>
+      <div class="row" style="margin-bottom:16px">
+        <div class="input-group">
+          <label>Mix / Ferdigstillelse %</label>
+          <input type="range" id="editCompl" min="0" max="100" style="padding:0;border:none;background:transparent;accent-color:var(--accent);cursor:pointer;width:100%" oninput="document.getElementById('editComplVal').textContent=this.value+'%'">
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted)"><span>0%</span><span id="editComplVal">0%</span><span>100%</span></div>
+        </div>
+        <div class="input-group">
+          <label>Rangering (1-10)</label>
+          <div class="rating-stars" id="editRatingStars"></div>
+        </div>
+      </div>
+      <div class="input-group" style="margin-bottom:20px">
+        <label>Notater</label>
+        <textarea id="editNotes" rows="4" style="min-height:90px" placeholder="Hva mangler?"></textarea>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="primary-btn" id="saveOverviewBtn">💾 Lagre endringer</button>
+        <button class="small-btn danger" id="deleteDemoBtn">🗑 Slett demo</button>
+      </div>
+    </div>
+
+    <div id="mtab-versions" class="mtab-content">
+      <div class="input-group">
+        <label>Nytt versjonsnotat</label>
+        <textarea id="editVerInput" rows="3" placeholder="Beskriv endringen – f.eks. Ny hook-melodi, fjernet bridge" style="min-height:80px"></textarea>
+        <div style="margin-top:8px"><button class="primary-btn" id="addModalVerBtn">+ Legg til</button></div>
+      </div>
+      <div id="editVerList"></div>
+    </div>
+
+    <div id="mtab-notes" class="mtab-content">
+      <div class="input-group">
+        <label>Lyrics / Ideer / Tekst</label>
+        <textarea id="editDemoNotes" rows="14" placeholder="Skriv tekst, hooks, broer, punchlines..." style="min-height:340px"></textarea>
+      </div>
+      <button class="primary-btn" id="saveDemoNotesBtn">💾 Lagre notater</button>
+    </div>
+  </div>
+</div>
+
+<!-- NEW ALBUM MODAL -->
+<div id="newAlbumModal" class="modal">
+  <div class="modal-card modal-sm">
+    <div class="modal-hd">
+      <div class="modal-hd-left"><h2>Nytt album</h2></div>
+      <div class="modal-hd-right"><button class="close-btn" onclick="closeModal('newAlbumModal')">×</button></div>
+    </div>
+    <div style="padding:22px 28px 28px;display:grid;gap:14px">
+      <div class="input-group"><label>Albumnavn</label><input id="newAlbumName" placeholder="F.eks. Noe som får deg opp om morran" /></div>
+      <div class="input-group">
+        <label>Forsidebilde (kvadratisk)</label>
+        <input id="newAlbumCoverInput" type="file" accept="image/*" />
+        <div id="albumCoverPreviewWrap" style="margin-top:8px;display:none;justify-content:center">
+          <img id="albumCoverPreview" style="width:120px;height:120px;border-radius:12px;object-fit:cover;border:1px solid var(--border)" />
+        </div>
+      </div>
+      <button class="primary-btn" id="saveNewAlbumBtn">Opprett album</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD BEATS TO ALBUM MODAL -->
+<div id="addBeatsModal" class="modal">
+  <div class="modal-card modal-sm">
+    <div class="modal-hd">
+      <div class="modal-hd-left"><h2>Legg til beats</h2></div>
+      <div class="modal-hd-right"><button class="close-btn" onclick="closeModal('addBeatsModal')">×</button></div>
+    </div>
+    <div style="padding:22px 28px 28px;display:grid;gap:14px">
+      <p class="hint">Velg beats du vil legge til i albumet.</p>
+      <input id="beatSearchInput" class="beat-search-input" placeholder="Søk etter beat..." autocomplete="off" />
+      <div id="beatCheckList" class="beat-check-list"></div>
+      <button class="primary-btn" id="confirmAddBeatsBtn">Legg til valgte</button>
+    </div>
+  </div>
+</div>
+
+<!-- NEW MIXTAPE MODAL -->
+<div id="newMixtapeModal" class="modal">
+  <div class="modal-card modal-sm">
+    <div class="modal-hd">
+      <div class="modal-hd-left"><h2>Ny mixtape</h2></div>
+      <div class="modal-hd-right"><button class="close-btn" onclick="closeModal('newMixtapeModal')">×</button></div>
+    </div>
+    <div style="padding:22px 28px 28px;display:grid;gap:14px">
+      <div class="input-group"><label>Mixtape-navn</label><input id="newMixtapeName" placeholder="F.eks. Late Night Sessions" /></div>
+      <div class="input-group">
+        <label>Kassettbilde <span style="color:var(--muted);font-weight:500">(valgfritt)</span></label>
+        <label class="ghost-btn" style="cursor:pointer;justify-content:center">🖼️ Last opp bilde<input id="newMixtapeCoverInput" type="file" accept="image/*" hidden /></label>
+        <div id="newMixtapeCoverPreviewWrap" style="display:none;align-items:center;gap:10px;margin-top:8px">
+          <img id="newMixtapeCoverPreview" style="width:120px;height:44px;border-radius:6px;object-fit:cover;border:1px solid var(--border)" />
+          <span class="hint">Bildet maskes til fargefeltet på kasetten.</span>
+        </div>
+      </div>
+      <button class="primary-btn" id="saveNewMixtapeBtn">Opprett mixtape</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD BEATS TO MIXTAPE MODAL -->
+<div id="addBeatsToMixtapeModal" class="modal">
+  <div class="modal-card modal-sm">
+    <div class="modal-hd">
+      <div class="modal-hd-left"><h2>Legg til beats</h2></div>
+      <div class="modal-hd-right"><button class="close-btn" onclick="closeModal('addBeatsToMixtapeModal')">×</button></div>
+    </div>
+    <div style="padding:22px 28px 28px;display:grid;gap:14px">
+      <p class="hint">Velg beats du vil legge til i mixtapen.</p>
+      <input id="mixtapeBeatSearchInput" class="beat-search-input" placeholder="Søk etter beat..." autocomplete="off" />
+      <div id="mixtapeBeatCheckList" class="beat-check-list"></div>
+      <button class="primary-btn" id="confirmAddBeatsToMixtapeBtn">Legg til valgte</button>
+    </div>
+  </div>
+</div>
+
+<!-- DELETE CONFIRM MODAL -->
+<div id="deleteConfirmModal" class="modal">
+  <div class="modal-card modal-sm" style="max-width:400px">
+    <div class="modal-hd">
+      <div class="modal-hd-left"><h2 id="deleteConfirmTitle" style="font-size:16px;color:#fb7185">Bekreft sletting</h2></div>
+      <div class="modal-hd-right"><button class="close-btn" onclick="closeModal('deleteConfirmModal')">×</button></div>
+    </div>
+    <div style="padding:20px 28px 26px;display:grid;gap:14px">
+      <p class="hint" id="deleteConfirmMsg" style="font-size:14px;line-height:1.6"></p>
+      <p class="hint">Skriv <strong style="color:var(--text)">slett</strong> for å bekrefte:</p>
+      <input id="deleteConfirmInput" type="text" placeholder="slett" style="text-align:center;font-size:15px;letter-spacing:2px" oninput="document.getElementById('deleteConfirmBtn').disabled=this.value.toLowerCase()!=='slett'"/>
+      <button class="primary-btn" id="deleteConfirmBtn" disabled onclick="executeDelete()" style="background:linear-gradient(135deg,#ef4444,#b91c1c);opacity:.5;transition:opacity .2s">Slett permanent</button>
+    </div>
+  </div>
+</div>
+
+<!-- SUPABASE ADMIN LOGIN -->
+
+<!-- SUPABASE DATA SYNC: beats, albums, mixtapes -->
+
+<!-- === MUSIC VAULT: Arkivert vinylkasse prototype override v2 - fixed tab visibility === -->
+
+<!-- === /MUSIC VAULT: Arkivert vinylkasse prototype override === -->
+
+<!-- FINAL OVERRIDE: robust, self-contained Arkivert page with realistic crate image -->
+
+<!-- PATCH: hver arkiverte plate får sin egen realistiske trekasse-kort, 4-5 synlige -->
+
+<!-- === FINAL PATCH: minimalistisk arkivside med 3 synlige trekasser, kvadratiske vinylsleeves og roterende plate === -->
+
+<!-- === HOTFIX: bruk realistisk trekassebilde i den aktive MV3-arkivvisningen === -->
+
+<!-- === PATCH: midtstill vinyl/sleeve og fjern avrunding på sleeves === -->
+
+<!-- PATCH: hyperrealistisk vinyl + større, ryddigere sleeves i arkivet -->
+
+<!-- PATCH: større arkivkasser, sleeves og vinyler – nesten kant i kant -->
+
+<!-- === FORCE PATCH: større MV3 arkiv-elementer, 3 stk nesten kant-i-kant === -->
+
+<!-- === PATCH: mindre vinyl-utstikk + sørg for at crate-bildet ligger bak === -->
+
+<!-- === FINAL PATCH: transparent PNG crate + hyperreal vinyl PNG + less vinyl peek === -->
+
+<!-- === LAYERED CRATE PATCH: back layer + vinyl/sleeve + front layer === -->
+
+<!-- === VINYL REFINEMENT PATCH: better vinyl + barely visible === -->
+
+<!-- === USER-SELECTED VINYL PATCH === -->
+
+<!-- === FINAL VINYL POSITION + BORDER CLEANUP PATCH === -->
+
+<!-- === DIRECT DISC POSITION FIX === -->
+
+<!-- === ALT METHOD: shifted vinyl asset itself === -->
+
+<!-- === OUTSIDE-THE-BOX VINYL FIX: ignore old disc; create new hidden-under-sleeve peek === -->
+
+<!-- === V9: BIGGER VINYL PEEK, SAME SIZE AS SLEEVE === -->
+
+<!-- === V10: dynamic vinyl same size as sleeve === -->
+
+<!-- === V11: only slight vinyl reveal === -->
+
+<!-- === V12: correct slight peek math === -->
+
+<!-- === ARCHIVE TAB ISOLATION FIX: archive only appears under Arkivert tab === -->
+
+<!-- === CLEAN ARCHIVE MODULE: single source of truth for Arkivert tab === -->
+<!-- === FIX: tab panels restored after visiting Arkivert === -->
+<!-- Removed unused duplicate CA PNG hard-render block. Current archive uses marcus-final-archive-png-js for FA cards. -->
+
+<!-- === FINAL USER PATCH: realistisk arkivkasse, hover, samlinger, mobil-swipe og scroll-restore === -->
+
+<!-- === GLOBAL ANGULAR UI REDESIGN: less rounded, sharper music-vault interface === -->
+
+<!-- MARCUS HERO VINYL IMPERFECTIONS PATCH
+  Purpose:
+  - Make the hero vinyl feel a little more physical.
+  - Add very subtle dust specks and tiny scuff / nick marks.
+  - Keep the effect restrained so it still looks clean and premium.
+  Notes:
+  - The specks/scuffs live inside `.hero-vinyl-disc`, so they rotate together
+    with the record and help communicate motion more clearly.
+-->
+
+<!-- MARCUS HERO VINYL CLEANUP PATCH
+  Purpose:
+  - Remove the small elongated marker from the hero vinyl label.
+  - Keep the vinyl cleaner and more minimal.
+-->
+
+<!-- MARCUS ARCHIVE STYLE ALIGNMENT PATCH
+  Purpose:
+  - Make the archive page match the newer, cleaner site style.
+  - Reduce the older rounded / pill-heavy framing.
+  - Keep functionality intact while making panels more structured.
+-->
+
+<!-- MARCUS UNIFIED PAGE STYLE PATCH
+  Purpose:
+  - Make the archive page use the same visual language as Pipeline/other pages.
+  - Remove the separate oversized archive hero feeling.
+  - Keep archive functionality intact; this is CSS-only.
+  Design notes for future AI/editors:
+  - Archive UI is rendered with `.fa-*` classes.
+  - This patch intentionally overrides only layout, radii, spacing and controls.
+  - Do not add another archive renderer for style-only changes.
+-->
+
+<!-- MARCUS ARCHIVE MATCHES ALL PAGES PATCH
+  Purpose:
+  - Make the archive page feel like the same design system as Pipeline / Albums / Mixtapes.
+  - Reduce remaining oversized title + rounded frame feeling.
+  - Keep only the archive crate/cards as the distinctive content motif.
+-->
+
+<!-- === ARCHIVE DEMO CRATES OVERRIDE === -->
+
+  <!-- Supabase CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- App scripts (load order matters) -->
+  <script src="js/lock.js"></script>
+  <script src="js/db.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/track-cards.js"></script>
+  <script src="js/archive.js"></script>
+  <script src="js/mixtape.js"></script>
+  <script src="js/supabase.js"></script>
+</body>
+</html>
