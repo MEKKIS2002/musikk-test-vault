@@ -357,13 +357,13 @@
     const albumBtn=document.getElementById('archiveAlbumBtn');
     if(albumBtn){
       albumBtn.style.display=album?'inline-flex':'none';
-      albumBtn.textContent=album?archiveLabel('album',album):'Arkiver album';
+      albumBtn.textContent=album?(typeof archiveLabel==='function'?archiveLabel:window.archiveLabel)('album',album):'Arkiver album';
       albumBtn.onclick=function(e){e?.stopPropagation?.(); archiveCurrentCollection('album');};
     }
     const mixtapeBtn=document.getElementById('archiveMixtapeBtn');
     if(mixtapeBtn){
       mixtapeBtn.style.display=mixtape?'inline-flex':'none';
-      mixtapeBtn.textContent=mixtape?archiveLabel('mixtape',mixtape):'Arkiver mixtape';
+      mixtapeBtn.textContent=mixtape?(typeof archiveLabel==='function'?archiveLabel:window.archiveLabel)('mixtape',mixtape):'Arkiver mixtape';
       mixtapeBtn.onclick=function(e){e?.stopPropagation?.(); archiveCurrentCollection('mixtape');};
     }
     document.querySelectorAll('.mv-archive-detail-toolbar').forEach(el=>el.remove());
@@ -513,6 +513,7 @@
     if(type==='album')return item.archived?'Gjenopprett album':'Arkiver album';
     return item.archived?'Gjenopprett mixtape':'Arkiver mixtape';
   }
+  window.archiveLabel = archiveLabel; // expose so fullUpgradeScript can use it
 
   window.toggleArchiveItem=function(type,id){
     ensureArchiveData();
