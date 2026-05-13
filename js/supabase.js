@@ -89,7 +89,7 @@ async function updateAdminUi() {
 
     if (window.isAdminMode) {
       if (statusEl) statusEl.textContent = "Admin-modus aktiv";
-      if (emailEl) emailEl.textContent = user.email || "Innlogget admin";
+      if (emailEl) emailEl.textContent = sessionStorage.getItem('mv_username') || user.email || "admin";
       if (loginBox) loginBox.style.display = "none";
       if (logoutBox) logoutBox.style.display = "grid";
       showAdminMessage("Du er logget inn som admin.", "success");
@@ -176,29 +176,22 @@ function installAdminLoginPanel() {
 
   integrationsPanel.insertAdjacentHTML("afterbegin", `
     <div id="supabaseAdminPanel" class="settings-card supabase-admin-card">
-      <h2>🔐 Admin-login</h2>
-      <p class="hint">Bruk Supabase Auth for å låse redigering, arkivering og sletting til admin-brukeren din.</p>
+      <h2>🔐 Admin</h2>
 
       <div class="admin-status-row">
-        <strong>Status:</strong>
         <span id="adminLoginStatus">Sjekker...</span>
       </div>
 
-      <div id="adminLoginBox" class="admin-login-box">
-        <div class="input-group">
-          <label>E-post</label>
-          <input id="adminEmailInput" type="email" autocomplete="username" placeholder="din-epost@example.com" />
-        </div>
-        <div class="input-group">
-          <label>Passord</label>
-          <input id="adminPasswordInput" type="password" autocomplete="current-password" placeholder="Passord" />
-        </div>
-        <button class="primary-btn" id="adminLoginBtn">Logg inn som admin</button>
+      <div id="adminLoginBox" class="admin-login-box" style="display:none">
+        <p class="hint">Logg inn fra låseskjermen for å få admin-tilgang.</p>
+        <button class="primary-btn" onclick="returnToPasswordScreen()">Gå til innlogging</button>
       </div>
 
       <div id="adminLogoutBox" class="admin-login-box" style="display:none">
-        <p class="hint">Innlogget som <strong id="adminLoggedInEmail"></strong></p>
-        <button class="ghost-btn" id="adminLogoutBtn">Logg ut</button>
+        <div style="display:flex;align-items:center;gap:12px;justify-content:space-between">
+          <p class="hint" style="margin:0">Innlogget som <strong id="adminLoggedInEmail"></strong></p>
+          <button class="ghost-btn" id="adminLogoutBtn" style="white-space:nowrap">Logg ut</button>
+        </div>
       </div>
 
       <p id="adminLoginMessage" class="hint admin-login-message"></p>
@@ -536,18 +529,12 @@ setTimeout(updateAdminUi, 50);
     parent.insertAdjacentHTML('afterend', `
       <div id="supabaseDataSyncPanel" class="settings-card supabase-sync-card">
         <h2>☁️ Supabase sync</h2>
-        <p class="hint">Felles database for beats, albumer, mixtapes, arkivstatus og metadata. Lydfilene kan fortsatt ligge i Google Drive.</p>
+        <p class="hint">Metadata, tekster og ratings synkes automatisk på tvers av alle enheter. Lydfiler lagres i Cloudflare R2.</p>
         <div class="sync-actions">
-          <button class="primary-btn" id="pullSupabaseBtn">Hent fra Supabase</button>
-          <button class="ghost-btn" id="pushSupabaseBtn">Migrer lokale data til Supabase</button>
+          <button class="primary-btn" id="pullSupabaseBtn">↓ Hent fra sky</button>
+          <button class="ghost-btn" id="pushSupabaseBtn">↑ Push lokale data</button>
         </div>
         <p id="supabaseSyncStatus" class="hint sync-status">Ikke synket ennå.</p>
-        <details class="hint" style="margin-top:10px">
-          <summary>SQL hvis du får metadata-feil</summary>
-          <pre style="white-space:pre-wrap;background:rgba(0,0,0,.25);padding:10px;border-radius:10px;margin-top:8px">alter table public.beats add column if not exists metadata jsonb default '{}'::jsonb;
-alter table public.albums add column if not exists metadata jsonb default '{}'::jsonb;
-alter table public.mixtapes add column if not exists metadata jsonb default '{}'::jsonb;</pre>
-        </details>
       </div>
     `);
     if(!document.getElementById('supabaseDataSyncStyle')){
