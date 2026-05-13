@@ -33,7 +33,7 @@ function applyRoleMode(){
   } else if(isProducer){
     const active=document.querySelector('.tab-btn.active');
     const activeTab=active?.dataset?.tab||'mixtapes';
-    const allowed=['mixtapes','pipeline'];
+    const allowed=['mixtapes','pipeline','beats'];
     const target=allowed.includes(activeTab)?activeTab:'mixtapes';
     document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab===target));
     document.querySelectorAll('.tab-view').forEach(v=>v.classList.add('hidden'));
