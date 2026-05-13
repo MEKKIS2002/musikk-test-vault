@@ -591,6 +591,10 @@ alter table public.mixtapes add column if not exists metadata jsonb default '{}'
     isReady: () => !!client()
   };
 
+  // Expose directly so db.js and r2-storage.js can call it
+  window.pushToSupabase = pushToSupabase;
+  window.pullFromSupabase = pullFromSupabase;
+
   installSyncPanel();
   setTimeout(()=>pullFromSupabase(), 800);
 })();
