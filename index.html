@@ -10,11 +10,11 @@ Active areas to know:
 2. Later
 
   <!-- Stylesheets -->
-  <link rel="stylesheet" href="css/main.css?v=202605131250">
-  <link rel="stylesheet" href="css/ui.css?v=202605131250">
-  <link rel="stylesheet" href="css/track-cards.css?v=202605131250">
-  <link rel="stylesheet" href="css/archive.css?v=202605131250">
-  <link rel="stylesheet" href="css/mixtape.css?v=202605131250">
+  <link rel="stylesheet" href="css/main.css?v=202605131255">
+  <link rel="stylesheet" href="css/ui.css?v=202605131255">
+  <link rel="stylesheet" href="css/track-cards.css?v=202605131255">
+  <link rel="stylesheet" href="css/archive.css?v=202605131255">
+  <link rel="stylesheet" href="css/mixtape.css?v=202605131255">
 </head>
 <body>
 <!-- Viewer mode login shortcut -->
@@ -136,9 +136,9 @@ Active areas to know:
         <button class="ghost-btn" id="archiveMixtapeBtn" onclick="archiveCurrentCollection('mixtape')">Arkiver mixtape</button>
         <button class="small-btn danger" id="deleteMixtapeBtn">Slett mixtape</button>
         <div class="track-view-toggle" id="mixtapeViewToggle" style="margin-left:auto">
-          <button type="button" data-track-view="list" onclick="setTrackViewMode('list')">☰ Rader</button>
-          <button type="button" data-track-view="cards" onclick="setTrackViewMode('cards')">▦ Kort</button>
-          <button type="button" data-track-view="studio" onclick="advancedSetTrackViewMode('studio')">▤ Studio</button>
+          <button type="button" data-track-view="list" onclick="event.stopPropagation();setTrackViewMode('list')">☰ Rader</button>
+          <button type="button" data-track-view="cards" onclick="event.stopPropagation();setTrackViewMode('cards')">▦ Kort</button>
+          <button type="button" data-track-view="studio" onclick="event.stopPropagation();advancedSetTrackViewMode('studio')">▤ Studio</button>
         </div>
       </div>
       <div id="mixtapeDrop" class="drop-zone" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="handleMixtapeDrop(event)">
@@ -170,9 +170,9 @@ Active areas to know:
         <button class="ghost-btn" id="archiveAlbumBtn" onclick="archiveCurrentCollection('album')">Arkiver album</button>
         <button class="small-btn danger" id="deleteAlbumBtn">Slett album</button>
         <div class="track-view-toggle" id="albumViewToggle" style="margin-left:auto">
-          <button type="button" data-track-view="list" onclick="setTrackViewMode('list')">☰ Rader</button>
-          <button type="button" data-track-view="cards" onclick="setTrackViewMode('cards')">▦ Kort</button>
-          <button type="button" data-track-view="studio" onclick="advancedSetTrackViewMode('studio')">▤ Studio</button>
+          <button type="button" data-track-view="list" onclick="event.stopPropagation();setTrackViewMode('list')">☰ Rader</button>
+          <button type="button" data-track-view="cards" onclick="event.stopPropagation();setTrackViewMode('cards')">▦ Kort</button>
+          <button type="button" data-track-view="studio" onclick="event.stopPropagation();advancedSetTrackViewMode('studio')">▤ Studio</button>
         </div>
       </div>
       <div id="albumDrop" class="drop-zone" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="handleAlbumDrop(event)">
@@ -550,16 +550,16 @@ Active areas to know:
   <script>window.R2_WORKER_URL = 'https://beat-vault.marcus-aas-mekiassen.workers.dev';</script>
 
   <!-- App scripts (load order matters) -->
-  <script src="js/audio-compress.js?v=202605131250"></script>
-  <script src="js/lock.js?v=202605131250"></script>
-  <script src="js/db.js?v=202605131250"></script>
-  <script src="js/app.js?v=202605131250"></script>
-  <script src="js/track-cards.js?v=202605131250"></script>
-  <script src="js/r2-storage.js?v=202605131250"></script>
-  <script src="js/archive.js?v=202605131250"></script>
-  <script src="js/mixtape.js?v=202605131250"></script>
-  <script src="js/changelog.js?v=202605131250"></script>
-  <script src="js/beats-tab.js?v=202605131250"></script>
-  <script src="js/supabase.js?v=202605131250"></script>
+  <script src="js/audio-compress.js?v=202605131255"></script>
+  <script src="js/lock.js?v=202605131255"></script>
+  <script src="js/db.js?v=202605131255"></script>
+  <script src="js/app.js?v=202605131255"></script>
+  <script src="js/track-cards.js?v=202605131255"></script>
+  <script src="js/r2-storage.js?v=202605131255"></script>
+  <script src="js/archive.js?v=202605131255"></script>
+  <script src="js/mixtape.js?v=202605131255"></script>
+  <script src="js/changelog.js?v=202605131255"></script>
+  <script src="js/beats-tab.js?v=202605131255"></script>
+  <script src="js/supabase.js?v=202605131255"></script>
 </body>
 </html>
