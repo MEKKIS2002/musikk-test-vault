@@ -140,8 +140,9 @@ function fmt(sec){
   }
   function toggleMarkup(){
     return `<div class="track-view-toggle" title="Velg visningsmodus">
+      <button type="button" data-track-view="list" onclick="setTrackViewMode('list')">☰ Rader</button>
       <button type="button" data-track-view="cards" onclick="setTrackViewMode('cards')">▦ Kort</button>
-      <button type="button" data-track-view="list" onclick="setTrackViewMode('list')">☰ Liste</button>
+      <button type="button" data-track-view="studio" onclick="advancedSetTrackViewMode('studio')">▤ Studio</button>
     </div>`;
   }
   function installToggles(){
