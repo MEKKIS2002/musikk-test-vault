@@ -202,22 +202,18 @@
   .album-beat-card:not(.expanded) .progress-wrap,
   .album-beat-card.expanded .progress-wrap{max-width:100%!important;}
 }
-/* merged from songCardOpenByCoverTitleOverride */
-
-/* Oppdatert sangkort-layout: bilde til venstre, info ved siden av, ingen "Åpne"-badge/knapp */
-.album-beat-grid{
-  grid-template-columns:1fr!important;
-  gap:14px!important;
-}
-.album-beat-card:not(.expanded) .ab-top,
+/* Card layout — cover left, content right (grid and studio modes) */
+.album-beat-grid .album-beat-card:not(.expanded) .ab-top,
+.album-beat-studio .album-beat-card:not(.expanded) .ab-top,
 .album-beat-card.expanded .ab-top{
   display:grid!important;
-  grid-template-columns:minmax(150px,280px) minmax(0,1fr)!important;
+  grid-template-columns:minmax(120px,220px) minmax(0,1fr)!important;
   align-items:stretch!important;
 }
-.album-beat-card:not(.expanded) .ab-cover-wrap,
+.album-beat-grid .album-beat-card:not(.expanded) .ab-cover-wrap,
+.album-beat-studio .album-beat-card:not(.expanded) .ab-cover-wrap,
 .album-beat-card.expanded .ab-cover-wrap{
-  aspect-ratio:4/3!important;
+  aspect-ratio:1/1!important;
   border-bottom:0!important;
   border-right:1px solid rgba(255,255,255,.08)!important;
   cursor:pointer!important;
@@ -342,32 +338,7 @@
   background:linear-gradient(180deg,#ffbd65,#df7f22);
   box-shadow:0 10px 20px rgba(223,127,34,.18),inset 0 1px 0 rgba(255,255,255,.30);
 }
-.album-beat-listmode{
-  display:grid!important;
-  grid-template-columns:1fr!important;
-  gap:10px!important;
-  align-items:start!important;
-}
-.album-beat-listmode .reorder-hint,.album-beat-listmode .batch-bar{grid-column:1/-1!important}
-.album-beat-listmode .album-beat-card:not(.expanded){
-  border-radius:18px!important;
-  overflow:hidden!important;
-}
-.album-beat-listmode .album-beat-card:not(.expanded):hover{transform:translateY(-1px)!important}
-.album-beat-listmode .album-beat-card:not(.expanded)::after{display:none!important;content:none!important}
-.album-beat-listmode .album-beat-card:not(.expanded) .ab-top{
-  display:grid!important;
-  grid-template-columns:76px minmax(0,1fr)!important;
-  align-items:stretch!important;
-  min-height:76px!important;
-}
-.album-beat-listmode .album-beat-card:not(.expanded) .ab-cover-wrap{
-  width:76px!important;
-  min-height:76px!important;
-  aspect-ratio:1/1!important;
-  border-bottom:0!important;
-  border-right:1px solid rgba(255,255,255,.08)!important;
-}
+/* old listmode removed — see Spotify-style listmode above */
 .album-beat-listmode .album-beat-card:not(.expanded) .ab-cover-wrap::after{
   content:"Åpne"!important;
   right:7px!important;
