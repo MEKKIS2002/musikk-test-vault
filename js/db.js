@@ -999,7 +999,19 @@ function renderIntegrations(){
   document.getElementById("soundcloudProxy").value=state.settings.soundcloudProxy||"";
 }
 
-function renderAll(){renderStats();renderMixtapes();renderAlbums();renderPipeline();renderIntegrations();applyRoleMode();}
+function renderAll(){
+  renderStats();
+  // Only render the currently active tab — avoids expensive re-renders of hidden content
+  const activeTab = document.querySelector('.tab-btn.active')?.dataset?.tab || '';
+  if(activeTab === 'mixtapes' || activeTab === '') renderMixtapes();
+  if(activeTab === 'albums')   renderAlbums();
+  if(activeTab === 'pipeline') renderPipeline();
+  if(activeTab === 'integrations') renderIntegrations();
+  // Always render stats and apply role
+  applyRoleMode();
+}
+// Full render for cases where all tabs must be up to date (e.g. after data sync)
+function renderAllTabs(){renderStats();renderMixtapes();renderAlbums();renderPipeline();renderIntegrations();applyRoleMode();}
 
 // ── DEMO MODAL ──
 function openDemoModal(id){
