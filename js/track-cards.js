@@ -115,56 +115,84 @@ function fmt(sec){
 
 // === trackListModeAndPlaceholderJs ===
 (function(){
-  const KEY='musicVaultTrackViewMode';
-  function currentView(){return localStorage.getItem(KEY)||'list';}
-  function activeMode(){return !document.getElementById('mixtapeDetailView')?.classList.contains('hidden')?'mixtape':'album';}
+  const KEY = 'musicVaultTrackViewMode';
+
+  function currentView(){ return localStorage.getItem(KEY) || 'list'; }
+
+  function saveView(mode){
+    const v = ['list','cards','studio'].includes(mode) ? mode : 'list';
+    try{ localStorage.setItem(KEY, v); } catch(e){}
+    return v;
+  }
+
   function applyView(el){
-    if(!el)return;
-    el.classList.remove('album-beat-grid','album-beat-listmode');
-    el.classList.add(currentView()==='list'?'album-beat-listmode':'album-beat-grid');
-    el.querySelectorAll('.ab-cover-ph').forEach(ph=>{ph.textContent='';ph.setAttribute('aria-label','Ingen coverbilde');});
+    if(!el) return;
+    const view = currentView();
+    el.classList.remove('album-beat-grid','album-beat-listmode','album-beat-studio');
+    if(view === 'list')   el.classList.add('album-beat-listmode');
+    else if(view === 'studio') el.classList.add('album-beat-studio');
+    else                  el.classList.add('album-beat-grid');
     updateToggleButtons();
   }
-  function rerenderActive(){
-    if(activeMode()==='mixtape'&&typeof renderMixtapeDetail==='function')renderMixtapeDetail();
-    else if(typeof renderAlbumDetail==='function')renderAlbumDetail();
+
+  function updateToggleButtons(){
+    const v = currentView();
+    document.querySelectorAll('[data-track-view]').forEach(btn=>{
+      btn.classList.toggle('active', btn.dataset.trackView === v);
+    });
   }
-  window.setTrackViewMode=function(mode){
-    try{localStorage.setItem(KEY,mode==='list'?'list':'cards');}catch(e){}
+
+  function activeMode(){
+    const mv = document.getElementById('mixtapeDetailView');
+    const av = document.getElementById('albumDetailView');
+    if(mv && !mv.classList.contains('hidden')) return 'mixtape';
+    if(av && !av.classList.contains('hidden')) return 'album';
+    if(typeof currentMixtapeId !== 'undefined' && currentMixtapeId) return 'mixtape';
+    if(typeof currentAlbumId   !== 'undefined' && currentAlbumId)   return 'album';
+    return null;
+  }
+
+  function rerenderActive(){
+    const type = activeMode();
+    if(type === 'mixtape' && typeof renderMixtapeDetail === 'function') renderMixtapeDetail();
+    else if(type === 'album' && typeof renderAlbumDetail === 'function') renderAlbumDetail();
+  }
+
+  // THE single authoritative setTrackViewMode
+  window.setTrackViewMode = function(mode){
+    saveView(mode);
+    // If studio, delegate to advancedSetTrackViewMode if it handles studio rendering
+    if(mode === 'studio' && typeof window.advancedSetTrackViewMode === 'function'){
+      window.advancedSetTrackViewMode('studio');
+      return;
+    }
+    // Apply CSS classes immediately without full re-render
     applyView(document.getElementById('mixtapeBeatList'));
     applyView(document.getElementById('albumBeatList'));
     updateToggleButtons();
   };
-  function updateToggleButtons(){
-    document.querySelectorAll('[data-track-view]').forEach(btn=>btn.classList.toggle('active',btn.dataset.trackView===currentView()));
-  }
-  function toggleMarkup(){
-    return `<div class="track-view-toggle" title="Velg visningsmodus">
-      <button type="button" data-track-view="list" onclick="setTrackViewMode('list')">☰ Rader</button>
-      <button type="button" data-track-view="cards" onclick="setTrackViewMode('cards')">▦ Kort</button>
-      <button type="button" data-track-view="studio" onclick="advancedSetTrackViewMode('studio')">▤ Studio</button>
-    </div>`;
-  }
-  function installToggles(){
-    const mixtapeToolbar=document.getElementById('addBeatsToMixtapeBtn')?.closest('.toolbar');
-    const albumToolbar=document.getElementById('addBeatsToAlbumBtn')?.closest('.toolbar');
-    [mixtapeToolbar,albumToolbar].forEach(tb=>{
-      if(!tb||tb.querySelector('.track-view-toggle'))return;
-      const deleteBtn=tb.querySelector('.danger');
-      if(deleteBtn)deleteBtn.insertAdjacentHTML('beforebegin',toggleMarkup());
-      else tb.insertAdjacentHTML('beforeend',toggleMarkup());
-    });
+
+  window.advancedSetTrackViewMode = function(mode){
+    saveView(mode);
+    rerenderActive();
     updateToggleButtons();
-  }
-  const previousRender=window.renderAlbumBeats;
-  window.renderAlbumBeats=function(beats,mode,customEl){
-    if(typeof previousRender==='function')previousRender(beats,mode,customEl);
-    const el=customEl||document.getElementById(mode==='mixtape'?'mixtapeBeatList':'albumBeatList');
-    applyView(el);
-    installToggles();
   };
-  const boot=()=>{installToggles();applyView(document.getElementById('mixtapeBeatList'));applyView(document.getElementById('albumBeatList'));};
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
+
+  const previousRender = window.renderAlbumBeats;
+  window.renderAlbumBeats = function(beats, mode, customEl){
+    if(typeof previousRender === 'function') previousRender(beats, mode, customEl);
+    const el = customEl || document.getElementById(mode === 'mixtape' ? 'mixtapeBeatList' : 'albumBeatList');
+    applyView(el);
+    updateToggleButtons();
+  };
+
+  const boot = () => {
+    applyView(document.getElementById('mixtapeBeatList'));
+    applyView(document.getElementById('albumBeatList'));
+    updateToggleButtons();
+  };
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
 })();
 
 // === clean-song-detail-fields-script ===
@@ -699,4 +727,50 @@ document.documentElement.classList.remove('mv-angular-ui');
       };
     }
   });
+})();
+
+// ── FINAL VIEW MODE OVERRIDE ────────────────────────────────────────────────
+// Ensures the clean 3-mode implementation wins over any earlier redefinitions.
+;(function(){
+  const KEY = 'musicVaultTrackViewMode';
+  const VIEWS = ['list','cards','studio'];
+  function save(v){ try{ localStorage.setItem(KEY, VIEWS.includes(v)?v:'list'); }catch(e){} }
+  function cur(){ return localStorage.getItem(KEY) || 'list'; }
+  function apply(el){
+    if(!el) return;
+    el.classList.remove('album-beat-grid','album-beat-listmode','album-beat-studio');
+    const v = cur();
+    if(v==='list') el.classList.add('album-beat-listmode');
+    else if(v==='studio') el.classList.add('album-beat-studio');
+    else el.classList.add('album-beat-grid');
+  }
+  function syncBtns(){ document.querySelectorAll('[data-track-view]').forEach(b=>b.classList.toggle('active',b.dataset.trackView===cur())); }
+  function activeType(){
+    if(document.getElementById('mixtapeDetailView') && !document.getElementById('mixtapeDetailView').classList.contains('hidden')) return 'mixtape';
+    if(document.getElementById('albumDetailView')   && !document.getElementById('albumDetailView').classList.contains('hidden'))   return 'album';
+    if(typeof currentMixtapeId!=='undefined' && currentMixtapeId) return 'mixtape';
+    if(typeof currentAlbumId!=='undefined'   && currentAlbumId)   return 'album';
+    return null;
+  }
+  function rerender(){
+    const t = activeType();
+    if(t==='mixtape' && typeof renderMixtapeDetail==='function') renderMixtapeDetail();
+    else if(t==='album' && typeof renderAlbumDetail==='function') renderAlbumDetail();
+  }
+
+  window.setTrackViewMode = function(mode){
+    save(mode);
+    if(mode==='studio'){ rerender(); syncBtns(); return; }
+    apply(document.getElementById('mixtapeBeatList'));
+    apply(document.getElementById('albumBeatList'));
+    syncBtns();
+  };
+  window.advancedSetTrackViewMode = function(mode){
+    save(mode);
+    rerender();
+    syncBtns();
+  };
+
+  // Sync buttons on initial load
+  setTimeout(syncBtns, 300);
 })();
