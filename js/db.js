@@ -260,7 +260,7 @@ function renderStats(){
   const mixtapeBeats=[...mixtapeBeatIds].map(id=>byId.get(id)).filter(Boolean);
   const albumDemos=[...albumDemoIds].map(id=>byId.get(id)).filter(Boolean);
 
-  document.getElementById("beatCount").textContent=mixtapeBeats.length;
+  document.getElementById("beatCount").textContent=(state.beats||[]).filter(b=>!b.archived).length;
   document.getElementById("favCount").textContent=mixtapeBeats.filter(b=>b.favorite).length;
   document.getElementById("demoCount").textContent=albumDemos.length;
   const avg=albumDemos.length?Math.round(albumDemos.reduce((s,d)=>s+Number(d.done||0),0)/albumDemos.length):0;
@@ -367,7 +367,7 @@ function renderAlbums(){
   document.getElementById("albumDetailView").classList.add("hidden");
   const grid=document.getElementById("albumGrid");
   const cards=state.albums.map(a=>{
-    const n=a.beatIds.length;
+    const n=(a.beatIds||[]).filter(id=>{const b=state.beats.find(x=>x.id===id);return b&&!b.archived;}).length;
     const label=a.cover
       ?`<div class="vinyl-label"><img src="${esc(a.cover)}" alt="${esc(a.name)}"></div>`
       :`<div class="vinyl-label"><div class="vinyl-label-ph">♪</div></div>`;
@@ -492,7 +492,7 @@ function renderAlbumDetail(){
     <div class="album-detail-info" style="flex:1">
       <div class="eyebrow">Album</div>
       <h2>${esc(album.name)}</h2>
-      <span>${album.beatIds.length} beat${album.beatIds.length===1?"":"s"}</span>
+      <span>${(()=>{const n=(album.beatIds||[]).filter(id=>{const b=state.beats.find(x=>x.id===id);return b&&!b.archived;}).length;return n+' beat'+(n===1?'':'s');})()}</span>
       <div id="albumNowPlaying" class="hint" style="margin-top:8px"></div>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -665,9 +665,29 @@ function renderAlbumBeats(beats,mode,customEl){
   }).join("");
 }
 function toggleAlbumBeat(id){
-  const card=document.getElementById(`abi-${id}`);if(!card)return;
+  // Find card in the currently VISIBLE beat list (mixtape or album context)
+  const mixList = document.getElementById('mixtapeBeatList');
+  const albList = document.getElementById('albumBeatList');
+  const mixVisible = mixList && !document.getElementById('mixtapeDetailView')?.classList.contains('hidden');
+  const albVisible = albList && !document.getElementById('albumDetailView')?.classList.contains('hidden');
+  
+  let card = null;
+  if(mixVisible){
+    card = mixList.querySelector(`[data-beat-id="${id}"], #abi-${id}`);
+  }
+  if(!card && albVisible){
+    card = albList.querySelector(`[data-beat-id="${id}"], #abi-${id}`);
+  }
+  // Fallback: first visible card with this id
+  if(!card){
+    const all = document.querySelectorAll(`[data-beat-id="${id}"], #abi-${id}`);
+    for(const c of all){
+      if(c.offsetParent !== null){ card = c; break; }
+    }
+  }
+  if(!card) return;
   card.classList.toggle("expanded");
-  if(card.classList.contains("expanded"))loadAudioForBeat(id);
+  if(card.classList.contains("expanded")) loadAudioForBeat(id);
 }
 function setAlbumBeatRating(id,r){
   const b=state.beats.find(x=>x.id===id);if(!b)return;
@@ -931,7 +951,7 @@ function renderMixtapes(){
   document.getElementById("mixtapeDetailView").classList.add("hidden");
   const grid=document.getElementById("mixtapeGrid");
   const cards=state.mixtapes.map((mt,idx)=>{
-    const n=mt.beatIds.length;
+    const n=(mt.beatIds||[]).filter(id=>{ const b=state.beats.find(x=>x.id===id); return b && !b.archived; }).length;
     const dragAttrs=isProducerUser()?`data-id="${mt.id}"`:`draggable="true" data-id="${mt.id}" ondragstart="startCardDrag(event,'mixtape','${mt.id}')" ondragover="cardDragOver(event,'mixtape','${mt.id}')" ondragleave="cardDragLeave(event,'${mt.id}')" ondrop="dropCard(event,'mixtape','${mt.id}')" ondragend="endCardDrag()"`;
     return`<div class="cassette-card" ${dragAttrs} onclick="openMixtapeFromCard(event,'${mt.id}')">
       ${cassetteMarkup(mt,idx)}
@@ -976,7 +996,7 @@ function renderMixtapeDetail(){
       <div class="mixtape-detail-copy">
         <div class="mixtape-detail-kicker" style="color:${col}">Mixtape</div>
         <h2>${esc(mt.name)}</h2>
-        <span style="color:var(--muted);font-size:13px">${mt.beatIds.length} beat${mt.beatIds.length===1?"":"s"}</span>
+        <span style="color:var(--muted);font-size:13px">${(()=>{const n=(mt.beatIds||[]).filter(id=>{const b=state.beats.find(x=>x.id===id);return b&&!b.archived;}).length;return n+' beat'+(n===1?'':'s');})()}</span>
         <div id="mixtapeNowPlaying" class="hint" style="margin-top:6px"></div>
       </div>
       <div class="mixtape-detail-actions">
