@@ -267,16 +267,38 @@
 .acp-minimal-list .acp-list-copy small{color:#8f8375!important;}
 .acp-minimal-list .acp-list-kind,.acp-minimal-list .acp-list-progress,.acp-minimal-list .acp-list-date{display:none!important;}
 
-.album-beat-listmode{gap:2px!important;padding:4px!important;}
-.album-beat-listmode .album-beat-card:not(.expanded){min-height:50px!important;border-bottom:1px solid rgba(255,255,255,.045)!important;border-radius:8px!important;}
-.album-beat-listmode .album-beat-card:not(.expanded) .ab-top{display:grid!important;grid-template-columns:46px minmax(0,1fr)!important;align-items:center!important;min-height:50px!important;padding:0!important;}
-.album-beat-listmode .album-beat-card:not(.expanded) .ab-cover-wrap,.album-beat-listmode .album-beat-card:not(.expanded) .ab-cover,.album-beat-listmode .album-beat-card:not(.expanded) .ab-cover-ph{width:38px!important;height:38px!important;min-height:38px!important;border-radius:6px!important;}
-.album-beat-listmode .album-beat-card:not(.expanded) .ab-cover-wrap{margin-left:6px!important;}
-.album-beat-listmode .album-beat-card:not(.expanded) .ab-body{padding:0 8px!important;display:block!important;min-height:0!important;}
-.album-beat-listmode .album-beat-card:not(.expanded) .ab-body::before{content:none!important;display:none!important;}
-.album-beat-listmode .album-beat-card:not(.expanded) .ab-body>div:first-child{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:12px!important;width:100%!important;}
-.album-beat-listmode .album-beat-card:not(.expanded) .ab-title{font-size:14px!important;line-height:1.15!important;font-weight:850!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;}
-.album-beat-listmode .album-beat-card:not(.expanded) .ab-stars,.album-beat-listmode .album-beat-card:not(.expanded) .progress-wrap,.album-beat-listmode .album-beat-card:not(.expanded) .beat-chip-row,.album-beat-listmode .album-beat-card:not(.expanded) .hint{display:none!important;}
+.album-beat-listmode{gap:0!important;padding:0!important;display:flex!important;flex-direction:column!important;}
+/* Spotify-style compact rows */
+.album-beat-listmode .album-beat-card:not(.expanded){
+  min-height:44px!important;max-height:44px!important;overflow:hidden!important;
+  border-bottom:1px solid rgba(255,255,255,.05)!important;border-radius:0!important;
+  background:transparent!important;border:none!important;box-shadow:none!important;
+  transition:background .12s!important;
+}
+.album-beat-listmode .album-beat-card:not(.expanded):hover{background:rgba(255,255,255,.06)!important;border-radius:6px!important;}
+.album-beat-listmode .album-beat-card:not(.expanded) .ab-top{
+  display:grid!important;
+  grid-template-columns:44px minmax(0,1fr) auto!important;
+  align-items:center!important;height:44px!important;padding:0 8px 0 4px!important;gap:0!important;
+}
+.album-beat-listmode .album-beat-card:not(.expanded) .ab-cover-wrap,
+.album-beat-listmode .album-beat-card:not(.expanded) .ab-cover,
+.album-beat-listmode .album-beat-card:not(.expanded) .ab-cover-ph{width:32px!important;height:32px!important;min-height:32px!important;border-radius:4px!important;flex-shrink:0!important;}
+.album-beat-listmode .album-beat-card:not(.expanded) .ab-cover-wrap{margin:0 10px 0 4px!important;}
+.album-beat-listmode .album-beat-card:not(.expanded) .ab-body{padding:0!important;display:flex!important;align-items:center!important;justify-content:space-between!important;min-height:0!important;gap:8px!important;overflow:hidden!important;}
+.album-beat-listmode .album-beat-card:not(.expanded) .ab-body::before{display:none!important;}
+.album-beat-listmode .album-beat-card:not(.expanded) .ab-title{font-size:13px!important;font-weight:700!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;line-height:1!important;}
+.album-beat-listmode .album-beat-card:not(.expanded) .ab-stars{display:none!important;}
+.album-beat-listmode .album-beat-card:not(.expanded) .progress-wrap{display:none!important;}
+.album-beat-listmode .album-beat-card:not(.expanded) .beat-chip-row{display:none!important;}
+.album-beat-listmode .album-beat-card:not(.expanded) .hint{font-size:11px!important;color:var(--muted)!important;white-space:nowrap!important;}
+/* Duration and actions on right side */
+.album-beat-listmode .album-beat-card:not(.expanded) .track-card-actions{
+  display:flex!important;align-items:center!important;gap:8px!important;flex-shrink:0!important;margin-left:auto!important;
+}
+.album-beat-listmode .album-beat-card:not(.expanded) .track-duration{
+  font-size:12px!important;color:var(--muted)!important;font-variant-numeric:tabular-nums!important;min-width:32px!important;text-align:right!important;
+}
 .track-card-actions{display:flex!important;align-items:center!important;gap:8px!important;flex-shrink:0!important;margin-left:auto!important;}
 .track-card-actions .track-duration{min-width:42px!important;text-align:right!important;}
 .track-card-actions .star-btn,.track-card-actions .quick-play-btn{width:32px!important;height:32px!important;padding:0!important;border-radius:999px!important;display:inline-grid!important;place-items:center!important;margin:0!important;font-size:14px!important;}
