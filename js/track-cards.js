@@ -760,9 +760,7 @@ document.documentElement.classList.remove('mv-angular-ui');
 
   window.setTrackViewMode = function(mode){
     save(mode);
-    if(mode==='studio'){ rerender(); syncBtns(); return; }
-    apply(document.getElementById('mixtapeBeatList'));
-    apply(document.getElementById('albumBeatList'));
+    rerender();   // always re-render so card layout updates correctly
     syncBtns();
   };
   window.advancedSetTrackViewMode = function(mode){
