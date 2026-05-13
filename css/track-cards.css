@@ -882,3 +882,13 @@
     justify-self:start!important;
   }
 }
+/* Studio (kanban) view */
+.album-beat-studio {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)) !important;
+  gap: 12px !important;
+}
+.album-beat-studio .album-beat-card {
+  width: 100% !important;
+  min-height: 120px;
+}
