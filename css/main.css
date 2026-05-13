@@ -795,3 +795,27 @@ body.is-playing-album #albumDetailHd .album-detail-vinyl{animation:vinylSpin 7s 
 .global-search-wrap{z-index:15!important}
 body:has(.modal.open) .global-search-wrap{z-index:1!important;pointer-events:none}
 body.modal-is-open .global-search-wrap{z-index:1!important;pointer-events:none}
+
+/* ── VIEWER MODE ─────────────────────────────────────────── */
+body.viewer-mode .ab-lyrics,
+body.viewer-mode .lyrics-section,
+body.viewer-mode .lyrics-wrap,
+body.viewer-mode .lyrics-text,
+body.viewer-mode [data-lyrics],
+body.viewer-mode .song-detail-lyrics { display:none !important; }
+
+body.viewer-mode .tab-btn[data-tab="albums"],
+body.viewer-mode .tab-btn[data-tab="pipeline"],
+body.viewer-mode .tab-btn[data-tab="archive"],
+body.viewer-mode .tab-btn[data-tab="integrations"] { display:none !important; }
+
+body.viewer-mode #albumsTab,
+body.viewer-mode #pipelineTab,
+body.viewer-mode #archiveTab,
+body.viewer-mode #integrationsTab { display:none !important; }
+
+body.viewer-mode .upload-btn,
+body.viewer-mode [onclick*="uploadInput"],
+body.viewer-mode .add-beat-btn,
+body.viewer-mode .delete-btn,
+body.viewer-mode .edit-btn { display:none !important; }
