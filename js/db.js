@@ -302,8 +302,8 @@ function renderBeats(container,beats,albumMode){
           <button class="ghost-btn" onclick="copyBeatLyrics('${b.id}')">Kopier tekst</button>
           ${albumMode
   ? `<button class="small-btn danger" onclick="removeFromCollection('${b.id}','${listMode}')">Fjern fra ${listMode==="mixtape"?"mixtape":"album"}</button>
-     ${window.isAdminMode?`<button class="small-btn danger" onclick="deleteBeat('${b.id}')">Slett sang</button>`:''}`
-  : `<button class="small-btn danger" onclick="deleteBeat('${b.id}')">Slett sang</button>`}
+     <button class="small-btn danger admin-only-btn" onclick="deleteBeat('${b.id}')">Slett sang</button>`
+  : `<button class="small-btn danger admin-only-btn" onclick="deleteBeat('${b.id}')">Slett sang</button>`}
         </div>
       </div>
     </div>`).join("");
