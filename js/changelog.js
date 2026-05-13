@@ -149,6 +149,21 @@
       ],
     },
     {
+      version: 'v1.0',
+      date: '13. mai 2026',
+      label: 'Første versjon (denne chatten)',
+      color: '#94a3b8',
+      changes: [
+        'Music Vault lansert som én portabel HTML-fil',
+        'Mixtapes med kassett-grensesnitt, albumer med vinyl-animasjoner, pipeline og arkiv',
+        'Supabase admin-innlogging og synk-funksjonalitet',
+        'Arkiv-tab med trekasse-animasjoner og samlinger',
+        'Bottom player med kø, seek og volum',
+        'Lyrics-editor med fargemarkering',
+        'Rating og ferdigstillelsesprosent per beat',
+      ],
+    },
+    {
       version: 'v0.9',
       date: 'mai 2026',
       label: 'Lydfiler, sikkerhetsfeatures og polering',
@@ -193,21 +208,6 @@
         'Demo-modal med fem tabs: Oversikt, Moodboard, Versjonslogg, A/B og Notater',
         'Dagsbasert skrivepromt med historikk',
         'Sortering etter Release Score, rangering, ferdigstillelse og dato',
-      ],
-    },
-    {
-      version: 'v1.0',
-      date: '13. mai 2026',
-      label: 'Første versjon (denne chatten)',
-      color: '#94a3b8',
-      changes: [
-        'Music Vault lansert som én portabel HTML-fil',
-        'Mixtapes med kassett-grensesnitt, albumer med vinyl-animasjoner, pipeline og arkiv',
-        'Supabase admin-innlogging og synk-funksjonalitet',
-        'Arkiv-tab med trekasse-animasjoner og samlinger',
-        'Bottom player med kø, seek og volum',
-        'Lyrics-editor med fargemarkering',
-        'Rating og ferdigstillelsesprosent per beat',
       ],
     },
   ];
