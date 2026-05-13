@@ -231,6 +231,7 @@ function migrate(s){
 }
 function loadState(){try{const r=localStorage.getItem(SK);const s=r?JSON.parse(r):null;return s?migrate(s):defaultState();}catch{return defaultState();}}
 function saveState(){try{localStorage.setItem(SK,JSON.stringify(state));}catch(e){console.warn('saveState failed:',e);}renderStats();if(typeof window.mvSupabaseSync?.schedulePush==='function')window.mvSupabaseSync.schedulePush();}
+function isAdmin(){return sessionStorage.getItem('mv_role')==='admin';}
 
 function setupSel(el,opts){el.innerHTML=opts;}
 function setupRating(el){el.innerHTML=Array.from({length:10},(_,i)=>`<option value="${i+1}">${i+1} stjerne${i===0?"":"r"}`).join("");}
@@ -302,8 +303,8 @@ function renderBeats(container,beats,albumMode){
           <button class="ghost-btn" onclick="copyBeatLyrics('${b.id}')">Kopier tekst</button>
           ${albumMode
   ? `<button class="small-btn danger" onclick="removeFromCollection('${b.id}','${listMode}')">Fjern fra ${listMode==="mixtape"?"mixtape":"album"}</button>
-     <button class="small-btn danger admin-only-btn" onclick="deleteBeat('${b.id}')">Slett sang</button>`
-  : `<button class="small-btn danger admin-only-btn" onclick="deleteBeat('${b.id}')">Slett sang</button>`}
+     ${isAdmin()?`<button class="small-btn danger" onclick="deleteBeat('${b.id}')">Slett sang</button>`:''}`
+  : isAdmin()?`<button class="small-btn danger" onclick="deleteBeat('${b.id}')">Slett sang</button>`:''}
         </div>
       </div>
     </div>`).join("");
