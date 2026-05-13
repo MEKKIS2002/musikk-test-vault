@@ -10,11 +10,11 @@ Active areas to know:
 2. Later
 
   <!-- Stylesheets -->
-  <link rel="stylesheet" href="css/main.css?v=202605130945">
-  <link rel="stylesheet" href="css/ui.css?v=202605130945">
-  <link rel="stylesheet" href="css/track-cards.css?v=202605130945">
-  <link rel="stylesheet" href="css/archive.css?v=202605130945">
-  <link rel="stylesheet" href="css/mixtape.css?v=202605130945">
+  <link rel="stylesheet" href="css/main.css?v=202605130954">
+  <link rel="stylesheet" href="css/ui.css?v=202605130954">
+  <link rel="stylesheet" href="css/track-cards.css?v=202605130954">
+  <link rel="stylesheet" href="css/archive.css?v=202605130954">
+  <link rel="stylesheet" href="css/mixtape.css?v=202605130954">
 </head>
 <body>
 <!-- PASSWORD SCREEN -->
@@ -93,14 +93,19 @@ Active areas to know:
 </section>
 
 <nav class="tabs">
-  <button class="tab-btn active" data-tab="mixtapes">📼 Mixtapes</button>
-  <button class="tab-btn" data-tab="albums">📁 Albumer</button>
+  <button class="tab-btn" data-tab="beats">🎵 Beats</button>
+  <button class="tab-btn active" data-tab="albums">📁 Albumer</button>
+  <button class="tab-btn" data-tab="mixtapes">📼 Mixtapes</button>
   <button class="tab-btn" data-tab="pipeline">📊 Pipeline</button>
   <button class="tab-btn" data-tab="integrations">🔌 Integrasjoner</button>
 </nav>
 
 <!-- BEATS -->
-<section id="mixtapesTab" class="tab-view">
+<section id="beatsTab" class="tab-view hidden">
+  <div id="beatsTabContent"></div>
+</section>
+
+<section id="mixtapesTab" class="tab-view hidden">
   <div class="content-panel glass">
     <div id="mixtapesListView">
       <div class="section-title">
@@ -136,7 +141,7 @@ Active areas to know:
 </section>
 
 <!-- ALBUMER -->
-<section id="albumsTab" class="tab-view hidden">
+<section id="albumsTab" class="tab-view">
   <div class="content-panel glass">
     <div id="albumsListView">
       <div class="section-title">
@@ -531,13 +536,14 @@ Active areas to know:
   <script>window.R2_WORKER_URL = 'https://beat-vault.marcus-aas-mekiassen.workers.dev';</script>
 
   <!-- App scripts (load order matters) -->
-  <script src="js/lock.js?v=202605130945"></script>
-  <script src="js/db.js?v=202605130945"></script>
-  <script src="js/app.js?v=202605130945"></script>
-  <script src="js/track-cards.js?v=202605130945"></script>
-  <script src="js/r2-storage.js?v=202605130945"></script>
-  <script src="js/archive.js?v=202605130945"></script>
-  <script src="js/mixtape.js?v=202605130945"></script>
-  <script src="js/supabase.js?v=202605130945"></script>
+  <script src="js/lock.js?v=202605130954"></script>
+  <script src="js/db.js?v=202605130954"></script>
+  <script src="js/app.js?v=202605130954"></script>
+  <script src="js/track-cards.js?v=202605130954"></script>
+  <script src="js/r2-storage.js?v=202605130954"></script>
+  <script src="js/archive.js?v=202605130954"></script>
+  <script src="js/mixtape.js?v=202605130954"></script>
+  <script src="js/beats-tab.js?v=202605130954"></script>
+  <script src="js/supabase.js?v=202605130954"></script>
 </body>
 </html>
