@@ -1232,7 +1232,11 @@ async function uploadBeatToR2(beat, file) {
     beat.audio_url = url;
     beat.r2_key = beat.id;
     saveState();
-    showToast('✓ Lastet opp til R2');
+    // Sync to Supabase automatically after R2 upload
+    if (typeof window.pushToSupabase === 'function') {
+      window.pushToSupabase();
+    }
+    showToast('✓ Lastet opp til R2 og synkronisert');
   } catch (e) {
     console.error('[R2] Opplasting feilet:', e);
     showToast('⚠ R2 feilet — lydfil lagret lokalt');
