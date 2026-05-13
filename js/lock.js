@@ -58,6 +58,14 @@ function unlockAs(role){
   sessionStorage.setItem('mv_role',role);
   const lock = document.getElementById('lockScreen');
   if(lock) lock.style.display='none';
+  // Sync admin-mode class and flag with role
+  if(role === 'admin'){
+    window.isAdminMode = true;
+    document.body.classList.add('admin-mode');
+  } else {
+    window.isAdminMode = false;
+    document.body.classList.remove('admin-mode');
+  }
   applyRoleMode();
 }
 
@@ -145,6 +153,11 @@ async function checkPw(){} // no-op, replaced by loginWithUsername
 function initLock(){
   if(sessionStorage.getItem('mv_unlocked')==='1'){
     document.getElementById('lockScreen').style.display='none';
+    const role = sessionStorage.getItem('mv_role') || '';
+    if(role === 'admin'){
+      window.isAdminMode = true;
+      document.body.classList.add('admin-mode');
+    }
     applyRoleMode();
     return;
   }
