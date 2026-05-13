@@ -300,7 +300,10 @@ function renderBeats(container,beats,albumMode){
         <div class="beat-expand-actions">
           <button class="primary-btn" onclick="saveBeatLyrics('${b.id}')">Lagre tekst</button>
           <button class="ghost-btn" onclick="copyBeatLyrics('${b.id}')">Kopier tekst</button>
-          ${albumMode?`<button class="small-btn danger" onclick="removeFromCollection('${b.id}','${listMode}')">Fjern fra ${listMode==="mixtape"?"mixtape":"album"}</button>`:`<button class="small-btn danger" onclick="deleteBeat('${b.id}')">Slett beat</button>`}
+          ${albumMode
+  ? `<button class="small-btn danger" onclick="removeFromCollection('${b.id}','${listMode}')">Fjern fra ${listMode==="mixtape"?"mixtape":"album"}</button>
+     ${window.isAdminMode?`<button class="small-btn danger" onclick="deleteBeat('${b.id}')">Slett sang</button>`:''}`
+  : `<button class="small-btn danger" onclick="deleteBeat('${b.id}')">Slett sang</button>`}
         </div>
       </div>
     </div>`).join("");
@@ -328,7 +331,31 @@ function toggleFav(id,btn){
   renderStats();
   showToast(b.favorite?"★ Lagt til som favoritt":"☆ Fjernet fra favoritter");
 }
-function deleteBeat(id){if(isProducerUser()){showToast("Produsentmodus: sletting er låst");return;}if(!confirm("Slette dette beatet?"))return;state.beats=state.beats.filter(b=>b.id!==id);state.albums.forEach(a=>{a.beatIds=a.beatIds.filter(x=>x!==id);});state.mixtapes.forEach(m=>{m.beatIds=m.beatIds.filter(x=>x!==id);});saveState();renderAll();showToast("🗑 Beat slettet");}
+async function deleteBeat(id){
+  if(!window.isAdminMode){showToast("⚠ Kun admin kan slette sanger");return;}
+  if(!confirm("Slette denne sangen permanent? Den fjernes fra R2 og Supabase."))return;
+  const beat = state.beats.find(b=>b.id===id);
+  state.beats=state.beats.filter(b=>b.id!==id);
+  state.albums.forEach(a=>{a.beatIds=a.beatIds.filter(x=>x!==id);});
+  state.mixtapes.forEach(m=>{m.beatIds=m.beatIds.filter(x=>x!==id);});
+  saveState();
+  renderAll();
+  showToast("🗑 Sang slettet");
+  // Delete from R2
+  if(beat && window.r2Storage?.ready()){
+    try{
+      await window.r2Storage.remove(id, !!beat.archived);
+    }catch(e){ console.warn('[R2] Kunne ikke slette fil:', e); }
+  }
+  // Delete from Supabase
+  if(window.supabaseClient && window.isAdminMode){
+    try{
+      await window.supabaseClient.from('beats').delete().eq('id', id);
+      await window.supabaseClient.from('mixtape_beats').delete().eq('beat_id', id);
+      await window.supabaseClient.from('album_beats').delete().eq('beat_id', id);
+    }catch(e){ console.warn('[Supabase] Kunne ikke slette beat:', e); }
+  }
+}
 
 // ── DEMOS ──
 
@@ -571,7 +598,7 @@ function renderAlbumBeats(beats,mode,customEl){
             <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
               <div class="ab-title" style="min-width:0">${esc(b.name)}</div>
             </div>
-            <div class="hint" style="margin-top:6px">${esc(b.source||"Opplastet beat")}</div>
+            <div class="hint" style="margin-top:6px">${esc(b.source||"Opplastet beat")}${b.uploadedBy?` · <span style="color:var(--mv-amber,#ff8a1f);font-size:11px">👤 ${esc(b.uploadedBy)}</span>`:''}</div>
           </div>
         </div>
         <div class="ab-expand">
@@ -592,7 +619,10 @@ function renderAlbumBeats(beats,mode,customEl){
         </div>
         <div class="ab-body">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
-            <div style="display:flex;align-items:center;gap:8px;min-width:0"><div class="ab-title" style="min-width:0">${esc(b.name)}</div></div>
+            <div style="display:flex;align-items:center;gap:8px;min-width:0">
+              <div class="ab-title" style="min-width:0">${esc(b.name)}</div>
+              ${b.uploadedBy?`<span style="font-size:10px;font-weight:700;letter-spacing:.06em;color:var(--mv-amber,#ff8a1f);opacity:.8;white-space:nowrap">👤 ${esc(b.uploadedBy)}</span>`:''}
+            </div>
             <button class="star-btn${b.favorite?" active":""}" data-fav-id="${b.id}" onclick="event.stopPropagation();toggleFav('${b.id}',this)" style="font-size:20px;padding:0;flex-shrink:0">★</button>
           </div>
           <div class="ab-stars" onclick="event.stopPropagation()">${stars}</div>
@@ -1200,7 +1230,12 @@ document.getElementById("backToMixtapesBtn").addEventListener("click",()=>{curre
 
 // ── UPLOAD / DROP helpers ──
 async function createBeatFromFile(file){
-  return await createBeatFromFileIDB(file);
+  const beat = await createBeatFromFileIDB(file);
+  if(beat){
+    // Store who uploaded this beat
+    beat.uploadedBy = sessionStorage.getItem('mv_username') || '';
+  }
+  return beat;
 }
 function addBeatToMixtape(beat){
   console.log('[MIX] addBeatToMixtape kalt. beat.id:', beat?.id, '| currentMixtapeId:', currentMixtapeId);
