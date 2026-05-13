@@ -263,6 +263,16 @@ body::before{
   line-height:1.55!important;
   color:#cbbda9!important;
 }
+
+/* Vinyl clip frame — matches hero-main bounds exactly, clips the overflowing vinyl */
+.hero-vinyl-clip{
+  position:absolute!important;
+  inset:0!important;
+  overflow:hidden!important;
+  pointer-events:none!important;
+  z-index:1!important;
+  border-radius:inherit!important;
+}
 .hero-vinyl{
   position:absolute!important;
   right:-300px!important;
