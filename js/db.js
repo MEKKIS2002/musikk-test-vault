@@ -230,7 +230,7 @@ function migrate(s){
   return n;
 }
 function loadState(){try{const r=localStorage.getItem(SK);const s=r?JSON.parse(r):null;return s?migrate(s):defaultState();}catch{return defaultState();}}
-function saveState(){try{localStorage.setItem(SK,JSON.stringify(state));}catch(e){console.warn('saveState failed:',e);}renderStats();}
+function saveState(){try{localStorage.setItem(SK,JSON.stringify(state));}catch(e){console.warn('saveState failed:',e);}renderStats();if(typeof window.mvSupabaseSync?.schedulePush==='function')window.mvSupabaseSync.schedulePush();}
 
 function setupSel(el,opts){el.innerHTML=opts;}
 function setupRating(el){el.innerHTML=Array.from({length:10},(_,i)=>`<option value="${i+1}">${i+1} stjerne${i===0?"":"r"}`).join("");}
