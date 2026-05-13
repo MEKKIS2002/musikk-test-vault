@@ -240,15 +240,7 @@ document.documentElement.classList.add('mv-mixed-ui');
     else if(typeof renderAlbumDetail==='function') renderAlbumDetail();
   }
 
-  // Toggle expand/collapse — only via cover click or title click
-  window.toggleAlbumBeat = function(id){
-    const card = document.querySelector(`#abi-${cssId(id)}, [data-beat-id="${String(id).replace(/"/g,'\\"')}"]`);
-    if(!card) return;
-    card.classList.toggle('expanded');
-    if(card.classList.contains('expanded') && typeof loadAudioForBeat==='function') loadAudioForBeat(id);
-  };
-
-  // Title click also toggles
+  // Title click toggles card (cover click uses onclick in HTML)
   document.addEventListener('click', function(e){
     const title = e.target.closest('.album-beat-card .ab-title');
     if(!title) return;
