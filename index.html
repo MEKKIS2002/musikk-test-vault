@@ -18,18 +18,38 @@ Active areas to know:
 </head>
 <body>
 <!-- PASSWORD SCREEN -->
-<div id="lockScreen" style="position:fixed;inset:0;background:radial-gradient(circle at 30% 20%,rgba(168,85,247,.3),transparent 40%),radial-gradient(circle at 80% 80%,rgba(34,211,238,.2),transparent 40%),#09090f;display:flex;align-items:center;justify-content:center;z-index:9999;flex-direction:column;gap:24px">
-  <div style="text-align:center;margin-bottom:8px">
-    <div style="font-size:48px;margin-bottom:12px">🎵</div>
-    <div style="font-size:28px;font-weight:800;letter-spacing:-.05em;color:#f6f4ff">Music Vault</div>
-    <div style="font-size:13px;color:#aaa4bd;margin-top:4px">Logg inn med passord, eller fortsett som produsent</div>
+<div id="lockScreen" style="position:fixed;inset:0;background:radial-gradient(circle at 30% 20%,rgba(168,85,247,.3),transparent 40%),radial-gradient(circle at 80% 80%,rgba(34,211,238,.2),transparent 40%),#09090f;display:flex;align-items:center;justify-content:center;z-index:9999;flex-direction:column;gap:0">
+  <div style="text-align:center;margin-bottom:28px">
+    <div style="font-size:44px;margin-bottom:10px">🎵</div>
+    <div style="font-size:26px;font-weight:900;letter-spacing:-.05em;color:#f6f4ff">Music Vault</div>
   </div>
-  <div style="background:linear-gradient(135deg,rgba(255,255,255,.11),rgba(255,255,255,.055));border:1px solid rgba(255,255,255,.14);border-radius:20px;padding:28px 32px;width:min(360px,90vw);display:grid;gap:14px;backdrop-filter:blur(18px);box-shadow:0 24px 80px rgba(0,0,0,.45)">
-    <input id="pwInput" type="password" placeholder="Passord" onkeydown="if(event.key==='Enter')checkPw()" style="background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.18);border-radius:14px;padding:13px 16px;color:#f6f4ff;font-size:16px;outline:none;width:100%;font-family:inherit" />
-    <button onclick="checkPw()" style="background:linear-gradient(135deg,#f4a443,#cb6e1a);border:none;border-radius:14px;padding:13px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;letter-spacing:.2px">Lås opp</button>
-    <button onclick="loginProducer()" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.16);border-radius:14px;padding:13px;color:#f6f4ff;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;letter-spacing:.2px">Logg inn som produsent</button>
-    <div id="pwError" style="color:#fb7185;font-size:13px;text-align:center;display:none">Feil passord</div>
+
+  <!-- Tab switcher -->
+  <div style="display:flex;gap:0;margin-bottom:20px;background:rgba(255,255,255,.07);border-radius:12px;padding:3px;width:min(340px,88vw)">
+    <button id="lockTabAdmin" onclick="switchLockTab('admin')" style="flex:1;padding:9px;border:none;border-radius:9px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;letter-spacing:.02em;background:linear-gradient(135deg,#f4a443,#cb6e1a);color:#fff;transition:all .2s">Admin</button>
+    <button id="lockTabViewer" onclick="switchLockTab('viewer')" style="flex:1;padding:9px;border:none;border-radius:9px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;letter-spacing:.02em;background:transparent;color:#aaa4bd;transition:all .2s">Visningsmodus</button>
   </div>
+
+  <!-- Admin login card -->
+  <div id="lockCardAdmin" style="background:linear-gradient(135deg,rgba(255,255,255,.11),rgba(255,255,255,.055));border:1px solid rgba(255,255,255,.14);border-radius:20px;padding:28px 32px;width:min(340px,88vw);display:grid;gap:12px;backdrop-filter:blur(18px);box-shadow:0 24px 80px rgba(0,0,0,.45)">
+    <input id="adminUsername" type="text" placeholder="Brukernavn" autocomplete="username" onkeydown="if(event.key==='Enter')document.getElementById('adminPassword').focus()" style="background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.18);border-radius:12px;padding:12px 14px;color:#f6f4ff;font-size:15px;outline:none;width:100%;font-family:inherit;box-sizing:border-box" />
+    <input id="adminPassword" type="password" placeholder="Passord" autocomplete="current-password" onkeydown="if(event.key==='Enter')loginWithUsername()" style="background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.18);border-radius:12px;padding:12px 14px;color:#f6f4ff;font-size:15px;outline:none;width:100%;font-family:inherit;box-sizing:border-box" />
+    <button onclick="loginWithUsername()" id="lockLoginBtn" style="background:linear-gradient(135deg,#f4a443,#cb6e1a);border:none;border-radius:12px;padding:12px;color:#fff;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;letter-spacing:.2px">Logg inn</button>
+    <div id="lockError" style="color:#fb7185;font-size:12px;text-align:center;display:none;min-height:16px"></div>
+  </div>
+
+  <!-- Viewer mode card -->
+  <div id="lockCardViewer" style="display:none;background:linear-gradient(135deg,rgba(255,255,255,.11),rgba(255,255,255,.055));border:1px solid rgba(255,255,255,.14);border-radius:20px;padding:28px 32px;width:min(340px,88vw);display:none;gap:12px;backdrop-filter:blur(18px);box-shadow:0 24px 80px rgba(0,0,0,.45)">
+    <div style="color:#aaa4bd;font-size:13px;line-height:1.6;text-align:center">
+      Visningsmodus lar deg bla gjennom og lytte til sanger i mixtapes.<br>
+      <span style="color:rgba(255,255,255,.35)">Tekster, albumer og redigering er ikke tilgjengelig.</span>
+    </div>
+    <button onclick="loginViewer()" style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);border-radius:12px;padding:12px;color:#f6f4ff;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;letter-spacing:.2px">Fortsett i visningsmodus</button>
+  </div>
+
+  <!-- Hidden legacy inputs (keep for backwards compat) -->
+  <input id="pwInput" type="hidden" value="" />
+  <div id="pwError" style="display:none"></div>
 </div>
 <main class="app">
 <button id="producerLoginBtn" class="producer-login-btn" onclick="returnToPasswordScreen()">Logg inn</button>
