@@ -10,11 +10,11 @@ Active areas to know:
 2. Later
 
   <!-- Stylesheets -->
-  <link rel="stylesheet" href="css/main.css?v=202605130940">
-  <link rel="stylesheet" href="css/ui.css?v=202605130940">
-  <link rel="stylesheet" href="css/track-cards.css?v=202605130940">
-  <link rel="stylesheet" href="css/archive.css?v=202605130940">
-  <link rel="stylesheet" href="css/mixtape.css?v=202605130940">
+  <link rel="stylesheet" href="css/main.css?v=202605130945">
+  <link rel="stylesheet" href="css/ui.css?v=202605130945">
+  <link rel="stylesheet" href="css/track-cards.css?v=202605130945">
+  <link rel="stylesheet" href="css/archive.css?v=202605130945">
+  <link rel="stylesheet" href="css/mixtape.css?v=202605130945">
 </head>
 <body>
 <!-- PASSWORD SCREEN -->
@@ -178,46 +178,55 @@ Active areas to know:
 <section id="integrationsTab" class="tab-view hidden">
   <div class="layout">
     <aside class="sidebar glass">
-      <div class="section-title"><h2>Legg til beat</h2></div>
-      <p class="hint">Beats opprettes herfra og legges deretter inn i albumer eller mixtapes.</p>
-      <div class="input-group"><label>Lokale filer</label><input id="beatFiles" type="file" accept="audio/*" multiple /></div>
+      <div class="section-title"><h2>Last opp sang</h2></div>
+      <p class="hint">Last opp lydfiler direkte fra skrivebordet. Filen lagres i Cloudflare R2 og synkes til Supabase automatisk.</p>
       <div class="input-group">
-        <label>URL / Drive-lenke</label>
-        <input id="beatNameInput" placeholder="Beat-navn" />
-        <input id="beatUrlInput" placeholder="Direkte lydlenke eller Drive-delelenke" />
-        <button class="primary-btn" id="addBeatUrlBtn">Legg til beat</button>
+        <label>Velg lydfil(er)</label>
+        <input id="beatFiles" type="file" accept="audio/*" multiple />
       </div>
-      <div class="section-title" style="margin-top:16px"><h2>Google Drive API</h2></div>
-      <p class="hint">Lagre innstillinger for Drive-integrasjon.</p>
-      <div class="input-group"><label>Drive Mappe ID</label><input id="driveFolderId" placeholder="ID fra Drive-mappen" /></div>
-      <div class="input-group"><label>Google API Key</label><input id="driveApiKey" placeholder="AIza..." /></div>
-      <button class="primary-btn" id="saveDriveSettingsBtn">Lagre</button>
-      <button class="ghost-btn" id="mockDriveImportBtn" style="margin-top:8px">Simuler Drive-import</button>
+      <p class="hint" style="font-size:11px;color:var(--muted);margin-top:4px">Støttede formater: MP3, WAV, FLAC, M4A, OGG, AAC</p>
+
+      <div class="section-title" style="margin-top:24px"><h2>Legg til via URL</h2></div>
+      <p class="hint">Lenk direkte til en lydfil på nett.</p>
+      <div class="input-group">
+        <input id="beatNameInput" placeholder="Sangnavn" />
+        <input id="beatUrlInput" placeholder="https://..." />
+        <button class="primary-btn" id="addBeatUrlBtn">Legg til</button>
+      </div>
+
+      <div class="section-title" style="margin-top:24px"><h2>Data</h2></div>
+      <div style="display:grid;gap:8px;margin-top:4px">
+        <button class="ghost-btn" id="exportBtn">⬇ Eksporter backup (JSON)</button>
+        <label class="ghost-btn" style="text-align:center;cursor:pointer">⬆ Importer backup<input id="importInput" type="file" accept="application/json" hidden /></label>
+      </div>
+
+      <!-- Hidden legacy inputs kept for JS compatibility -->
+      <input id="driveFolderId" type="hidden" />
+      <input id="driveApiKey" type="hidden" />
+      <button id="saveDriveSettingsBtn" style="display:none"></button>
+      <button id="mockDriveImportBtn" style="display:none"></button>
     </aside>
+
     <section class="content-panel glass">
-      <div class="settings-card" style="margin-bottom:14px">
-        <h2>💾 Trygg lagring av beats</h2>
-        <p class="hint" style="font-size:13px;line-height:1.65">Beats lastet opp via fil-upload lagres fortsatt som midlertidige <strong>object URLs</strong> i nettleseren. Disse <strong>forsvinner når du lukker fanen</strong> — men tekster, ratings og metadata beholdes i localStorage.<br><br>For trygg, varig lagring anbefaler vi:</p>
-        <div style="display:grid;gap:10px;margin-top:4px">
-          <div style="background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.25);border-radius:12px;padding:12px 14px">
-            <div style="font-size:13px;font-weight:700;margin-bottom:3px">☁️ Google Drive (anbefalt)</div>
-            <div class="hint">Last opp beats til Drive-mappen, legg inn lenken i "URL / Drive-lenke"-feltet. Beats spilles av direkte fra Drive og overlever alle sesjoner.</div>
-          </div>
-          <div style="background:rgba(34,211,238,.08);border:1px solid rgba(34,211,238,.2);border-radius:12px;padding:12px 14px">
-            <div style="font-size:13px;font-weight:700;margin-bottom:3px">🖥️ Lokal server (teknisk)</div>
-            <div class="hint">Kjør en enkel lokal server (f.eks. med Node.js) i mappen der beatsa ligger. Lenk til <code style="background:rgba(255,255,255,.1);padding:1px 5px;border-radius:4px">http://localhost:3000/beat.mp3</code> — fungerer så lenge serveren er oppe.</div>
-          </div>
-          <div style="background:rgba(168,85,247,.08);border:1px solid rgba(168,85,247,.2);border-radius:12px;padding:12px 14px">
-            <div style="font-size:13px;font-weight:700;margin-bottom:3px">📤 Eksporter backup regelmessig</div>
-            <div class="hint">Bruk "Eksporter backup"-knappen øverst for å lagre alt til en JSON-fil. Tekster, ratings og metadata er alltid trygge der.</div>
-          </div>
+      <!-- Admin panel + R2 widget + Supabase sync injected here by JS -->
+
+      <div class="settings-card" id="soundcloudCard">
+        <h2>🎵 SoundCloud</h2>
+        <p class="hint">Proxy-URL for private SoundCloud-tracks. Offentlige tracks fungerer uten proxy.</p>
+        <div class="input-group">
+          <label>Proxy URL (valgfritt)</label>
+          <input id="soundcloudProxy" placeholder="https://din-server.no/oembed?url=" />
         </div>
-      </div>
-      <div class="settings-card">
-        <h2>SoundCloud oEmbed</h2>
-        <p class="hint">Hentes direkte uten proxy for offentlige tracks. Private tracks krever proxy.</p>
-        <div class="input-group"><label>Proxy URL (valgfritt)</label><input id="soundcloudProxy" placeholder="https://din-server.no/oembed?url=" /></div>
         <button class="primary-btn" id="saveSCSettingsBtn">Lagre</button>
+      </div>
+
+      <div class="settings-card" id="dataToolsCard">
+        <h2>🛠 Data-verktøy</h2>
+        <p class="hint">Bruk med forsiktighet. Backup anbefales alltid først.</p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px">
+          <button class="ghost-btn" id="resetLocalBtn" onclick="if(confirm('Slett ALL lokal data? Dette kan ikke angres.')){localStorage.clear();sessionStorage.clear();location.reload();}">🗑 Reset lokal data</button>
+          <button class="ghost-btn admin-only-btn" id="pushAllBtn" onclick="window.pushToSupabase?.()">☁ Push alt til Supabase</button>
+        </div>
       </div>
     </section>
   </div>
@@ -522,13 +531,13 @@ Active areas to know:
   <script>window.R2_WORKER_URL = 'https://beat-vault.marcus-aas-mekiassen.workers.dev';</script>
 
   <!-- App scripts (load order matters) -->
-  <script src="js/lock.js?v=202605130940"></script>
-  <script src="js/db.js?v=202605130940"></script>
-  <script src="js/app.js?v=202605130940"></script>
-  <script src="js/track-cards.js?v=202605130940"></script>
-  <script src="js/r2-storage.js?v=202605130940"></script>
-  <script src="js/archive.js?v=202605130940"></script>
-  <script src="js/mixtape.js?v=202605130940"></script>
-  <script src="js/supabase.js?v=202605130940"></script>
+  <script src="js/lock.js?v=202605130945"></script>
+  <script src="js/db.js?v=202605130945"></script>
+  <script src="js/app.js?v=202605130945"></script>
+  <script src="js/track-cards.js?v=202605130945"></script>
+  <script src="js/r2-storage.js?v=202605130945"></script>
+  <script src="js/archive.js?v=202605130945"></script>
+  <script src="js/mixtape.js?v=202605130945"></script>
+  <script src="js/supabase.js?v=202605130945"></script>
 </body>
 </html>
