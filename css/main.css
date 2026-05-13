@@ -819,3 +819,7 @@ body.viewer-mode [onclick*="uploadInput"],
 body.viewer-mode .add-beat-btn,
 body.viewer-mode .delete-btn,
 body.viewer-mode .edit-btn { display:none !important; }
+
+/* Admin-only buttons: hidden by default, visible only when logged in as admin */
+.admin-only-btn { display: none !important; }
+body.admin-mode .admin-only-btn { display: inline-flex !important; }
