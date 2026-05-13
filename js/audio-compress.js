@@ -31,12 +31,9 @@
   }
 
   function shouldCompress(file) {
-    if (SKIP_TYPES.includes(file.type)) return false;
-    if (fileSizeMB(file) < SIZE_THRESHOLD_MB) return false;
-    if (!window.AudioContext && !window.webkitAudioContext) return false;
-    if (!window.MediaRecorder) return false;
-    if (!getBestMimeType()) return false;
-    return true;
+    // MediaRecorder compresses in real-time — a 3-min WAV takes 3 minutes.
+    // Disabled until a faster compression method is available (e.g. WebAssembly ffmpeg).
+    return false;
   }
 
   // ── Core compression ────────────────────────────────────────────────────
