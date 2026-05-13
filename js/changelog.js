@@ -6,6 +6,43 @@
 
   const VERSIONS = [
     {
+      version: 'v2.0',
+      date: '13. mai 2026',
+      label: 'Tab-rekkefølge, visningsmoduser og viewer-forbedringer',
+      color: '#f4a443',
+      changes: [
+        'Tab-rekkefølge endret til: Beats → Mixtapes → Albumer → Pipeline → Integrasjoner',
+        'Mixtapes er nå standard startside',
+        'Visningsmodus (viewer): gir nå tilgang til både Beats og Mixtapes — kun lytting',
+        'Innloggingsikon (🔐 Admin) vises øverst til høyre i visningsmodus for rask admin-innlogging',
+        '"ADMIN"-boblen skjules i visningsmodus',
+        'Alle tre visningsmoduser synlige i toggle: ☰ Rader · ▦ Kort · ▤ Studio',
+        'Tab-flimring fikset med dirty-flagg system — kun aktiv tab re-rendres',
+        'Myk fade-overgang (150ms) ved tab-bytte',
+      ],
+    },
+    {
+      version: 'v1.10',
+      date: '13. mai 2026',
+      label: 'Opprinnelse: v1-historikk fra forrige chat',
+      color: '#94a3b8',
+      changes: [
+        'Beats-fane med Google Drive API-integrasjon, stjernemerking og tekstboks per beat',
+        'Demoer-fane med SoundCloud oEmbed, pipeline-status (Idé→Klar), 1-10 rangering og ferdigstillelsesprosent',
+        'Release Score (0-100) basert på pipeline, rating, ferdigstillelse, moodboard og versjonslogg',
+        'Albumer med vinyl-design — spinner konstant, coverbilde i midten som label',
+        'Mixtapes med kasett-design — detaljert kassett-art med label, hjul og tapespor',
+        'Beatopprettelse direkte i mixtapes og albumer med drag-and-drop støtte',
+        'Rich text editor med 6-fargers highlighting (gul, grønn, blå, rosa, rød, lilla)',
+        'IndexedDB for varig lagring av lydfiler mellom sesjoner',
+        'Sletting med bekreftelse (skriv "slett" + confirm) for album og mixtape',
+        'Bottom player med kø, seek og volum',
+        'SHA-256-hashet passordlås',
+        'Pipeline redesignet til album-oversikt med individuell og gjennomsnittlig progress per album',
+      ],
+    },
+
+    {
       version: 'v1.9',
       date: '13. mai 2026',
       label: 'Lydkomprimering',
