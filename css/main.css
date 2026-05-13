@@ -46,7 +46,7 @@ button,input,textarea,select{font:inherit}button{cursor:pointer}a{color:inherit;
 .glass{background:linear-gradient(135deg,rgba(255,255,255,.11),rgba(255,255,255,.055));border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);backdrop-filter:blur(18px);will-change:transform;transform:translateZ(0)}
 
 /* HERO */
-.hero{display:grid;grid-template-columns:1.25fr .75fr;gap:24px;align-items:stretch;margin-bottom:24px}
+.hero{display:grid;grid-template-columns:1.25fr .75fr;gap:24px;align-items:stretch;margin-bottom:24px;overflow:hidden}
 .hero-main{padding:32px;position:relative;overflow:hidden}
 .hero-main::after{content:"";position:absolute;inset:auto -80px -140px auto;width:300px;height:300px;background:radial-gradient(circle,rgba(168,85,247,.28),transparent 65%);pointer-events:none}
 .eyebrow{color:var(--accent2);text-transform:uppercase;letter-spacing:.16em;font-size:12px;font-weight:800;margin-bottom:12px}
