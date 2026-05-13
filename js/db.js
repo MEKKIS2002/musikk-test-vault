@@ -1139,9 +1139,11 @@ document.querySelectorAll(".tab-btn").forEach(btn=>btn.addEventListener("click",
   if(!next) return;
 
   if(current && current !== next){
+    current.classList.remove("tab-visible");  // reset opacity before hiding
     current.classList.add("hidden");
   }
   next.classList.remove("hidden");
+  next.classList.remove("tab-visible");   // ensure we start at opacity:0
   // Trigger reflow then fade in
   requestAnimationFrame(()=>{ next.classList.add("tab-visible"); });
 
