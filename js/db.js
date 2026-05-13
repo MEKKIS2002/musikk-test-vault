@@ -1262,6 +1262,10 @@ async function uploadBeatToR2(beat, file) {
     return;
   }
   try {
+    // Compress large WAV/FLAC/AIFF files before upload
+    if (window.audioCompress?.shouldCompress(file)) {
+      file = await window.audioCompress.compress(file);
+    }
     showToast('⬆ Laster opp til R2...');
     const url = await window.r2Storage.upload(beat.id, file, !!beat.archived);
     console.log('[R2] Opplasting OK. URL:', url);
