@@ -1257,6 +1257,7 @@ async function handleAlbumDrop(e){
   renderAlbumDetail();showToast(`✓ ${files.length} beat${files.length===1?"":"s"} lagt til`);
 }
 document.getElementById("mixtapeUploadInput").addEventListener("change",async e=>{
+  if(!window.isAdminMode){showToast("⚠ Kun admin kan laste opp lydfiler");e.target.value="";return;}
   const files=[...e.target.files].filter(f=>f.type.startsWith("audio")||/\.(mp3|wav|flac|m4a|ogg|aac)$/i.test(f.name));
   for(const f of files){const b=await createBeatFromFile(f);addBeatToMixtape(b);uploadBeatToR2(b,f);}
   renderMixtapeDetail();showToast(`✓ ${files.length} beat${files.length===1?"":"s"} lagt til`);
@@ -1273,6 +1274,7 @@ document.getElementById("mixtapeCoverInput").addEventListener("change",e=>{
   e.target.value="";
 });
 document.getElementById("albumUploadInput").addEventListener("change",async e=>{
+  if(!window.isAdminMode){showToast("⚠ Kun admin kan laste opp lydfiler");e.target.value="";return;}
   const files=[...e.target.files].filter(f=>f.type.startsWith("audio")||/\.(mp3|wav|flac|m4a|ogg|aac)$/i.test(f.name));
   for(const f of files){const b=await createBeatFromFile(f);addBeatToAlbum(b);uploadBeatToR2(b,f);}
   renderAlbumDetail();showToast(`✓ ${files.length} beat${files.length===1?"":"s"} lagt til`);
