@@ -1093,8 +1093,8 @@ document.getElementById("addBeatUrlBtn").addEventListener("click",()=>{
 
 
 // ── INTEGRATIONS ──
-document.getElementById("saveDriveSettingsBtn").addEventListener("click",()=>{state.settings.driveFolderId=document.getElementById("driveFolderId").value.trim();state.settings.driveApiKey=document.getElementById("driveApiKey").value.trim();saveState();showToast("✓ Lagret");});
-document.getElementById("mockDriveImportBtn").addEventListener("click",()=>{state.beats.unshift({id:uid(),name:"Drive-import eksempel",url:"",source:"Google Drive (demo)",favorite:false,lyrics:"",createdAt:Date.now()});saveState();renderAll();showToast("✓ Simulert import");});
+document.getElementById("saveDriveSettingsBtn")?.addEventListener("click",()=>{state.settings.driveFolderId=document.getElementById("driveFolderId")?.value.trim()||'';state.settings.driveApiKey=document.getElementById("driveApiKey")?.value.trim()||'';saveState();showToast("✓ Lagret");});
+document.getElementById("mockDriveImportBtn")?.addEventListener("click",()=>{state.beats.unshift({id:uid(),name:"Drive-import eksempel",url:"",source:"Google Drive (demo)",favorite:false,lyrics:"",createdAt:Date.now()});saveState();renderAll();showToast("✓ Simulert import");});
 document.getElementById("saveSCSettingsBtn").addEventListener("click",()=>{state.settings.soundcloudProxy=document.getElementById("soundcloudProxy").value.trim();saveState();showToast("✓ Lagret");});
 
 // ── EXPORT / IMPORT ──
