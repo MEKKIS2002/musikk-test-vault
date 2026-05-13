@@ -116,7 +116,7 @@ function fmt(sec){
 // === trackListModeAndPlaceholderJs ===
 (function(){
   const KEY='musicVaultTrackViewMode';
-  function currentView(){return localStorage.getItem(KEY)||'cards';}
+  function currentView(){return localStorage.getItem(KEY)||'list';}
   function activeMode(){return !document.getElementById('mixtapeDetailView')?.classList.contains('hidden')?'mixtape':'album';}
   function applyView(el){
     if(!el)return;
@@ -190,7 +190,7 @@ function fmt(sec){
   function getBeat(id){const source=(typeof state!=='undefined'&&state?.beats)?state.beats:(window.state?.beats||[]);return source.find(b=>b.id===id);}
   function getModeForEl(el){return el?.id==='mixtapeBeatList'?'mixtape':'album';}
   function getCollection(mode){return mode==='mixtape'?(state.mixtapes||[]).find(m=>m.id===currentMixtapeId):(state.albums||[]).find(a=>a.id===currentAlbumId);}
-  function currentView(){return localStorage.getItem(KEY)||'cards';}
+  function currentView(){return localStorage.getItem(KEY)||'list';}
   function getFilter(){return localStorage.getItem(FILTER_KEY)||'all';}
   function getSearch(){return localStorage.getItem(SEARCH_KEY)||'';}
   function hasAudio(b){return !!(b.audio_url||b.audioUrl||b.fileName||b.source||b.hasAudio);}
