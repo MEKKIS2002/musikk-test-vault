@@ -583,7 +583,7 @@ function songBorderAttrs(beatId,listMode){
 function renderAlbumBeats(beats,mode,customEl){
   const listMode=mode||"album";
   const el=customEl||document.getElementById("albumBeatList");
-  el.className="album-beat-grid";
+  // View class set by applyView() in track-cards.js — don't hardcode here
   if(!beats||!beats.length){el.innerHTML=`<div class="empty">Ingen beats i dette ${listMode==="mixtape"?"mixtapen":"albumet"} ennå. Klikk "+ Legg til beats".</div>`;return;}
   const canDrag=!isProducerUser()&&(listMode!=="mixtape"||mixtapeSortMode==="custom");
   const hint=canDrag?`<div class="reorder-hint" style="grid-column:1/-1"><span>↕</span><span>Dra sangene for å endre rekkefølge.</span></div>`:(listMode==="mixtape"&&mixtapeSortMode!=="custom"?`<div class="reorder-hint" style="grid-column:1/-1"><span>↕</span><span>Sortert visning. Velg «Egen rekkefølge» for å dra sangene.</span></div>`:"");
