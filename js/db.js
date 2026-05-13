@@ -230,7 +230,7 @@ function migrate(s){
   return n;
 }
 function loadState(){try{const r=localStorage.getItem(SK);const s=r?JSON.parse(r):null;return s?migrate(s):defaultState();}catch{return defaultState();}}
-function saveState(){try{localStorage.setItem(SK,JSON.stringify(state));}catch(e){console.warn('saveState failed:',e);}renderStats();if(typeof window.mvSupabaseSync?.schedulePush==='function')window.mvSupabaseSync.schedulePush();}
+function saveState(){try{localStorage.setItem(SK,JSON.stringify(state));}catch(e){console.warn('saveState failed:',e);}markDirty();renderStats();if(typeof window.mvSupabaseSync?.schedulePush==='function')window.mvSupabaseSync.schedulePush();}
 function isAdmin(){return sessionStorage.getItem('mv_role')==='admin';}
 
 function setupSel(el,opts){el.innerHTML=opts;}
@@ -999,19 +999,31 @@ function renderIntegrations(){
   document.getElementById("soundcloudProxy").value=state.settings.soundcloudProxy||"";
 }
 
+// Dirty flags — tracks which tabs need re-render
+const _dirtyTabs = new Set(['albums','mixtapes','pipeline','integrations','beats']);
+
+function markDirty(tab){ if(tab) _dirtyTabs.add(tab); else ['albums','mixtapes','pipeline','integrations','beats'].forEach(t=>_dirtyTabs.add(t)); }
+
+function renderActiveTab(tab){
+  renderStats();
+  const t = tab || document.querySelector('.tab-btn.active')?.dataset?.tab || '';
+  if((t==='mixtapes'||t==='')  && _dirtyTabs.has('mixtapes'))  { renderMixtapes();  _dirtyTabs.delete('mixtapes'); }
+  if(t==='albums'   && _dirtyTabs.has('albums'))   { renderAlbums();   _dirtyTabs.delete('albums'); }
+  if(t==='pipeline' && _dirtyTabs.has('pipeline')) { renderPipeline();  _dirtyTabs.delete('pipeline'); }
+  if(t==='integrations' && _dirtyTabs.has('integrations')){ renderIntegrations(); _dirtyTabs.delete('integrations'); }
+  if(t==='beats') { if(typeof renderBeatsTab==='function') renderBeatsTab(); }
+}
+
 function renderAll(){
   renderStats();
-  // Only render the currently active tab — avoids expensive re-renders of hidden content
-  const activeTab = document.querySelector('.tab-btn.active')?.dataset?.tab || '';
-  if(activeTab === 'mixtapes' || activeTab === '') renderMixtapes();
-  if(activeTab === 'albums')   renderAlbums();
-  if(activeTab === 'pipeline') renderPipeline();
-  if(activeTab === 'integrations') renderIntegrations();
-  // Always render stats and apply role
+  // Mark all tabs dirty so next time they're opened they re-render
+  markDirty();
+  // Only render the currently active tab
+  renderActiveTab();
   applyRoleMode();
 }
 // Full render for cases where all tabs must be up to date (e.g. after data sync)
-function renderAllTabs(){renderStats();renderMixtapes();renderAlbums();renderPipeline();renderIntegrations();applyRoleMode();}
+function renderAllTabs(){renderStats();renderMixtapes();renderAlbums();renderPipeline();renderIntegrations();applyRoleMode();markDirty();}
 
 // ── DEMO MODAL ──
 function openDemoModal(id){
@@ -1120,9 +1132,21 @@ document.querySelectorAll(".tab-btn").forEach(btn=>btn.addEventListener("click",
   const y=window.scrollY||document.documentElement.scrollTop||0;
   document.querySelectorAll(".tab-btn").forEach(b=>b.classList.remove("active"));
   btn.classList.add("active");
-  document.querySelectorAll(".tab-view").forEach(v=>v.classList.add("hidden"));
-  document.getElementById(`${btn.dataset.tab}Tab`)?.classList.remove("hidden");
-  renderAll();
+
+  // Fade out current, then switch and fade in new tab
+  const current = document.querySelector(".tab-view:not(.hidden)");
+  const next = document.getElementById(`${btn.dataset.tab}Tab`);
+  if(!next) return;
+
+  if(current && current !== next){
+    current.classList.add("hidden");
+  }
+  next.classList.remove("hidden");
+  // Trigger reflow then fade in
+  requestAnimationFrame(()=>{ next.classList.add("tab-visible"); });
+
+  // Only render the newly active tab — never re-render already-visible content
+  renderActiveTab(btn.dataset.tab);
   applyRoleMode();
   requestAnimationFrame(()=>requestAnimationFrame(()=>window.scrollTo(0,y)));
 }));
@@ -1398,3 +1422,7 @@ document.getElementById('deleteConfirmInput').addEventListener('input',function(
 document.getElementById('deleteConfirmModal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeModal('deleteConfirmModal');});
 
 renderAll();
+// Add tab-visible class to initial active tab (no transition needed on first load)
+requestAnimationFrame(()=>{
+  document.querySelectorAll('.tab-view:not(.hidden)').forEach(v=>v.classList.add('tab-visible'));
+});
