@@ -1302,7 +1302,8 @@ async function uploadBeatToR2(beat, file) {
     if (window.audioCompress?.shouldCompress(file)) {
       file = await window.audioCompress.compress(file);
     }
-    showToast('⬆ Laster opp til R2...');
+    const sizeMB = (file.size / (1024*1024)).toFixed(1);
+    showToast(`⬆ Laster opp ${sizeMB}MB til R2...`);
     const url = await window.r2Storage.upload(beat.id, file, !!beat.archived);
     console.log('[R2] Opplasting OK. URL:', url);
     beat.audio_url = url;
