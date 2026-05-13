@@ -2,16 +2,35 @@
 // Prevent browser from auto-restoring scroll (conflicts with per-tab scroll memory)
 if(history.scrollRestoration) history.scrollRestoration = 'manual';
 
-const PW_HASH="961d21fae317a30cebd9998665d05708f29cecda65918b28640e0a348a957f79";
-// Simple non-crypto fallback for file:// contexts
-function simpleHash(s){let h=0;for(let i=0;i<s.length;i++){h=Math.imul(31,h)+s.charCodeAt(i)|0;}return(h>>>0).toString(16);}
-const SIMPLE_PW="Mekkis123";
+// ── Username → Supabase email mapping ──────────────────────────────────────
+// Add entries here for each admin user: { username: 'email@example.com' }
+const USERNAME_MAP = {
+  'marcus': 'marcus.aas.mekiassen@gmail.com',
+};
+// ───────────────────────────────────────────────────────────────────────────
+
 function getUserRole(){return sessionStorage.getItem('mv_role')||'';}
 function isProducerUser(){return getUserRole()==='producer';}
+function isViewerUser(){return getUserRole()==='viewer';}
+
 function applyRoleMode(){
-  const producer=isProducerUser();
-  document.body.classList.toggle('producer-mode',producer);
-  if(producer){
+  const role = getUserRole();
+  const isViewer = role === 'viewer';
+  const isProducer = role === 'producer';
+
+  document.body.classList.toggle('producer-mode', isProducer);
+  document.body.classList.toggle('viewer-mode', isViewer);
+
+  if(isViewer){
+    // Viewer: only mixtapes tab, no lyrics, no albums
+    document.querySelectorAll('.tab-btn').forEach(b=>{
+      const tab = b.dataset.tab;
+      b.style.display = (tab === 'mixtapes') ? '' : 'none';
+    });
+    document.querySelectorAll('.tab-view').forEach(v=>v.classList.add('hidden'));
+    const mix = document.getElementById('mixtapesTab');
+    if(mix) mix.classList.remove('hidden');
+  } else if(isProducer){
     const active=document.querySelector('.tab-btn.active');
     const activeTab=active?.dataset?.tab||'mixtapes';
     const allowed=['mixtapes','pipeline'];
@@ -21,48 +40,112 @@ function applyRoleMode(){
     const view=document.getElementById(`${target}Tab`);if(view)view.classList.remove('hidden');
   }
 }
+
 function returnToPasswordScreen(){
   sessionStorage.removeItem('mv_unlocked');
   sessionStorage.removeItem('mv_role');
-  document.body.classList.remove('producer-mode');
+  document.body.classList.remove('producer-mode','viewer-mode');
+  document.body.classList.remove('admin-mode');
+  // Reset tab visibility
+  document.querySelectorAll('.tab-btn').forEach(b=>b.style.display='');
   const lock=document.getElementById('lockScreen');
   if(lock)lock.style.display='flex';
-  const pw=document.getElementById('pwInput');
-  if(pw){pw.value='';setTimeout(()=>pw.focus(),60);}
+  setTimeout(()=>document.getElementById('adminUsername')?.focus(),60);
 }
+
 function unlockAs(role){
   sessionStorage.setItem('mv_unlocked','1');
   sessionStorage.setItem('mv_role',role);
-  document.getElementById('lockScreen').style.display='none';
-  document.getElementById('pwError').style.display='none';
+  const lock = document.getElementById('lockScreen');
+  if(lock) lock.style.display='none';
   applyRoleMode();
 }
-function loginProducer(){unlockAs('producer');}
-async function checkPw(){
-  const val=document.getElementById('pwInput').value;
-  let ok=false;
-  try{
-    const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(val));
-    const h=Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
-    ok=(h===PW_HASH || val===SIMPLE_PW);
-  }catch(e){
-    // Fallback for file:// contexts where crypto.subtle may be unavailable
-    ok=(val===SIMPLE_PW);
-  }
-  if(ok){
-    unlockAs('admin');
-  }else{
-    document.getElementById('pwError').style.display='block';
-    document.getElementById('pwInput').value='';
-    document.getElementById('pwInput').focus();
+
+function loginViewer(){
+  unlockAs('viewer');
+}
+
+// Tab switcher on lock screen
+function switchLockTab(tab){
+  const adminCard   = document.getElementById('lockCardAdmin');
+  const viewerCard  = document.getElementById('lockCardViewer');
+  const adminBtn    = document.getElementById('lockTabAdmin');
+  const viewerBtn   = document.getElementById('lockTabViewer');
+  const active = 'background:linear-gradient(135deg,#f4a443,#cb6e1a);color:#fff;';
+  const inactive = 'background:transparent;color:#aaa4bd;';
+  if(tab==='admin'){
+    adminCard.style.display='grid';
+    viewerCard.style.display='none';
+    adminBtn.style.cssText += active;
+    viewerBtn.style.cssText += inactive;
+    document.getElementById('adminUsername')?.focus();
+  } else {
+    adminCard.style.display='none';
+    viewerCard.style.display='grid';
+    viewerBtn.style.cssText += active;
+    adminBtn.style.cssText += inactive;
   }
 }
+
+// Username/password login — maps username to email, then uses Supabase auth
+async function loginWithUsername(){
+  const username = (document.getElementById('adminUsername')?.value||'').trim().toLowerCase();
+  const password = document.getElementById('adminPassword')?.value||'';
+  const errEl = document.getElementById('lockError');
+  const btn = document.getElementById('lockLoginBtn');
+
+  if(!username || !password){
+    if(errEl){errEl.textContent='Fyll inn brukernavn og passord.';errEl.style.display='block';}
+    return;
+  }
+
+  const email = USERNAME_MAP[username];
+  if(!email){
+    if(errEl){errEl.textContent='Ukjent brukernavn.';errEl.style.display='block';}
+    return;
+  }
+
+  if(btn){btn.disabled=true;btn.textContent='Logger inn...';}
+  if(errEl){errEl.style.display='none';}
+
+  try {
+    // Use Supabase auth
+    if(window.supabaseClient){
+      const {data, error} = await window.supabaseClient.auth.signInWithPassword({email, password});
+      if(error) throw error;
+      // Check admin role
+      const {data: profile} = await window.supabaseClient.from('profiles').select('role').eq('id', data.user.id).maybeSingle();
+      if(profile?.role === 'admin'){
+        window.isAdminMode = true;
+        window.currentAdminUser = data.user;
+        document.body.classList.add('admin-mode');
+        unlockAs('admin');
+        if(typeof window.mvSupabaseSync?.pull === 'function') window.mvSupabaseSync.pull();
+        if(typeof window.updateAdminUi === 'function') window.updateAdminUi();
+      } else {
+        if(errEl){errEl.textContent='Brukeren mangler admin-tilgang.';errEl.style.display='block';}
+        await window.supabaseClient.auth.signOut();
+      }
+    } else {
+      if(errEl){errEl.textContent='Supabase ikke konfigurert.';errEl.style.display='block';}
+    }
+  } catch(e) {
+    if(errEl){errEl.textContent=e.message||'Innlogging feilet.';errEl.style.display='block';}
+  } finally {
+    if(btn){btn.disabled=false;btn.textContent='Logg inn';}
+  }
+}
+
+// Legacy — kept for backwards compat
+function loginProducer(){unlockAs('producer');}
+async function checkPw(){} // no-op, replaced by loginWithUsername
+
 function initLock(){
   if(sessionStorage.getItem('mv_unlocked')==='1'){
     document.getElementById('lockScreen').style.display='none';
     applyRoleMode();
     return;
   }
-  document.getElementById('pwInput').focus();
+  setTimeout(()=>document.getElementById('adminUsername')?.focus(), 60);
 }
 initLock();
