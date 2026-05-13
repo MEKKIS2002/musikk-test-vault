@@ -460,12 +460,20 @@ function fmt(sec){
 (function(){
   const VIEW_KEY='musicVaultTrackViewMode';
   function norm(v){return ['cards','list','studio'].includes(v)?v:'cards';}
-  try{localStorage.setItem(VIEW_KEY,norm(localStorage.getItem(VIEW_KEY)||'cards'));}catch(e){}
+  try{localStorage.setItem(VIEW_KEY,norm(localStorage.getItem(VIEW_KEY)||'list'));}catch(e){}
 
   function visible(el){return el && !el.classList.contains('hidden');}
   function activeType(){
     if(visible(document.getElementById('albumDetailView'))) return 'album';
     if(visible(document.getElementById('mixtapeDetailView'))) return 'mixtape';
+    // Fallback: check global ID variables
+    if(typeof currentAlbumId !== 'undefined' && currentAlbumId) return 'album';
+    if(typeof currentMixtapeId !== 'undefined' && currentMixtapeId) return 'mixtape';
+    // Fallback: check which section is visible
+    const albumsTab = document.getElementById('albumsTab');
+    const mixtapesTab = document.getElementById('mixtapesTab');
+    if(albumsTab && !albumsTab.classList.contains('hidden')) return 'album';
+    if(mixtapesTab && !mixtapesTab.classList.contains('hidden')) return 'mixtape';
     return null;
   }
   function rerender(){
@@ -674,4 +682,21 @@ document.documentElement.classList.remove('mv-angular-ui');
     const mode=clickedMode();
     if(typeof removeFromCollection==='function') return removeFromCollection(beatId,mode);
   };
+})();
+// ── Sync view toggle active state after detail renders ──────────────────────
+(function(){
+  ['renderMixtapeDetail','renderAlbumDetail'].forEach(fnName => {
+    const orig = window[fnName];
+    if(typeof orig === 'function'){
+      window[fnName] = function(){
+        const r = orig.apply(this, arguments);
+        setTimeout(()=>{
+          document.querySelectorAll('[data-track-view]').forEach(btn=>{
+            btn.classList.toggle('active', btn.dataset.trackView === (localStorage.getItem('mv-track-view') || 'list'));
+          });
+        }, 0);
+        return r;
+      };
+    }
+  });
 })();
