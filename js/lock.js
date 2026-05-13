@@ -21,15 +21,26 @@ function applyRoleMode(){
   document.body.classList.toggle('producer-mode', isProducer);
   document.body.classList.toggle('viewer-mode', isViewer);
 
+  // Show/hide viewer login button
+  const viewerBtn = document.getElementById('viewerLoginBtn');
+  if(viewerBtn) viewerBtn.style.display = isViewer ? 'flex' : 'none';
+
+  // Show/hide role badge (hide in viewer mode)
+  const badge = document.getElementById('roleBadge');
+  if(badge) badge.style.display = isViewer ? 'none' : '';
+
   if(isViewer){
-    // Viewer: only mixtapes tab, no lyrics, no albums
+    // Viewer: beats + mixtapes only, no lyrics, no albums, no admin actions
     document.querySelectorAll('.tab-btn').forEach(b=>{
       const tab = b.dataset.tab;
-      b.style.display = (tab === 'mixtapes') ? '' : 'none';
+      b.style.display = (tab === 'beats' || tab === 'mixtapes') ? '' : 'none';
     });
+    // Show mixtapes as default tab
     document.querySelectorAll('.tab-view').forEach(v=>v.classList.add('hidden'));
     const mix = document.getElementById('mixtapesTab');
-    if(mix) mix.classList.remove('hidden');
+    if(mix){ mix.classList.remove('hidden'); }
+    // Activate mixtapes tab button
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active', b.dataset.tab==='mixtapes'));
   } else if(isProducer){
     const active=document.querySelector('.tab-btn.active');
     const activeTab=active?.dataset?.tab||'mixtapes';
@@ -46,8 +57,10 @@ function returnToPasswordScreen(){
   sessionStorage.removeItem('mv_role');
   document.body.classList.remove('producer-mode','viewer-mode');
   document.body.classList.remove('admin-mode');
-  // Reset tab visibility
+  // Reset tab visibility and viewer button
   document.querySelectorAll('.tab-btn').forEach(b=>b.style.display='');
+  const vBtn = document.getElementById('viewerLoginBtn');
+  if(vBtn) vBtn.style.display = 'none';
   const lock=document.getElementById('lockScreen');
   if(lock)lock.style.display='flex';
   setTimeout(()=>document.getElementById('adminUsername')?.focus(),60);
