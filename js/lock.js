@@ -6,7 +6,6 @@ if(history.scrollRestoration) history.scrollRestoration = 'manual';
 // Add entries here for each admin user: { username: 'email@example.com' }
 const USERNAME_MAP = {
   'marcus': 'marcus.aas.mekiassen@gmail.com',
-  'erik': 'erikalfsen11@gmail.com',
 };
 // ───────────────────────────────────────────────────────────────────────────
 
@@ -120,6 +119,8 @@ async function loginWithUsername(){
         window.isAdminMode = true;
         window.currentAdminUser = data.user;
         document.body.classList.add('admin-mode');
+        // Store username so it appears on uploaded beats
+        sessionStorage.setItem('mv_username', username);
         unlockAs('admin');
         if(typeof window.mvSupabaseSync?.pull === 'function') window.mvSupabaseSync.pull();
         if(typeof window.updateAdminUi === 'function') window.updateAdminUi();
