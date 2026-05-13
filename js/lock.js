@@ -6,6 +6,7 @@ if(history.scrollRestoration) history.scrollRestoration = 'manual';
 // Add entries here for each admin user: { username: 'email@example.com' }
 const USERNAME_MAP = {
   'marcus': 'marcus.aas.mekiassen@gmail.com',
+  'erik': 'erikalfsen11@gmail.com',
 };
 // ───────────────────────────────────────────────────────────────────────────
 
