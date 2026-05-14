@@ -23,7 +23,7 @@
   position: absolute;
   /* White label on the cassette PNG: top ~16%, left ~14%, width ~72%, height ~18% */
   /* White label area on these cassette PNGs: ~24-38% from top */
-  top: 24%;
+  top: 25.5%;
   left: 11%;
   width: 76%;
   height: 15%;
@@ -31,7 +31,7 @@
   flex-direction: column;
   justify-content: center;
   align-items: flex-start;
-  padding: 0 14px;
+  padding: 0 14px 0 22px;
   pointer-events: none;
 }
 .cass-png-name {
