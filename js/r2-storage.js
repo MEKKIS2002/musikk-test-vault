@@ -1,11 +1,19 @@
 // === r2-storage.js ===
 // Cloudflare R2 audio storage via Cloudflare Worker proxy
-// Worker handles signing and CORS — browser never touches R2 credentials directly
+// Worker URL: https://beat-vault.marcus-aas-mekiassen.workers.dev
+// Bucket: music-vault-audio (10GB gratis)
 //
-// Setup:
-//  1. Create R2 bucket "music-vault-audio" in Cloudflare
-//  2. Deploy the Worker (see README for worker code)
-//  3. Set R2_WORKER_URL below to your deployed worker URL
+// Mappestruktur i R2:
+//   active/{beat-id}   — aktive lydfiler
+//   archived/{beat-id} — arkiverte lydfiler
+//
+// Arkivering av sang → r2Storage.move(id, true)  → active/ → archived/
+// Gjenoppretting     → r2Storage.move(id, false) → archived/ → active/
+// Sletting           → r2Storage.remove(id, archived)
+//
+// OBS: Lydkomprimering (audio-compress.js) er deaktivert —
+//      MediaRecorder komprimerer i sanntid (3 min sang = 3 min komprimering).
+//      Filer lastes opp direkte til R2 uansett format.
 
 (function () {
   'use strict';
