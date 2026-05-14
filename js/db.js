@@ -1162,13 +1162,17 @@ document.querySelectorAll(".tab-btn").forEach(btn=>btn.addEventListener("click",
     return;
   }
 
-  // Lyric Lab tab
+  // Lyric Lab tab — always re-render on every visit
   if(btn.dataset.tab === 'lyriclab'){
     const current = document.querySelector(".tab-view:not(.hidden)");
     if(current){ current.classList.remove("tab-visible"); current.classList.add("hidden"); }
     const ll = document.getElementById('lyriclabTab');
-    if(ll){ ll.classList.remove("hidden"); requestAnimationFrame(()=>ll.classList.add("tab-visible")); }
+    if(!ll) return;
+    ll.classList.remove("hidden");
+    ll.classList.remove("tab-visible");
+    // Render BEFORE fade-in so content is ready
     if(typeof window.renderLyricLab === 'function') window.renderLyricLab();
+    requestAnimationFrame(()=>ll.classList.add("tab-visible"));
     applyRoleMode();
     requestAnimationFrame(()=>requestAnimationFrame(()=>window.scrollTo(0,y)));
     return;
