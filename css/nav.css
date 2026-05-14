@@ -1,0 +1,196 @@
+/* ═══════════════════════════════════════════════════════════════
+   nav.css — Music Vault sidebar navigation
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── App shell: sidebar + main content ───────────────────────── */
+.mv-app-shell {
+  display: flex;
+  min-height: 100vh;
+  gap: 0;
+}
+
+/* ── Sidebar ─────────────────────────────────────────────────── */
+.mv-sidebar {
+  width: 220px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: rgba(8, 7, 6, 0.97);
+  border-right: 1px solid rgba(255,255,255,.07);
+  display: flex;
+  flex-direction: column;
+  padding: 24px 0 24px;
+  gap: 0;
+  z-index: 100;
+  scrollbar-width: none;
+}
+.mv-sidebar::-webkit-scrollbar { display: none; }
+
+/* Sidebar logo area */
+.mv-sidebar::before {
+  content: 'MUSIC VAULT';
+  display: block;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .18em;
+  color: var(--mv-amber, #f4a443);
+  padding: 0 20px 20px;
+  border-bottom: 1px solid rgba(255,255,255,.06);
+  margin-bottom: 8px;
+}
+
+/* ── Section groups ───────────────────────────────────────────── */
+.mv-sidebar-section {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255,255,255,.04);
+}
+.mv-sidebar-section:last-child { border-bottom: none; margin-top: auto; }
+
+.mv-nav-label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .12em;
+  color: rgba(255,255,255,.25);
+  text-transform: uppercase;
+  padding: 6px 20px 4px;
+}
+
+/* ── Nav buttons ─────────────────────────────────────────────── */
+.mv-nav-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 20px;
+  border: none;
+  background: none;
+  color: rgba(255,255,255,.55);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  letter-spacing: -.01em;
+  cursor: pointer;
+  text-align: left;
+  border-radius: 0;
+  transition: color .15s, background .15s;
+  position: relative;
+}
+.mv-nav-btn:hover {
+  color: rgba(255,255,255,.9);
+  background: rgba(255,255,255,.05);
+}
+.mv-nav-btn.active {
+  color: #fff;
+  background: rgba(244,164,67,.1);
+  font-weight: 800;
+}
+/* Active indicator bar */
+.mv-nav-btn.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 20%;
+  bottom: 20%;
+  width: 3px;
+  background: var(--mv-amber, #f4a443);
+  border-radius: 0 3px 3px 0;
+}
+
+/* ── Main content area ───────────────────────────────────────── */
+.mv-main {
+  flex: 1;
+  min-width: 0;
+  padding: 28px 32px 80px;
+  overflow-y: auto;
+  /* Remove old .app horizontal centering — sidebar handles that */
+}
+
+/* ── Override old .app width constraint inside new layout ──────── */
+.mv-main .app,
+.mv-main > * { max-width: 1200px; }
+
+/* ── Placeholder pages ───────────────────────────────────────── */
+.mv-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  text-align: center;
+  gap: 16px;
+  max-width: 480px;
+  margin: 0 auto;
+}
+.mv-placeholder-icon {
+  font-size: 48px;
+  margin-bottom: 8px;
+  filter: grayscale(.4);
+}
+.mv-placeholder h2 {
+  font-size: 24px;
+  font-weight: 900;
+  letter-spacing: -.04em;
+  margin: 0;
+}
+.mv-placeholder p {
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.65;
+  margin: 0;
+}
+.mv-placeholder-badge {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  padding: 5px 14px;
+  border-radius: 999px;
+  background: rgba(244,164,67,.12);
+  color: var(--mv-amber, #f4a443);
+  border: 1px solid rgba(244,164,67,.25);
+}
+
+/* ── Mobile: sidebar collapses to top bar ────────────────────── */
+@media (max-width: 768px) {
+  .mv-app-shell { flex-direction: column; }
+  .mv-sidebar {
+    width: 100%;
+    height: auto;
+    position: relative;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding: 0;
+    border-right: none;
+    border-bottom: 1px solid rgba(255,255,255,.07);
+  }
+  .mv-sidebar::before { display: none; }
+  .mv-sidebar-section {
+    flex-direction: row;
+    border-bottom: none;
+    padding: 0;
+    flex-shrink: 0;
+  }
+  .mv-sidebar-section.mv-sidebar-bottom { margin-top: 0; }
+  .mv-nav-label { display: none; }
+  .mv-nav-btn {
+    white-space: nowrap;
+    padding: 12px 14px;
+    font-size: 12px;
+  }
+  .mv-nav-btn.active::before {
+    top: auto;
+    bottom: 0;
+    left: 15%;
+    right: 15%;
+    width: auto;
+    height: 3px;
+    border-radius: 3px 3px 0 0;
+  }
+  .mv-main { padding: 16px 16px 80px; }
+}
