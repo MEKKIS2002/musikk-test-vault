@@ -1164,15 +1164,21 @@ document.querySelectorAll(".tab-btn").forEach(btn=>btn.addEventListener("click",
 
   // Lyric Lab tab — always re-render on every visit
   if(btn.dataset.tab === 'lyriclab'){
-    const current = document.querySelector(".tab-view:not(.hidden)");
-    if(current){ current.classList.remove("tab-visible"); current.classList.add("hidden"); }
+    // Hide ALL tab-views including archive (which uses style.display directly)
+    document.querySelectorAll('.tab-view').forEach(v=>{
+      v.classList.remove('tab-visible');
+      v.classList.add('hidden');
+      v.style.display = '';  // clear any style.display='none' set by archive.js
+    });
+    // Also deactivate archive body classes if needed
+    document.body.classList.remove('final-archive-active','clean-archive-active');
     const ll = document.getElementById('lyriclabTab');
     if(!ll) return;
-    ll.classList.remove("hidden");
-    ll.classList.remove("tab-visible");
-    // Render BEFORE fade-in so content is ready
+    ll.classList.remove('hidden');
+    ll.style.display = '';
+    ll.classList.remove('tab-visible');
     if(typeof window.renderLyricLab === 'function') window.renderLyricLab();
-    requestAnimationFrame(()=>ll.classList.add("tab-visible"));
+    requestAnimationFrame(()=>ll.classList.add('tab-visible'));
     applyRoleMode();
     requestAnimationFrame(()=>requestAnimationFrame(()=>window.scrollTo(0,y)));
     return;
