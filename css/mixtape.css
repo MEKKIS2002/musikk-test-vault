@@ -21,35 +21,37 @@
 /* PNG is 1024x1024, cassette body fills roughly 10%→85% width, 13%→35% height = label */
 .cass-png-label {
   position: absolute;
-  /* fine-tune to sit exactly on the white label */
-  top: 13%;
-  left: 15%;
-  width: 70%;
-  height: 21%;
+  /* White label on the cassette PNG: top ~16%, left ~14%, width ~72%, height ~18% */
+  top: 16%;
+  left: 14%;
+  width: 72%;
+  height: 18%;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: flex-start;
-  padding: 0 8px;
+  padding: 0 10px;
   pointer-events: none;
 }
 .cass-png-name {
-  font-size: 13px;
-  font-weight: 900;
-  letter-spacing: -.02em;
-  color: #1a1410;
+  font-size: 12px;
+  font-weight: 300;          /* ultra-thin */
+  letter-spacing: .04em;
+  color: #2a1f14;
   line-height: 1.2;
   width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-family: 'Inter', 'Helvetica Neue', sans-serif;
 }
 .cass-png-meta {
-  font-size: 10px;
-  font-weight: 700;
-  color: #4a3a28;
-  letter-spacing: .04em;
-  margin-top: 2px;
+  font-size: 9px;
+  font-weight: 300;
+  color: #6b5040;
+  letter-spacing: .06em;
+  margin-top: 1px;
+  text-transform: uppercase;
 }
 
 /* Mixtape grid layout */
