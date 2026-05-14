@@ -38,11 +38,32 @@
   function fmtDur(sec){ sec=Number(sec||0); if(!isFinite(sec)||sec<=0) return '--:--'; return Math.floor(sec/60)+':'+String(Math.floor(sec%60)).padStart(2,'0'); }
 
   // ── Data helpers ──────────────────────────────────────────────────────────
+  // Strip HTML tags from rich-text lyrics (old editor used contenteditable with spans)
+  function stripHtml(html) {
+    if (!html || !html.includes('<')) return html || '';
+    return html
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<\/div>/gi, '\n')
+      .replace(/<\/p>/gi, '\n')
+      .replace(/<[^>]+>/g, '')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+  }
+
   function getSections(beat) {
-    if (beat.lyricSections && beat.lyricSections.length) return beat.lyricSections;
-    // Migrate existing lyrics string into Hook section
+    if (beat.lyricSections && beat.lyricSections.length) {
+      // Also strip any HTML that crept into existing sections
+      beat.lyricSections.forEach(s => { s.text = stripHtml(s.text); });
+      return beat.lyricSections;
+    }
+    // Migrate existing lyrics string into Hook section (strip HTML first)
     const sections = DEFAULT_SECTIONS.map(s => ({...s}));
-    if (beat.lyrics && beat.lyrics.trim()) sections[0].text = beat.lyrics;
+    if (beat.lyrics && beat.lyrics.trim()) sections[0].text = stripHtml(beat.lyrics);
     beat.lyricSections = sections;
     return sections;
   }
