@@ -6,7 +6,6 @@ if(history.scrollRestoration) history.scrollRestoration = 'manual';
 // Add entries here for each admin user: { username: 'email@example.com' }
 const USERNAME_MAP = {
   'marcus': 'marcus.aas.mekiassen@gmail.com',
-  'erik': 'erikalfsen11@gmail.com',
 };
 // ───────────────────────────────────────────────────────────────────────────
 
@@ -160,9 +159,11 @@ async function loginWithUsername(){
   }
 }
 
-// Legacy — kept for backwards compat
+// Legacy stubs — kept i tilfelle noe kaller dem fra gammelt state
+// loginProducer: ikke i bruk (produsentmodus er fjernet fra innloggingen)
+// checkPw: ikke i bruk (erstattet av loginWithUsername via Supabase)
 function loginProducer(){unlockAs('producer');}
-async function checkPw(){} // no-op, replaced by loginWithUsername
+async function checkPw(){} // no-op
 
 function initLock(){
   if(sessionStorage.getItem('mv_unlocked')==='1'){
