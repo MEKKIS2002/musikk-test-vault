@@ -880,3 +880,7 @@ body.admin-mode .admin-only-btn { display: inline-flex !important; }
 /* Archive tab: bypass fade system since it's dynamically created */
 #archiveTab.tab-visible { opacity: 1 !important; }
 #archiveTab[style*="display: block"] { opacity: 1 !important; }
+
+/* Ensure PNG cassette wrap has no stray borders or backgrounds */
+.cassette-card { background: none !important; border: none !important; }
+.cass-png-wrap { background: none !important; border: none !important; box-shadow: none !important; }
