@@ -247,15 +247,15 @@ setTimeout(updateAdminUi, 50);
 // === supabaseDataSyncScript ===
 /*
   Supabase datasynk for Music Vault
-  - Leser felles innhold fra Supabase for alle brukere.
+  - Leser metadata fra Supabase på tvers av alle enheter.
   - Skriver bare til Supabase når window.isAdminMode === true.
-  - Lydfiler ligger fortsatt eksternt, f.eks. Google Drive. audio_url/url lagres i databasen.
+  - Lydfiler lagres i Cloudflare R2 (ikke Google Drive lenger).
+    audio_url inneholder R2 Worker-URL: https://beat-vault.marcus-aas-mekiassen.workers.dev/file/...
+  - saveState() kaller automatisk schedulePush() → push skjer 900ms etter siste endring.
+  - pushToSupabase og pullFromSupabase er eksponert på window.
 
-  Kjør denne SQL-en én gang dersom tabellene dine mangler metadata-kolonnen:
-
-  alter table public.beats add column if not exists metadata jsonb default '{}'::jsonb;
-  alter table public.albums add column if not exists metadata jsonb default '{}'::jsonb;
-  alter table public.mixtapes add column if not exists metadata jsonb default '{}'::jsonb;
+  Tabeller i Supabase: beats, albums, mixtapes, album_beats, mixtape_beats, profiles
+  RLS: alle kan lese, kun auth.role()='authenticated' kan skrive.
 */
 (function(){
   if (window.__musicVaultSupabaseSyncInstalled) return;
