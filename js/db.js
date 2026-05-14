@@ -947,7 +947,7 @@ function renderMixtapes(){
       <div class="cass-png-wrap" style="opacity:.55">
         <img class="cass-png" src="${NEW_CASSETTE}" alt="Ny kassett" draggable="false">
         <div class="cass-png-label" style="justify-content:center;align-items:center">
-          <div style="font-size:20px;font-weight:200;color:#4a3a28;letter-spacing:.1em">+ NY</div>
+          <div style="font-size:11px;font-weight:300;color:#4a3a28;letter-spacing:.18em;text-transform:uppercase">+ Ny mixtape</div>
         </div>
       </div>
       <div class="cass-card-title">Ny mixtape<span>&nbsp;</span></div>
