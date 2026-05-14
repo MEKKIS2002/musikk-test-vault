@@ -22,10 +22,10 @@
 .cass-png-label {
   position: absolute;
   /* White label on the cassette PNG: top ~16%, left ~14%, width ~72%, height ~18% */
-  top: 16%;
-  left: 14%;
-  width: 72%;
-  height: 18%;
+  top: 12.5%;
+  left: 11%;
+  width: 77%;
+  height: 20%;
   display: flex;
   flex-direction: column;
   justify-content: center;
