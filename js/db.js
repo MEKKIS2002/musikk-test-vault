@@ -928,7 +928,7 @@ function renderMixtapes(){
     const dragAttrs=isProducerUser()?`data-id="${mt.id}"`:`draggable="true" data-id="${mt.id}" ondragstart="startCardDrag(event,'mixtape','${mt.id}')" ondragover="cardDragOver(event,'mixtape','${mt.id}')" ondragleave="cardDragLeave(event,'${mt.id}')" ondrop="dropCard(event,'mixtape','${mt.id}')" ondragend="endCardDrag()"`;
     return`<div class="cassette-card" ${dragAttrs} onclick="openMixtapeFromCard(event,'${mt.id}')">
       ${cassetteMarkup(mt,idx)}
-      <div class="cass-info"><strong>${esc(mt.name)}</strong><span>${n} beat${n===1?"":"s"}</span></div>
+      <div class="cass-card-title">${esc(mt.name)}<span>${n} beat${n===1?"":"s"}</span></div>
     </div>`;
   });
   cards.push(`<div class="cassette-card cass-new-card" onclick="document.getElementById('newMixtapeBtn').click()">
