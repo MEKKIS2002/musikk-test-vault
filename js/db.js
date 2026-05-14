@@ -899,47 +899,12 @@ function ensureMixtapeStableVisuals(){
 function cassCoverStyle(cover){return cover?`--cass-cover:url('${cover}');`:"";}
 function cassLabelClass(cover,base="cass-label"){return `${base}${cover?" has-cover":""}`;}
 function cassetteMarkup(mt,idx=0){
-  const col=cassColor(mt,idx);
-  const tracks=mt?.beatIds?.length||0;
-  return `<div class="cass-body" style="--cass-color:${col};${cassCoverStyle(mt.cover)}">
-    <div class="cass-screw tl"></div><div class="cass-screw tr"></div>
-    <div class="cass-screw bl"></div><div class="cass-screw br"></div>
-    <div class="cass-index">
-      <div class="cass-index-left">
-        <div class="cass-side-num">A</div>
-        <div class="cass-side-lbl">SIDE</div>
-      </div>
-      <div class="cass-index-main">
-        <div class="cass-index-top-row">
-          <div class="cass-index-label">Mixtape</div>
-          <div class="cass-index-line"></div>
-        </div>
-        <div class="cass-name-on-card">${esc(mt.name)}</div>
-        <div class="cass-squiggle"><svg viewBox="0 0 110 6" width="110" height="6" style="display:block"><path d="M0,3 Q5,0 10,3 Q15,6 20,3 Q25,0 30,3 Q35,6 40,3 Q45,0 50,3 Q55,6 60,3 Q65,0 70,3 Q75,6 80,3 Q85,0 90,3 Q95,6 100,3 Q105,0 110,3" stroke="${col}" stroke-width="1.5" fill="none"/></svg></div>
-      </div>
-      <div class="cass-index-right">
-        <div class="cass-noise-lbl">Noise Red.</div>
-        <div class="cass-noise-row"><div class="cass-checkbox"></div><div class="cass-noise-val">Dolby</div></div>
-        <div class="cass-noise-row"><div class="cass-checkbox"></div><div class="cass-noise-val">Tape</div></div>
-      </div>
-    </div>
-    <div class="cass-brand-row">
-      <span class="cass-brand-pill">Custom Mix</span>
-      <span>${String(tracks).padStart(2,'0')} tracks</span>
-    </div>
-    <div class="cass-window-ridge"></div>
-    <div class="${cassLabelClass(mt.cover)}">
-      <div class="cass-reel"><div class="cass-reel-spokes"></div></div>
-      <div class="cass-tape-win">
-        <div class="cass-tape-slot"></div>
-        <div class="cass-counter"><span>90</span><span>${String(tracks).padStart(2,'0')}</span><span>A</span></div>
-      </div>
-      <div class="cass-reel"><div class="cass-reel-spokes"></div></div>
-    </div>
-    <div class="cass-bottom">
-      <div class="cass-slot-rect"></div><div class="cass-slot-rect"></div>
-      <div class="cass-center-bolt"></div>
-      <div class="cass-slot-rect"></div><div class="cass-slot-rect"></div>
+  const tracks=(mt?.beatIds||[]).filter(id=>{const b=state.beats.find(x=>x.id===id);return b&&!b.archived;}).length;
+  return `<div class="cass-png-wrap">
+    <img class="cass-png" src="assets/cassette.png" alt="Kassett" draggable="false">
+    <div class="cass-png-label">
+      <div class="cass-png-name">${esc(mt.name)}</div>
+      <div class="cass-png-meta">${tracks} beat${tracks===1?'':'s'}</div>
     </div>
   </div>`;
 }
@@ -956,12 +921,16 @@ function renderMixtapes(){
     return`<div class="cassette-card" ${dragAttrs} onclick="openMixtapeFromCard(event,'${mt.id}')">
       ${cassetteMarkup(mt,idx)}
       <div class="cass-info"><strong>${esc(mt.name)}</strong><span>${n} beat${n===1?"":"s"}</span></div>
-      <button class="small-btn" style="margin-top:8px;padding:6px 11px" onclick="event.stopPropagation();playMixtapeFromStart('${mt.id}')">▶ Play</button>
     </div>`;
   });
-  cards.push(`<div class="cass-new-card" onclick="document.getElementById('newMixtapeBtn').click()">
-      <div class="cass-new-body">+</div>
-      <span>Ny mixtape</span>
+  cards.push(`<div class="cassette-card cass-new-card" onclick="document.getElementById('newMixtapeBtn').click()">
+      <div class="cass-png-wrap" style="opacity:.45">
+        <img class="cass-png" src="assets/cassette.png" alt="Ny kassett" draggable="false">
+        <div class="cass-png-label" style="align-items:center;justify-content:center">
+          <div style="font-size:26px;color:#333">+</div>
+        </div>
+      </div>
+      <div class="cass-info"><strong>Ny mixtape</strong><span>&nbsp;</span></div>
     </div>`);
   grid.innerHTML=cards.join("");
 }
