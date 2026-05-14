@@ -201,6 +201,7 @@ body::before{
   position:relative!important;
   overflow:hidden!important;
   isolation:isolate!important;
+  contain:layout style paint!important;
   display:flex!important;
   flex-direction:column!important;
   justify-content:center!important;
@@ -264,15 +265,6 @@ body::before{
   color:#cbbda9!important;
 }
 
-/* Vinyl clip frame — matches hero-main bounds exactly, clips the overflowing vinyl */
-.hero-vinyl-clip{
-  position:absolute!important;
-  inset:0!important;
-  overflow:hidden!important;
-  pointer-events:none!important;
-  z-index:1!important;
-  border-radius:inherit!important;
-}
 .hero-vinyl{
   position:absolute!important;
   right:-300px!important;
@@ -284,6 +276,7 @@ body::before{
   z-index:1!important;
   pointer-events:none!important;
   filter:drop-shadow(-28px 32px 60px rgba(0,0,0,.55)) saturate(1.04) contrast(1.08)!important;
+  clip-path:inset(-200px 300px -200px -200px)!important;
 }
 .hero-vinyl-glow{
   position:absolute!important;
@@ -774,6 +767,7 @@ body::before{
   width:570px!important;
   height:570px!important;
   opacity:.68!important;
+  clip-path:inset(-200px 245px -200px -200px)!important;
 }
 .stats-card{
   padding:36px 40px!important;
