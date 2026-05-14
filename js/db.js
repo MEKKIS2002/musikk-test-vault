@@ -1,4 +1,12 @@
 // === main-script-1 ===
+// STATE: localStorage key 'musicVault.v4'. State object: { beats[], albums[], mixtapes[], settings{} }
+// BEATS: beatsFromIds() filtrerer alltid arkiverte. Bruk den fremfor direkte beatIds-lookup.
+// RENDERING: renderAll() markerer alle tabs dirty + renderer aktiv tab.
+//            renderActiveTab(tab) renderer kun gitt tab hvis den er dirty.
+//            saveState() → markDirty() → schedulePush() automatisk.
+// TABS: Tab-handler er i db.js. Arkiv-tab har spesialtilfelle (dynamisk opprettet av archive.js).
+//       Tab-synlighet: .hidden (display:none) + .tab-visible (opacity:1). Begge må settes.
+// AUDIO: getBeatAudioUrl(beat) → R2 Worker URL (audio_url) → Google Drive fallback → url
 // ── IndexedDB audio store ──
 const audioDB=(()=>{
   let db=null;
