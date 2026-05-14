@@ -6,6 +6,46 @@
 
   const VERSIONS = [
     {
+      version: 'v2.1',
+      date: '14. mai 2026',
+      label: 'PNG-kassetter, arkiv-fix og view modes',
+      color: '#f4a443',
+      changes: [
+        'Kassettdesign byttet fra CSS til realistiske PNG-bilder — 4 varianter (velges deterministisk per mixtape)',
+        '"Ny mixtape"-kortet bruker kassett-PNG med + NY MIXTAPE-tekst på labelen',
+        'Mixtape-detaljsiden viser kassetbildet i headeren i stedet for liten preview',
+        'Tekst-overlay på kassett-label: navn og beat-antall med tynt font på papirfeltet',
+        'Arkivert-tabben fungerer nå korrekt — var usynlig pga. manglende tab-visible opacity',
+        'Tab-bytte: tab-visible fjernes nå fra gammel tab slik at fade-overgang fungerer på alle tabs',
+        'Visningsmodus (list/kort/studio) fungerer endelig — rotårsakene var 4 konkurrerende setTrackViewMode-definisjoner og hardkodet album-beat-grid i renderAlbumBeats',
+        'track-cards.js fullstendig omskrevet (774 → 387 linjer) — én IIFE, én click-lytter, ingen konflikter',
+        'Spotify-stil listevisning: 44px kompakte rader med thumbnail, tittel, varighet',
+        'beatsFromIds() filtrerer nå arkiverte beats — beat-telling er korrekt overalt',
+        'toggleAlbumBeat bruker kontekst-bevisst oppslag — samme sang i mixtape og album åpner riktig kort',
+        'Vedlikeholdsnotater oppdatert i alle JS-filer og index.html',
+      ],
+    },
+
+    {
+      version: 'v2.1',
+      date: '14. mai 2026',
+      label: 'PNG-kassetter, notater og feilfikser',
+      color: '#f4a443',
+      changes: [
+        'Kassettdesign byttet fra CSS-tegnet kassett til realistiske PNG-bilder (4 varianter)',
+        'Kassettvariant velges deterministisk per mixtape-ID — samme kassett alltid for samme mixtape',
+        'Tekst (navn + beat-antall) overlayert på hvit papir-label på kassetten',
+        '"Ny mixtape"-kortet bruker kassett-PNG med + NY MIXTAPE på labelen',
+        'Mixtape detail-header viser stor kassett-PNG istedenfor mini CSS-kassett',
+        'Arkivert-tabben var blank — fikset tab-handler til å kalle renderArchiveView() direkte',
+        'Arkiverte beats teller ikke lenger i mixtape/album-oversikter',
+        'Samme sang i mixtape og album fungerer nå (kontekst-bevisst card lookup)',
+        'Hero-vinyl clippes via clip-path — påvirker ingenting annet på siden',
+        'Tab-fade-overgang fungerer nå for alle tabs',
+        'Alle JS/CSS-filer oppdatert med vedlikeholdsnotater og arkitektur-dokumentasjon',
+      ],
+    },
+    {
       version: 'v2.0',
       date: '13. mai 2026',
       label: 'Tab-rekkefølge, visningsmoduser og viewer-forbedringer',
