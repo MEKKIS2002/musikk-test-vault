@@ -15,6 +15,8 @@
   width: 100%;
   display: block;
   border-radius: 6px;
+  /* The PNG has a black background — mix-blend-mode removes it */
+  mix-blend-mode: screen;
 }
 
 /* Label overlay — positioned over the white label area of the PNG */
@@ -22,10 +24,10 @@
 .cass-png-label {
   position: absolute;
   /* White label on the cassette PNG: top ~16%, left ~14%, width ~72%, height ~18% */
-  top: 12.5%;
-  left: 11%;
-  width: 77%;
-  height: 20%;
+  top: 18%;
+  left: 13%;
+  width: 74%;
+  height: 13%;
   display: flex;
   flex-direction: column;
   justify-content: center;
