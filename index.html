@@ -2,19 +2,55 @@
 <html lang="no">
 <head>
 <!--
-AI / MARCUS MAINTENANCE NOTES
-This file is a single-file Music Vault app. Keep edits small and targeted.
+AI / MARCUS MAINTENANCE NOTES — oppdatert mai 2026
+Music Vault er nå en multi-fil app. Koden er fordelt slik:
 
-Active areas to know:
-1. Core app CSS/HTML/JS lives near the top and middle of the file.
-2. Later
+STRUKTUR:
+  index.html       — Ren HTML-markup. Ingen inline CSS/JS. Script/CSS lastes eksternt.
+  css/main.css     — Basisstiler, CSS-variabler, layout, tab-transitions
+  css/ui.css       — Hero-seksjon, stats-kort, knapper, hero-vinyl posisjonering
+  css/track-cards.css — Beat-kort (grid/liste/studio-visning), album-beat-listmode
+  css/archive.css  — Arkiv-tab, trekasse-animasjoner, fa-* selektorer
+  css/mixtape.css  — PNG-kassett-kort, mixtape-grid, mixtape-søk
+
+  js/lock.js       — Innloggingsskjerm (brukernavn→epost→Supabase), viewer-modus
+  js/db.js         — State (localStorage), renderAll/renderActiveTab (dirty-flag), tab-handler
+  js/app.js        — Produsentmodus, arkiv-installer IIFE, album-detail-render
+  js/track-cards.js — Én IIFE: view mode (list/cards/studio), beat-kort enhancer
+  js/archive.js    — Arkiv-renderer (trekasse-design), dynamisk opprettet #archiveTab
+  js/mixtape.js    — Mixtape-søk (performance-versjon)
+  js/r2-storage.js — Cloudflare R2 opplasting/sletting/flytte + lagringswidget
+  js/audio-compress.js — Lydkomprimering (deaktivert, MediaRecorder er sanntid)
+  js/supabase.js   — Supabase admin-login + datasynk (push/pull)
+  js/beats-tab.js  — Beats-oversiktsfane med søk, sortering og ⋯-meny
+  js/changelog.js  — Endringslogg injisert i Integrasjoner-tabben
+  assets/          — favicon.png, crate-back/front/empty.png, vinyl-label.png, cassette.png
+
+VIKTIGE REGLER:
+- Tab-synlighet styres av hidden-klassen OG tab-visible (opacity). Begge må håndteres.
+- Arkiv-tabben er IKKE statisk HTML — den opprettes dynamisk av archive.js.
+  Tab-handleren i db.js har et spesialtilfelle for data-tab="archive".
+- View mode (liste/kort/studio) styres i track-cards.js. localStorage KEY: 'musicVaultTrackViewMode'.
+  setTrackViewMode() er definert BARE i track-cards.js (siste definisjon vinner).
+- Beat-telling skal alltid filtrere arkiverte beats:
+  beatsFromIds() returnerer kun ikke-arkiverte beats.
+- Lydfiler lagres i Cloudflare R2 via beat-vault.marcus-aas-mekiassen.workers.dev
+  Metadata synkes til Supabase automatisk etter opplasting (via saveState → schedulePush).
+- Kassettdesign bruker nå assets/cassette.png — ikke CSS-tegnet kassett.
+  Navn og beat-antall vises som tekstoverlay via .cass-png-label.
+- USERNAME_MAP i lock.js mapper brukernavn til Supabase-epost.
+
+AKTIVE BRUKERE:
+  marcus → marcus.aas.mekiassen@gmail.com (admin)
+  erik   → erikalfsen11@gmail.com (admin)
+-->
 
   <!-- Stylesheets -->
-  <link rel="stylesheet" href="css/main.css?v=202605140911">
-  <link rel="stylesheet" href="css/ui.css?v=202605140911">
-  <link rel="stylesheet" href="css/track-cards.css?v=202605140911">
-  <link rel="stylesheet" href="css/archive.css?v=202605140911">
-  <link rel="stylesheet" href="css/mixtape.css?v=202605140911">
+  <link rel="stylesheet" href="css/main.css?v=202605141047">
+  <link rel="stylesheet" href="css/ui.css?v=202605141047">
+  <link rel="stylesheet" href="css/track-cards.css?v=202605141047">
+  <link rel="stylesheet" href="css/archive.css?v=202605141047">
+  <link rel="stylesheet" href="css/mixtape.css?v=202605141047">
 </head>
 <body>
 <!-- Viewer mode login shortcut -->
@@ -551,16 +587,16 @@ Active areas to know:
   <script>window.R2_WORKER_URL = 'https://beat-vault.marcus-aas-mekiassen.workers.dev';</script>
 
   <!-- App scripts (load order matters) -->
-  <script src="js/audio-compress.js?v=202605140911"></script>
-  <script src="js/lock.js?v=202605140911"></script>
-  <script src="js/db.js?v=202605140911"></script>
-  <script src="js/app.js?v=202605140911"></script>
-  <script src="js/track-cards.js?v=202605140911"></script>
-  <script src="js/r2-storage.js?v=202605140911"></script>
-  <script src="js/archive.js?v=202605140911"></script>
-  <script src="js/mixtape.js?v=202605140911"></script>
-  <script src="js/changelog.js?v=202605140911"></script>
-  <script src="js/beats-tab.js?v=202605140911"></script>
-  <script src="js/supabase.js?v=202605140911"></script>
+  <script src="js/audio-compress.js?v=202605141047"></script>
+  <script src="js/lock.js?v=202605141047"></script>
+  <script src="js/db.js?v=202605141047"></script>
+  <script src="js/app.js?v=202605141047"></script>
+  <script src="js/track-cards.js?v=202605141047"></script>
+  <script src="js/r2-storage.js?v=202605141047"></script>
+  <script src="js/archive.js?v=202605141047"></script>
+  <script src="js/mixtape.js?v=202605141047"></script>
+  <script src="js/changelog.js?v=202605141047"></script>
+  <script src="js/beats-tab.js?v=202605141047"></script>
+  <script src="js/supabase.js?v=202605141047"></script>
 </body>
 </html>
