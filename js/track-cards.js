@@ -1,5 +1,21 @@
 // === track-cards.js ===
-// Clean single-IIFE rewrite. One view mode system, one listener, no conflicts.
+// Enkel, clean implementasjon av view mode + beat-kort for mixtape/album.
+//
+// VIEW MODE:
+//   localStorage key: 'musicVaultTrackViewMode'
+//   Verdier: 'list' | 'cards' | 'studio'
+//   Standard: 'list'
+//   setTrackViewMode(mode) og advancedSetTrackViewMode(mode) er eksponert på window.
+//   Én click-lytter (bubbling, ikke capture) håndterer [data-track-view]-knapper.
+//
+// BEAT-KORT VISNING:
+//   list   → .album-beat-listmode  — kompakte 44px Spotify-stil rader
+//   cards  → .album-beat-grid      — grid med cover til venstre
+//   studio → .album-beat-studio    — kanban-board sortert etter fremdrift
+//
+// TOGGLE-KNAPPER:
+//   <button data-track-view="list|cards|studio"> i mixtape/album toolbar (index.html)
+//   Aktiv-klasse synkroniseres via syncBtns() etter hver render.
 
 'use strict';
 
