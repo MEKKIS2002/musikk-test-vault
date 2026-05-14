@@ -1,4 +1,12 @@
 // === mv-archive-demo-crates-js ===
+// Arkiv-tab renderer for Music Vault.
+// #archiveTab eksisterer IKKE i index.html — den opprettes dynamisk av ensureTab().
+// window.renderArchiveView = render (eksponert for db.js sin tab-handler).
+//
+// Viser: arkiverte mixtapes, albumer og beats (samlet i demo-kasser).
+// Tabben aktiveres via db.js tab-handler (spesialtilfelle for data-tab="archive").
+// activate() setter style.display='block' + body.final-archive-active klasse.
+// db.js legger til .tab-visible etterpå for opacity-transition.
 (function(){
   const MAX_DEMOS_PER_CRATE = 25;
   const STORE_KEY = 'mvArchivePageY';
