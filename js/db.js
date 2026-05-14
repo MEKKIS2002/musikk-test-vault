@@ -908,7 +908,7 @@ function cassCoverStyle(cover){return cover?`--cass-cover:url('${cover}');`:"";}
 function cassLabelClass(cover,base="cass-label"){return `${base}${cover?" has-cover":""}`;}
 // Cassette PNG selection — deterministic based on mixtape id so same tape always gets same image
 function cassettePng(mt){
-  const CASSETTES = ['assets/cassette-1.png','assets/cassette-2.png','assets/cassette-3.png','assets/cassette-4.png'];
+  const CASSETTES = ['assets/Cassette 1.png','assets/Cassette 2.png','assets/Cassette 3.png','assets/Cassette 4.png'];
   // Hash the id string to a stable index
   const id = mt.id || '';
   let h = 0;
