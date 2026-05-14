@@ -1,10 +1,13 @@
 // === audio-compress.js ===
-// Converts audio files to compressed MP3/WebM before upload
-// Uses Web Audio API + MediaRecorder (no server needed)
+// DEAKTIVERT — shouldCompress() returnerer alltid false.
 //
-// Supported input: WAV, FLAC, AIFF, M4A, OGG, AAC, MP3
-// Output: WebM/Opus (best browser support) or MP3 if supported
-// Target: ~128kbps stereo = ~1MB/min vs WAV ~10MB/min
+// Lydkomprimering via MediaRecorder fungerer ikke i praksis:
+// MediaRecorder er sanntids-opptak, ikke raskere-enn-sanntid konvertering.
+// En 3-minutters WAV tar 3 minutter å "komprimere" — uakseptabelt for opplasting.
+//
+// For ekte komprimering trenger vi WebAssembly (f.eks. ffmpeg.wasm).
+// Filer lastes nå direkte opp til R2 uansett format og størrelse.
+// Modulen er beholdt slik at fremtidig komprimering kan legges til.
 
 (function () {
   'use strict';
