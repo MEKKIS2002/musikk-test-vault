@@ -1157,6 +1157,20 @@ document.querySelectorAll(".tab-btn").forEach(btn=>btn.addEventListener("click",
   document.querySelectorAll(".tab-btn").forEach(b=>b.classList.remove("active"));
   btn.classList.add("active");
 
+  // Archive tab is rendered dynamically by archive.js — handle separately
+  if(btn.dataset.tab === 'archive'){
+    const current = document.querySelector(".tab-view:not(.hidden)");
+    if(current){ current.classList.remove("tab-visible"); current.classList.add("hidden"); }
+    if(typeof window.renderArchiveView === 'function'){
+      window.renderArchiveView(); // archive.js creates #archiveTab and shows it
+    } else if(typeof window.openArchiveTab === 'function'){
+      window.openArchiveTab();
+    }
+    applyRoleMode();
+    requestAnimationFrame(()=>requestAnimationFrame(()=>window.scrollTo(0,y)));
+    return;
+  }
+
   // Fade out current, then switch and fade in new tab
   const current = document.querySelector(".tab-view:not(.hidden)");
   const next = document.getElementById(`${btn.dataset.tab}Tab`);
