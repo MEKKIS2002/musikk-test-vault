@@ -1,5 +1,10 @@
 // === beats-tab.js ===
-// Full beats overview tab with search, sort, dropdown actions
+// Beats-oversiktsfane — total visning av alle ikke-arkiverte sanger.
+//
+// Features: søk (navn/mixtape/album/uploader), sortering, ⋯-meny per sang.
+// Meny-innhold: Spill, Favoritt, Arkiver, Slett (kun admin via isAdmin()).
+// Varighet lagres på beat.duration første gang lydfilen lastes.
+// Oppdaterer automatisk når renderAll() kalles og tabben er synlig.
 (function () {
   'use strict';
 
