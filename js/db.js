@@ -941,14 +941,16 @@ function renderMixtapes(){
       <div class="cass-card-title">${esc(mt.name)}<span>${n} beat${n===1?"":"s"}</span></div>
     </div>`;
   });
+  // "Ny mixtape" uses cassette-4 with a + on the label, semi-transparent
+  const NEW_CASSETTE = 'assets/Cassette 4.png';
   cards.push(`<div class="cassette-card cass-new-card" onclick="document.getElementById('newMixtapeBtn').click()">
-      <div class="cass-png-wrap" style="opacity:.45">
-        <img class="cass-png" src="assets/cassette.png" alt="Ny kassett" draggable="false">
-        <div class="cass-png-label" style="align-items:center;justify-content:center">
-          <div style="font-size:26px;color:#333">+</div>
+      <div class="cass-png-wrap" style="opacity:.55">
+        <img class="cass-png" src="${NEW_CASSETTE}" alt="Ny kassett" draggable="false">
+        <div class="cass-png-label" style="justify-content:center;align-items:center">
+          <div style="font-size:20px;font-weight:200;color:#4a3a28;letter-spacing:.1em">+ NY</div>
         </div>
       </div>
-      <div class="cass-info"><strong>Ny mixtape</strong><span>&nbsp;</span></div>
+      <div class="cass-card-title">Ny mixtape<span>&nbsp;</span></div>
     </div>`);
   grid.innerHTML=cards.join("");
 }
@@ -978,10 +980,10 @@ function renderMixtapeDetail(){
   hd.innerHTML=`
     <div class="mixtape-detail-head">
       <div class="mixtape-detail-visual">
-        <div class="cassette-preview cassette-preview--sm">${cassetteMarkup(mt,idx)}</div>
+        <img src="${cassettePng(mt)}" class="mixtape-detail-cassette" alt="${esc(mt.name)}" draggable="false">
       </div>
       <div class="mixtape-detail-copy">
-        <div class="mixtape-detail-kicker" style="color:${col}">Mixtape</div>
+        <div class="mixtape-detail-kicker">Mixtape</div>
         <h2>${esc(mt.name)}</h2>
         <span style="color:var(--muted);font-size:13px">${(()=>{const n=(mt.beatIds||[]).filter(id=>{const b=state.beats.find(x=>x.id===id);return b&&!b.archived;}).length;return n+' beat'+(n===1?'':'s');})()}</span>
         <div id="mixtapeNowPlaying" class="hint" style="margin-top:6px"></div>
