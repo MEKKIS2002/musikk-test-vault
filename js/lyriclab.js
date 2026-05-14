@@ -178,6 +178,14 @@
       : `<div class="ll-cover-ph">🎵</div>`;
 
     container.innerHTML = `
+<div class="ll-wrap">
+<div class="ll-header">
+  <button class="ll-back-btn" onclick="document.querySelector('.tab-btn[data-tab=\"mixtapes\"]').click()">← Mixtapes</button>
+  <span class="ll-header-sep">|</span>
+  <span class="ll-header-beat">✍️ Lyric Lab</span>
+  <span class="ll-header-sep">·</span>
+  <span class="ll-header-beat">${esc(beat.name)}</span>
+</div>
 <div class="ll-layout">
 
   <!-- LEFT: Beat info -->
@@ -277,8 +285,9 @@
     </div>
   </div>
 
-</div>`;
-
+</div>
+</div><!-- /.ll-wrap -->
+`;
     _lastSaved = null;
     // Focus first empty textarea
     setTimeout(() => {
