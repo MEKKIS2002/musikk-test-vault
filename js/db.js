@@ -1166,6 +1166,15 @@ document.querySelectorAll(".tab-btn").forEach(btn=>btn.addEventListener("click",
     } else if(typeof window.openArchiveTab === 'function'){
       window.openArchiveTab();
     }
+    // archive.js sets style.display='block', but our CSS has opacity:0 on .tab-view by default
+    // We must add tab-visible so opacity transitions to 1
+    requestAnimationFrame(()=>{
+      const archTab = document.getElementById('archiveTab');
+      if(archTab){
+        archTab.classList.remove('tab-visible'); // force reflow
+        requestAnimationFrame(()=>archTab.classList.add('tab-visible'));
+      }
+    });
     applyRoleMode();
     requestAnimationFrame(()=>requestAnimationFrame(()=>window.scrollTo(0,y)));
     return;
