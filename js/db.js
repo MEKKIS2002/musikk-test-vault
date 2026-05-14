@@ -309,6 +309,7 @@ function renderBeats(container,beats,albumMode){
         <div class="beat-expand-actions">
           <button class="primary-btn" onclick="saveBeatLyrics('${b.id}')">Lagre tekst</button>
           <button class="ghost-btn" onclick="copyBeatLyrics('${b.id}')">Kopier tekst</button>
+          <button class="ghost-btn" onclick="openInLyricLab('${b.id}')">✍️ Lyric Lab</button>
           ${albumMode
   ? `<button class="small-btn danger" onclick="removeFromCollection('${b.id}','${listMode}')">Fjern fra ${listMode==="mixtape"?"mixtape":"album"}</button>
      ${isAdmin()?`<button class="small-btn danger" onclick="deleteBeat('${b.id}')">Slett sang</button>`:''}`
@@ -1025,6 +1026,7 @@ function renderActiveTab(tab){
     if(typeof window.renderArchiveView==='function') window.renderArchiveView();
     else if(typeof window.openArchiveTab==='function') window.openArchiveTab();
   }
+  if(t==='lyriclab' && typeof window.renderLyricLab==='function') window.renderLyricLab();
 }
 
 function renderAll(){
@@ -1146,44 +1148,39 @@ document.querySelectorAll(".tab-btn").forEach(btn=>btn.addEventListener("click",
   document.querySelectorAll(".tab-btn").forEach(b=>b.classList.remove("active"));
   btn.classList.add("active");
 
-  // Archive tab is rendered dynamically by archive.js — handle separately
+  // Archive tab is special — created dynamically by archive.js
   if(btn.dataset.tab === 'archive'){
     const current = document.querySelector(".tab-view:not(.hidden)");
     if(current){ current.classList.remove("tab-visible"); current.classList.add("hidden"); }
-    if(typeof window.renderArchiveView === 'function'){
-      window.renderArchiveView(); // archive.js creates #archiveTab and shows it
-    } else if(typeof window.openArchiveTab === 'function'){
-      window.openArchiveTab();
-    }
-    // archive.js sets style.display='block', but our CSS has opacity:0 on .tab-view by default
-    // We must add tab-visible so opacity transitions to 1
+    if(typeof window.renderArchiveView === 'function') window.renderArchiveView();
     requestAnimationFrame(()=>{
       const archTab = document.getElementById('archiveTab');
-      if(archTab){
-        archTab.classList.remove('tab-visible'); // force reflow
-        requestAnimationFrame(()=>archTab.classList.add('tab-visible'));
-      }
+      if(archTab){ archTab.classList.remove('tab-visible'); requestAnimationFrame(()=>archTab.classList.add('tab-visible')); }
     });
     applyRoleMode();
     requestAnimationFrame(()=>requestAnimationFrame(()=>window.scrollTo(0,y)));
     return;
   }
 
-  // Fade out current, then switch and fade in new tab
+  // Lyric Lab tab
+  if(btn.dataset.tab === 'lyriclab'){
+    const current = document.querySelector(".tab-view:not(.hidden)");
+    if(current){ current.classList.remove("tab-visible"); current.classList.add("hidden"); }
+    const ll = document.getElementById('lyriclabTab');
+    if(ll){ ll.classList.remove("hidden"); requestAnimationFrame(()=>ll.classList.add("tab-visible")); }
+    if(typeof window.renderLyricLab === 'function') window.renderLyricLab();
+    applyRoleMode();
+    requestAnimationFrame(()=>requestAnimationFrame(()=>window.scrollTo(0,y)));
+    return;
+  }
+
   const current = document.querySelector(".tab-view:not(.hidden)");
   const next = document.getElementById(`${btn.dataset.tab}Tab`);
   if(!next) return;
-
-  if(current && current !== next){
-    current.classList.remove("tab-visible");  // reset opacity before hiding
-    current.classList.add("hidden");
-  }
+  if(current && current !== next){ current.classList.remove("tab-visible"); current.classList.add("hidden"); }
   next.classList.remove("hidden");
-  next.classList.remove("tab-visible");   // ensure we start at opacity:0
-  // Trigger reflow then fade in
+  next.classList.remove("tab-visible");
   requestAnimationFrame(()=>{ next.classList.add("tab-visible"); });
-
-  // Only render the newly active tab — never re-render already-visible content
   renderActiveTab(btn.dataset.tab);
   applyRoleMode();
   requestAnimationFrame(()=>requestAnimationFrame(()=>window.scrollTo(0,y)));
