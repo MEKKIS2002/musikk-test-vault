@@ -876,3 +876,7 @@ body.admin-mode .admin-only-btn { display: inline-flex !important; }
   opacity: 0;
   transition: none;
 }
+
+/* Archive tab: bypass fade system since it's dynamically created */
+#archiveTab.tab-visible { opacity: 1 !important; }
+#archiveTab[style*="display: block"] { opacity: 1 !important; }
