@@ -179,13 +179,7 @@
 
     container.innerHTML = `
 <div class="ll-wrap">
-<div class="ll-header">
-  <button class="ll-back-btn" onclick="document.querySelector('.tab-btn[data-tab=\"mixtapes\"]').click()">← Mixtapes</button>
-  <span class="ll-header-sep">|</span>
-  <span class="ll-header-beat">✍️ Lyric Lab</span>
-  <span class="ll-header-sep">·</span>
-  <span class="ll-header-beat">${esc(beat.name)}</span>
-</div>
+<div class="ll-header">\n  <button class="ll-back-btn" onclick="llGoBack()">← Mixtapes</button>\n  <span class="ll-header-sep">|</span>\n  <span class="ll-header-beat">✍️ Lyric Lab · ${esc(beat.name)}</span>\n</div>
 <div class="ll-layout">
 
   <!-- LEFT: Beat info -->
@@ -424,6 +418,10 @@
   };
 
   // ── Beat actions ──────────────────────────────────────────────────────────
+  window.llGoBack = function() {
+    const btn = document.querySelector('.tab-btn[data-tab="mixtapes"]');
+    if (btn) btn.click();
+  };
   window.llPlayBeat = function() {
     const id = window.currentLyricLabBeatId;
     if (!id) return;
