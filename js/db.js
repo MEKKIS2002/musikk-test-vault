@@ -906,10 +906,20 @@ function ensureMixtapeStableVisuals(){
 }
 function cassCoverStyle(cover){return cover?`--cass-cover:url('${cover}');`:"";}
 function cassLabelClass(cover,base="cass-label"){return `${base}${cover?" has-cover":""}`;}
+// Cassette PNG selection — deterministic based on mixtape id so same tape always gets same image
+function cassettePng(mt){
+  const CASSETTES = ['assets/cassette-1.png','assets/cassette-2.png','assets/cassette-3.png','assets/cassette-4.png'];
+  // Hash the id string to a stable index
+  const id = mt.id || '';
+  let h = 0;
+  for(let i=0;i<id.length;i++) h = (h*31 + id.charCodeAt(i)) & 0xffff;
+  return CASSETTES[h % CASSETTES.length];
+}
 function cassetteMarkup(mt,idx=0){
   const tracks=(mt?.beatIds||[]).filter(id=>{const b=state.beats.find(x=>x.id===id);return b&&!b.archived;}).length;
+  const png = cassettePng(mt);
   return `<div class="cass-png-wrap">
-    <img class="cass-png" src="assets/cassette.png" alt="Kassett" draggable="false">
+    <img class="cass-png" src="${png}" alt="Kassett" draggable="false">
     <div class="cass-png-label">
       <div class="cass-png-name">${esc(mt.name)}</div>
       <div class="cass-png-meta">${tracks} beat${tracks===1?'':'s'}</div>
