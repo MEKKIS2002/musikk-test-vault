@@ -75,7 +75,7 @@ bottomPlayer.audio.addEventListener("loadedmetadata",updateBottomProgress);
 bottomPlayer.audio.addEventListener("play",updateBottomUI);
 bottomPlayer.audio.addEventListener("pause",updateBottomUI);
 bottomPlayer.audio.addEventListener("error",()=>{const b=bottomPlayer.queue[bottomPlayer.index];if(b)showToast(`Kunne ikke spille "${b.name}"`);bottomNext(true);});
-function beatsFromIds(ids){return (ids||[]).map(id=>state.beats.find(b=>b.id===id)).filter(Boolean);}
+function beatsFromIds(ids){return (ids||[]).map(id=>state.beats.find(b=>b.id===id)).filter(b=>b&&!b.archived);}
 function fmtTime(sec){sec=Number(sec||0);if(!isFinite(sec))return "0:00";const m=Math.floor(sec/60);const s=Math.floor(sec%60);return `${m}:${String(s).padStart(2,"0")}`;}
 async function getPlayableAudioUrl(beat){
   if(!beat)return null;
@@ -1032,6 +1032,10 @@ function renderActiveTab(tab){
   if(t==='pipeline' && _dirtyTabs.has('pipeline')) { renderPipeline();  _dirtyTabs.delete('pipeline'); }
   if(t==='integrations' && _dirtyTabs.has('integrations')){ renderIntegrations(); _dirtyTabs.delete('integrations'); }
   if(t==='beats') { if(typeof renderBeatsTab==='function') renderBeatsTab(); }
+  if(t==='archive') {
+    if(typeof window.renderArchiveView==='function') window.renderArchiveView();
+    else if(typeof window.openArchiveTab==='function') window.openArchiveTab();
+  }
 }
 
 function renderAll(){
