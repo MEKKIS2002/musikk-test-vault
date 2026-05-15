@@ -278,11 +278,17 @@
       </div>
     </div>` : ''}
 
-    <div class="ll-card ll-stat-card">
+    <div class="ll-card ll-stat-card" id="llRhymeCard">
       <div class="ll-stat-title">Rimbank</div>
-      <div class="ll-rhyme-placeholder">
-        <strong>Velg et ord i teksten</strong>
-        for å se rimforslag her
+      <div style="display:flex;gap:6px;margin-bottom:10px">
+        <input id="llRhymeInput" type="text" placeholder="Skriv et ord..."
+          style="flex:1;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:6px 10px;color:var(--text);font-family:inherit;font-size:12px;outline:none"
+          onkeydown="if(event.key==='Enter')llFindRhymes()"
+          oninput="clearTimeout(window._rhymeTimer);window._rhymeTimer=setTimeout(llFindRhymes,500)">
+        <button onclick="llFindRhymes()" style="background:rgba(244,164,67,.15);border:1px solid rgba(244,164,67,.3);border-radius:8px;padding:6px 10px;color:#f4a443;font-size:11px;font-weight:800;cursor:pointer;font-family:inherit;white-space:nowrap">Finn rim</button>
+      </div>
+      <div id="llRhymeResults" style="min-height:40px">
+        <p style="font-size:11px;color:rgba(255,255,255,.25);margin:0">Skriv et ord for å se rimforslag</p>
       </div>
     </div>
   </div>
@@ -680,98 +686,91 @@
     }
 
     function startRecording() {
-      // Play the beat first
       if (typeof playSingleBeat === 'function') playSingleBeat(beat.id);
+      const beatUrl = beat.audio_url || beat.url || null;
 
-      navigator.mediaDevices.getUserMedia({ audio: true, video: false })
-        .then(micStream => {
-          _takeChunks = [];
-          _takeSecs = 0;
-          const mime = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/ogg';
+      function doRecord(blobUrl) {
+        // Silent local audio element from blob so captureStream() works cross-origin
+        const localAudio = blobUrl ? new Audio(blobUrl) : null;
+        if (localAudio) { localAudio.volume = 0; localAudio.play().catch(()=>{}); }
 
-          // Mix mic + beat using Web Audio API + captureStream()
-          const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-          const dest     = audioCtx.createMediaStreamDestination();
+        navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+          .then(micStream => {
+            _takeChunks = [];
+            _takeSecs   = 0;
+            const mime  = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/ogg';
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const dest     = audioCtx.createMediaStreamDestination();
 
-          // Mic → mixer
-          const micSource = audioCtx.createMediaStreamSource(micStream);
-          micSource.connect(dest);
+            // Mic → mixer
+            audioCtx.createMediaStreamSource(micStream).connect(dest);
 
-          // Beat → mixer via captureStream() (works even while playing)
-          const beatAudio = window.bottomPlayer?.audio;
-          if (beatAudio && typeof beatAudio.captureStream === 'function') {
-            try {
-              const beatStream = beatAudio.captureStream();
-              const beatSource = audioCtx.createMediaStreamSource(beatStream);
-              beatSource.connect(dest);                    // → recording
-              beatSource.connect(audioCtx.destination);   // → speakers (so you still hear it)
-            } catch(e) {
-              console.warn('[LyricLab] captureStream failed:', e);
+            // Beat blob → mixer via captureStream
+            if (localAudio) {
+              try {
+                const cs = localAudio.captureStream?.() || localAudio.mozCaptureStream?.();
+                if (cs) audioCtx.createMediaStreamSource(cs).connect(dest);
+              } catch(e) { console.warn('[LyricLab] beat mix:', e.message); }
             }
-          } else if (beatAudio && typeof beatAudio.mozCaptureStream === 'function') {
-            // Firefox fallback
-            try {
-              const beatStream = beatAudio.mozCaptureStream();
-              const beatSource = audioCtx.createMediaStreamSource(beatStream);
-              beatSource.connect(dest);
-              beatSource.connect(audioCtx.destination);
-            } catch(e) { console.warn('[LyricLab] mozCaptureStream failed:', e); }
-          }
 
-          const stream = dest.stream; // mixed mic + beat
+            _takeRecorder = new MediaRecorder(dest.stream, { mimeType: mime });
+            _takeRecorder.ondataavailable = e => { if(e.data.size>0) _takeChunks.push(e.data); };
 
-          _takeRecorder = new MediaRecorder(stream, { mimeType: mime });
-          _takeRecorder.ondataavailable = e => { if(e.data.size>0) _takeChunks.push(e.data); };
-
-          _takeRecorder.onstart = () => {
-            if(overlay) {
-              overlay.querySelector('.ll-take-count').textContent = '⬤';
-              overlay.querySelector('.ll-take-label').textContent = `Spiller inn over ${esc(beat.name)}`;
-            }
-            _takeInterval = setInterval(() => {
-              _takeSecs++;
-              const m = Math.floor(_takeSecs/60);
-              const s = String(_takeSecs%60).padStart(2,'0');
-              const timer = document.getElementById('llTakeTimer');
-              if(timer) timer.textContent = `${m}:${s}`;
-            }, 1000);
-            if(typeof showToast==='function') showToast('🎙️ Innspilling startet');
-          };
-
-          _takeRecorder.onstop = () => {
-            clearInterval(_takeInterval);
-            micStream.getTracks().forEach(t=>t.stop());
-            audioCtx.close().catch(()=>{});
-            if(overlay) overlay.style.display='none';
-            if(btn){ btn.textContent='🎙️ Spill inn over beat'; btn.style.background=''; }
-            // Stop beat playback
-            if(window.bottomPlayer?.audio && !window.bottomPlayer.audio.paused) {
-              window.bottomPlayer.audio.pause();
-            }
-            const blob = new Blob(_takeChunks, { type: mime });
-            const reader = new FileReader();
-            reader.onload = e => {
-              if(!beat.takes) beat.takes = [];
-              beat.takes.push({ id: uid(), url: e.target.result, ts: Date.now(), dur: _takeSecs, mime });
-              if(typeof saveState==='function') saveState();
-              renderTakeList();
-              if(typeof showToast==='function') showToast(`✓ Take lagret (${_takeSecs}s)`);
+            _takeRecorder.onstart = () => {
+              if(overlay) {
+                overlay.querySelector('.ll-take-count').textContent = '⬤';
+                overlay.querySelector('.ll-take-label').textContent = `Spiller inn over ${esc(beat.name)}`;
+              }
+              _takeInterval = setInterval(() => {
+                _takeSecs++;
+                const m = Math.floor(_takeSecs/60), s = String(_takeSecs%60).padStart(2,'0');
+                const timer = document.getElementById('llTakeTimer');
+                if(timer) timer.textContent = `${m}:${s}`;
+              }, 1000);
+              if(typeof showToast==='function') showToast('🎙️ Innspilling startet');
             };
-            reader.readAsDataURL(blob);
-          };
 
-          _takeRecorder.start(500);
-        })
-        .catch(err => {
-          if(overlay) overlay.style.display='none';
-          if(btn) btn.textContent='🎙️ Spill inn over beat';
-          if(typeof showToast==='function') showToast('Klarte ikke åpne mikrofon: ' + err.message);
-        });
+            _takeRecorder.onstop = () => {
+              clearInterval(_takeInterval);
+              micStream.getTracks().forEach(t=>t.stop());
+              audioCtx.close().catch(()=>{});
+              if(localAudio) { localAudio.pause(); }
+              if(blobUrl) URL.revokeObjectURL(blobUrl);
+              if(overlay) overlay.style.display='none';
+              if(btn){ btn.textContent='🎙️ Spill inn over beat'; btn.style.background=''; }
+              const blob2 = new Blob(_takeChunks, { type: mime });
+              const reader = new FileReader();
+              reader.onload = ev => {
+                if(!beat.takes) beat.takes = [];
+                beat.takes.push({ id: uid(), url: ev.target.result, ts: Date.now(), dur: _takeSecs, mime });
+                if(typeof saveState==='function') saveState();
+                renderTakeList();
+                if(typeof showToast==='function') showToast(`✓ Take lagret (${_takeSecs}s)`);
+              };
+              reader.readAsDataURL(blob2);
+            };
+
+            _takeRecorder.start(500);
+          })
+          .catch(err => {
+            if(overlay) overlay.style.display='none';
+            if(btn) btn.textContent='🎙️ Spill inn over beat';
+            if(typeof showToast==='function') showToast('Mikrofon feil: ' + err.message);
+          });
+      } // end doRecord
+
+      if (beatUrl) {
+        fetch(beatUrl)
+          .then(r => r.blob())
+          .then(b => doRecord(URL.createObjectURL(b)))
+          .catch(() => doRecord(null));
+      } else {
+        doRecord(null);
+      }
     }
 
     startCountdown();
   };
-
   function renderTakeList() {
     const beat = getBeat(window.currentLyricLabBeatId);
     const el   = document.getElementById('llTakeList');
@@ -796,6 +795,86 @@
   };
 
   window.renderInlineSections = renderInlineSections;
+
+
+  // ── Rimbank via Claude API ────────────────────────────────────────────────
+  window.llFindRhymes = async function() {
+    const input = document.getElementById('llRhymeInput');
+    const results = document.getElementById('llRhymeResults');
+    if(!input || !results) return;
+    const word = input.value.trim();
+    if(!word) return;
+
+    results.innerHTML = '<p style="font-size:11px;color:rgba(255,255,255,.4);margin:0">Søker...</p>';
+
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 400,
+          messages: [{
+            role: 'user',
+            content: `Gi meg rimord for det norske ordet "${word}". 
+Svar KUN med et JSON-objekt slik: {"perfekte":["ord1","ord2"],"nesten":["ord3","ord4"]}
+Perfekte rim: avslutter med samme lyd (f.eks. "dag" rimer med "lag","vag","flag").
+Nesten-rim: nær lyd, ikke eksakt.
+Inkluder 6-8 ord i hver kategori. Norske ord.`
+          }]
+        })
+      });
+      const data = await res.json();
+      const text = data.content?.[0]?.text || '';
+      let parsed;
+      try { parsed = JSON.parse(text.replace(/```json|```/g,'')); } catch(e) { throw new Error('Parse feil'); }
+
+      const { perfekte = [], nesten = [] } = parsed;
+      results.innerHTML = `
+        ${perfekte.length ? `
+          <div style="margin-bottom:8px">
+            <div style="font-size:10px;font-weight:800;letter-spacing:.08em;color:rgba(255,255,255,.3);text-transform:uppercase;margin-bottom:5px">Perfekte rim</div>
+            <div style="display:flex;flex-wrap:wrap;gap:4px">
+              ${perfekte.map(w => `<button class="ll-rhyme-chip" onclick="llInsertRhyme('${w.replace(/'/g,"\'")}')">
+                ${w}
+              </button>`).join('')}
+            </div>
+          </div>` : ''}
+        ${nesten.length ? `
+          <div>
+            <div style="font-size:10px;font-weight:800;letter-spacing:.08em;color:rgba(255,255,255,.3);text-transform:uppercase;margin-bottom:5px">Nesten-rim</div>
+            <div style="display:flex;flex-wrap:wrap;gap:4px">
+              ${nesten.map(w => `<button class="ll-rhyme-chip muted" onclick="llInsertRhyme('${w.replace(/'/g,"\'")}')">
+                ${w}
+              </button>`).join('')}
+            </div>
+          </div>` : ''}
+      `;
+    } catch(e) {
+      results.innerHTML = `<p style="font-size:11px;color:#fb7185;margin:0">Feil: ${e.message}</p>`;
+    }
+  };
+
+  // Click a rhyme chip to copy it
+  window.llInsertRhyme = function(word) {
+    navigator.clipboard?.writeText(word).then(()=>{
+      if(typeof showToast==='function') showToast(`✓ Kopiert: ${word}`);
+    }).catch(()=>{
+      if(typeof showToast==='function') showToast(word);
+    });
+  };
+
+  // Click on a word in a textarea to populate rhyme input
+  document.addEventListener('mouseup', e => {
+    const ta = e.target.closest('.ll-textarea');
+    if(!ta) return;
+    const sel = window.getSelection?.()?.toString().trim() || ta.value.substring(ta.selectionStart, ta.selectionEnd).trim();
+    const word = sel.split(/\s+/)[0].replace(/[^a-zæøåA-ZÆØÅ]/g,'');
+    if(word.length > 1) {
+      const input = document.getElementById('llRhymeInput');
+      if(input) { input.value = word; clearTimeout(window._rhymeTimer); window._rhymeTimer = setTimeout(llFindRhymes, 300); }
+    }
+  });
 
   // ── Public entry point ────────────────────────────────────────────────────
   window.openInLyricLab = function(beatId) {
