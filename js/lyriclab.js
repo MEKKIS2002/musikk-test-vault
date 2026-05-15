@@ -38,6 +38,31 @@
   function fmtDur(sec){ sec=Number(sec||0); if(!isFinite(sec)||sec<=0) return '--:--'; return Math.floor(sec/60)+':'+String(Math.floor(sec%60)).padStart(2,'0'); }
 
   // ── Data helpers ──────────────────────────────────────────────────────────
+  // Convert stored text to HTML for contenteditable
+  // Stored format: plain text with %%COLOR:hex%%text%%ENDCOLOR%% markers
+  function llTextToHtml(text) {
+    if (!text) return '';
+    // Escape HTML first
+    let safe = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    // Then restore our own color markers
+    safe = safe.replace(/%%COLOR:([^%]+)%%(.+?)%%ENDCOLOR%%/g,
+      (_, color, content) => `<mark style="background:${color};border-radius:3px;padding:0 1px">${content}</mark>`);
+    return safe;
+  }
+
+  // Convert editor HTML back to storage format
+  function llHtmlToText(html) {
+    // Replace <mark> spans with our markers
+    let text = html.replace(/<mark[^>]*style="background:([^";]+)[^"]*"[^>]*>([\s\S]*?)<\/mark>/g,
+      (_, color, content) => `%%COLOR:${color.trim()}%%${content}%%ENDCOLOR%%`);
+    // Strip remaining HTML
+    text = text.replace(/<br\s*\/?>/gi,'\n').replace(/<\/div>/gi,'\n').replace(/<\/p>/gi,'\n').replace(/<[^>]+>/g,'');
+    text = text.replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&nbsp;/g,' ');
+    // Collapse multiple newlines
+    text = text.replace(/\n{3,}/g,'\n\n').trim();
+    return text;
+  }
+
   // Strip HTML tags from rich-text lyrics (old editor used contenteditable with spans)
   function stripHtml(html) {
     if (!html || !html.includes('<')) return html || '';
@@ -250,7 +275,6 @@
     <div class="ll-editor-header">
       <div class="ll-editor-title">✍️ ${esc(beat.name)}</div>
       <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-        <button class="ll-add-section-btn" onclick="llAnalyzeFlow();setTimeout(llClearFlow,8000)" title="Fremhev rimende linjer i 8 sek">🎨 Flow</button>
         <button class="ll-add-section-btn" onclick="llInspirasjon()" title="Inspirasjon fra andre sanger">💡 Inspirer</button>
         <button class="ll-add-section-btn" onclick="llShare()" title="Generer delbar demo-side">🔗 Del</button>
         <button class="ll-add-section-btn" onclick="llAddSection()">+ Seksjon</button>
@@ -351,6 +375,32 @@
   }
 
   // ── Section actions ───────────────────────────────────────────────────────
+  window.llApplyColor = function(secId, color) {
+    const editor = document.getElementById('lltxt-' + secId);
+    if (!editor) return;
+    editor.focus();
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0 || sel.isCollapsed) {
+      if(typeof showToast==='function') showToast('Marker tekst først, deretter velg farge');
+      return;
+    }
+    const range = sel.getRangeAt(0);
+    // Remove existing marks in selection first
+    document.execCommand('removeFormat');
+    if (color) {
+      const mark = document.createElement('mark');
+      mark.style.cssText = `background:${color};border-radius:3px;padding:0 1px`;
+      try {
+        range.surroundContents(mark);
+      } catch(e) {
+        // Selection spans multiple elements — use execCommand fallback
+        document.execCommand('hiliteColor', false, color);
+      }
+    }
+    // Trigger save
+    llHighlightInput(editor, secId);
+  };
+
   window.llToggleSectionDone = function(id) {
     const beat = getBeat(window.currentLyricLabBeatId); if(!beat) return;
     const sec = getSections(beat).find(s=>s.id===id); if(!sec) return;
@@ -396,22 +446,24 @@
     });
   }
 
-  window.llSectionInput = function(ta, id) {
+  window.llHighlightInput = function(div, id) {
     const beat = getBeat(window.currentLyricLabBeatId);
     const sec  = getSections(beat||{}).find(s=>s.id===id);
     if (!sec) return;
-    sec.text = ta.value;
+    // Convert HTML back to storage format
+    sec.text = llHtmlToText(div.innerHTML);
     // Update line numbers
-    const nums = document.getElementById(`llnums-${id}`);
-    if (nums) nums.textContent = ta.value.split('\n').map((_,i)=>i+1).join('\n');
-    // Update line count in header
-    const cnt = document.getElementById(`llsec-${id}`)?.querySelector('.ll-section-line-count');
-    const l = countLines(ta.value);
+    const nums = document.getElementById('llnums-' + id);
+    if (nums) { nums.style.whiteSpace='pre'; nums.textContent = sec.text.split('\n').map((_,i)=>i+1).join('\n'); }
+    // Update line count
+    const cnt = document.getElementById('llsec-' + id)?.querySelector('.ll-section-line-count');
+    const l = countLines(sec.text);
     if (cnt) cnt.textContent = `${l} ${l===1?'linje':'linjer'}`;
-    // Debounced save
     clearTimeout(_saveTimer);
     _saveTimer = setTimeout(() => { saveSections(beat); updateRightPanel(beat); }, 600);
   };
+  // Keep backward compat alias
+  window.llSectionInput = window.llHighlightInput;
 
   window.llAddSection = function() {
     const beat = getBeat(window.currentLyricLabBeatId);
