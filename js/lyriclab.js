@@ -690,9 +690,7 @@
       const beatUrl = beat.audio_url || beat.url || null;
 
       function doRecord(blobUrl) {
-        // Silent local audio element from blob so captureStream() works cross-origin
         const localAudio = blobUrl ? new Audio(blobUrl) : null;
-        if (localAudio) { localAudio.volume = 0; localAudio.play().catch(()=>{}); }
 
         navigator.mediaDevices.getUserMedia({ audio: true, video: false })
           .then(micStream => {
@@ -702,14 +700,27 @@
             const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             const dest     = audioCtx.createMediaStreamDestination();
 
-            // Mic → mixer
-            audioCtx.createMediaStreamSource(micStream).connect(dest);
+            // Mic → mixer (with gain boost)
+            const micSrc  = audioCtx.createMediaStreamSource(micStream);
+            const micGain = audioCtx.createGain();
+            micGain.gain.value = 1.5;
+            micSrc.connect(micGain);
+            micGain.connect(dest);
 
-            // Beat blob → mixer via captureStream
+            // Beat blob → mixer via captureStream + also to speakers
             if (localAudio) {
+              localAudio.volume = 1.0; // full volume
+              localAudio.play().catch(()=>{});
               try {
                 const cs = localAudio.captureStream?.() || localAudio.mozCaptureStream?.();
-                if (cs) audioCtx.createMediaStreamSource(cs).connect(dest);
+                if (cs) {
+                  const beatSrc  = audioCtx.createMediaStreamSource(cs);
+                  const beatGain = audioCtx.createGain();
+                  beatGain.gain.value = 1.0;
+                  beatSrc.connect(beatGain);
+                  beatGain.connect(dest);                  // → recording
+                  beatGain.connect(audioCtx.destination); // → speakers
+                }
               } catch(e) { console.warn('[LyricLab] beat mix:', e.message); }
             }
 
