@@ -808,24 +808,15 @@
     results.innerHTML = '<p style="font-size:11px;color:rgba(255,255,255,.4);margin:0">Søker...</p>';
 
     try {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
+      // Route through Cloudflare Worker (has ANTHROPIC_API_KEY as secret)
+      const workerUrl = window.R2_WORKER_URL || 'https://beat-vault.marcus-aas-mekiassen.workers.dev';
+      const res = await fetch(`${workerUrl}/rhyme`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 400,
-          messages: [{
-            role: 'user',
-            content: `Gi meg rimord for det norske ordet "${word}". 
-Svar KUN med et JSON-objekt slik: {"perfekte":["ord1","ord2"],"nesten":["ord3","ord4"]}
-Perfekte rim: avslutter med samme lyd (f.eks. "dag" rimer med "lag","vag","flag").
-Nesten-rim: nær lyd, ikke eksakt.
-Inkluder 6-8 ord i hver kategori. Norske ord.`
-          }]
-        })
+        body: JSON.stringify({ word })
       });
       const data = await res.json();
-      const text = data.content?.[0]?.text || '';
+      const text = data.text || '';
       let parsed;
       try { parsed = JSON.parse(text.replace(/```json|```/g,'')); } catch(e) { throw new Error('Parse feil'); }
 
