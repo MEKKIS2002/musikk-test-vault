@@ -1033,7 +1033,7 @@ function renderActiveTab(tab){
   const t = tab || document.querySelector('.tab-btn.active')?.dataset?.tab || '';
   if((t==='mixtapes'||t==='')  && _dirtyTabs.has('mixtapes'))  { renderMixtapes();  _dirtyTabs.delete('mixtapes'); }
   if(t==='albums'   && _dirtyTabs.has('albums'))   { renderAlbums();   _dirtyTabs.delete('albums'); }
-  if(t==='pipeline' && _dirtyTabs.has('pipeline')) { renderPipeline();  _dirtyTabs.delete('pipeline'); }
+  if(t==='pipeline' && _dirtyTabs.has('pipeline')) { (window.renderPipelineV2||renderPipeline)(); _dirtyTabs.delete('pipeline'); }
   if(t==='integrations' && _dirtyTabs.has('integrations')){ renderIntegrations(); _dirtyTabs.delete('integrations'); }
   if(t==='beats') { if(typeof renderBeatsTab==='function') renderBeatsTab(); }
   if(t==='archive') {
@@ -1052,7 +1052,7 @@ function renderAll(){
   applyRoleMode();
 }
 // Full render for cases where all tabs must be up to date (e.g. after data sync)
-function renderAllTabs(){renderStats();renderMixtapes();renderAlbums();renderPipeline();renderIntegrations();applyRoleMode();markDirty();}
+function renderAllTabs(){renderStats();renderMixtapes();renderAlbums();(window.renderPipelineV2||renderPipeline)();renderIntegrations();applyRoleMode();markDirty();}
 
 // ── DEMO MODAL ──
 function openDemoModal(id){
