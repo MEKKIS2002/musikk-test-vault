@@ -689,29 +689,36 @@
           _takeSecs = 0;
           const mime = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/ogg';
 
-          // Mix mic + beat audio using Web Audio API
+          // Mix mic + beat using Web Audio API + captureStream()
           const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
           const dest     = audioCtx.createMediaStreamDestination();
 
-          // Mic input → mixer
+          // Mic → mixer
           const micSource = audioCtx.createMediaStreamSource(micStream);
           micSource.connect(dest);
 
-          // Beat audio element → mixer (also keep connected to speakers)
+          // Beat → mixer via captureStream() (works even while playing)
           const beatAudio = window.bottomPlayer?.audio;
-          if (beatAudio) {
+          if (beatAudio && typeof beatAudio.captureStream === 'function') {
             try {
-              const beatSource = audioCtx.createMediaElementSource(beatAudio);
-              beatSource.connect(dest);
-              beatSource.connect(audioCtx.destination); // still hear it
+              const beatStream = beatAudio.captureStream();
+              const beatSource = audioCtx.createMediaStreamSource(beatStream);
+              beatSource.connect(dest);                    // → recording
+              beatSource.connect(audioCtx.destination);   // → speakers (so you still hear it)
             } catch(e) {
-              // Already captured — connect mic only, beat plays separately
-              console.log('[LyricLab] Beat already captured, recording mic only');
+              console.warn('[LyricLab] captureStream failed:', e);
             }
+          } else if (beatAudio && typeof beatAudio.mozCaptureStream === 'function') {
+            // Firefox fallback
+            try {
+              const beatStream = beatAudio.mozCaptureStream();
+              const beatSource = audioCtx.createMediaStreamSource(beatStream);
+              beatSource.connect(dest);
+              beatSource.connect(audioCtx.destination);
+            } catch(e) { console.warn('[LyricLab] mozCaptureStream failed:', e); }
           }
 
-          const mixedStream = dest.stream;
-          const stream = mixedStream; // use mixed for recorder
+          const stream = dest.stream; // mixed mic + beat
 
           _takeRecorder = new MediaRecorder(stream, { mimeType: mime });
           _takeRecorder.ondataavailable = e => { if(e.data.size>0) _takeChunks.push(e.data); };
