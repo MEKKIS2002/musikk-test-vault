@@ -247,8 +247,15 @@
   <div class="ll-center">
     <div class="ll-editor-header">
       <div class="ll-editor-title">✍️ ${esc(beat.name)}</div>
-      <button class="ll-add-section-btn" onclick="llAddSection()">+ Legg til seksjon</button>
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+        <button class="ll-add-section-btn" onclick="llAnalyzeFlow();setTimeout(llClearFlow,8000)" title="Fremhev rimende linjer i 8 sek">🎨 Flow</button>
+        <button class="ll-add-section-btn" onclick="llInspirasjon()" title="Inspirasjon fra andre sanger">💡 Inspirer</button>
+        <button class="ll-add-section-btn" onclick="llShare()" title="Generer delbar demo-side">🔗 Del</button>
+        <button class="ll-add-section-btn" onclick="llAddSection()">+ Seksjon</button>
+      </div>
     </div>
+    <div id="llInspirasjonBox" style="display:none;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:12px 14px;margin-bottom:8px"></div>
+    <div id="llFlowLegend" style="display:none;font-size:11px;font-weight:700;color:rgba(255,255,255,.35);padding:4px 0 8px;text-align:right"></div>
 
     <div id="llSections">
       ${sections.sort((a,b)=>a.order-b.order).map(s=>sectionHTML(s,beat)).join('')}
@@ -306,7 +313,7 @@
         <button onclick="llFindRhymes()" style="background:rgba(244,164,67,.15);border:1px solid rgba(244,164,67,.3);border-radius:8px;padding:6px 10px;color:#f4a443;font-size:11px;font-weight:800;cursor:pointer;font-family:inherit;white-space:nowrap">Finn rim</button>
       </div>
       <div id="llRhymeResults" style="min-height:40px">
-        <p style="font-size:11px;color:rgba(255,255,255,.25);margin:0">Skriv et ord for å se rimforslag</p>
+        <p style="font-size:11px;color:rgba(255,255,255,.25);margin:0">Skriv et ord, eller høyreklikk et ord i teksten</p>
       </div>
     </div>
   </div>
@@ -1182,6 +1189,341 @@
     const lbl = document.getElementById('llWaveZoomVal');
     if (lbl) lbl.textContent = n <= 1 ? '1×' : n + '×';
   };
+
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // 1. INLINE RHYME POPOVER
+  // Right-click a word in any .ll-textarea → popover appears at cursor
+  // ══════════════════════════════════════════════════════════════════════════
+  (function() {
+    let _popover = null;
+
+    function closePopover() {
+      if (_popover) { _popover.remove(); _popover = null; }
+    }
+
+    function getWordAt(ta) {
+      const s = ta.selectionStart, val = ta.value;
+      let start = s, end = s;
+      while (start > 0 && /[a-zA-ZæøåÆØÅ]/.test(val[start-1])) start--;
+      while (end < val.length && /[a-zA-ZæøåÆØÅ]/.test(val[end])) end++;
+      return val.slice(start, end).toLowerCase().trim();
+    }
+
+    async function showRhymePopover(e, ta) {
+      closePopover();
+      e.preventDefault();
+      const word = getWordAt(ta);
+      if (!word || word.length < 2) return;
+
+      // Update side panel input too
+      const inp = document.getElementById('llRhymeInput');
+      if (inp) inp.value = word;
+
+      // Build popover
+      const pop = document.createElement('div');
+      pop.id = 'llRhymePopover';
+      pop.style.cssText = `position:fixed;z-index:9000;background:#1a1614;border:1px solid rgba(255,255,255,.15);`
+        + `border-radius:12px;padding:10px 12px;min-width:220px;max-width:300px;`
+        + `box-shadow:0 12px 40px rgba(0,0,0,.7);font-family:inherit;`;
+      pop.style.left = Math.min(e.clientX, window.innerWidth - 320) + 'px';
+      pop.style.top  = (e.clientY + 8) + 'px';
+      pop.innerHTML = `<div style="font-size:11px;font-weight:900;letter-spacing:.08em;color:rgba(255,255,255,.35);text-transform:uppercase;margin-bottom:8px">Rim for "${word}"</div>
+        <div id="llPopoverResults" style="font-size:12px;color:rgba(255,255,255,.4)">Laster...</div>`;
+      document.body.appendChild(pop);
+      _popover = pop;
+
+      document.addEventListener('click', closePopover, { once: true });
+
+      // Fetch rhymes
+      try {
+        const workerUrl = window.R2_WORKER_URL || 'https://beat-vault.marcus-aas-mekiassen.workers.dev';
+        const res = await fetch(`${workerUrl}/rhyme`, {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({word})
+        });
+        const data = await res.json();
+        let parsed;
+        try { parsed = JSON.parse((data.text||'{}').replace(/```json|```/g,'')); } catch(e) { parsed = {}; }
+        const { perfekte=[], nesten=[] } = parsed;
+        const r = document.getElementById('llPopoverResults');
+        if (!r) return;
+        if (!perfekte.length && !nesten.length) { r.textContent = 'Ingen rimord funnet'; return; }
+        r.innerHTML = [
+          perfekte.length ? `<div style="margin-bottom:6px"><div style="font-size:9px;font-weight:800;letter-spacing:.1em;color:rgba(255,255,255,.25);text-transform:uppercase;margin-bottom:4px">Perfekte rim</div><div style="display:flex;flex-wrap:wrap;gap:4px">${perfekte.map(w=>`<button onclick="event.stopPropagation();llInsertRhyme('${w}');document.getElementById('llRhymePopover')?.remove()" style="background:rgba(244,164,67,.12);border:1px solid rgba(244,164,67,.28);border-radius:999px;color:#f4a443;font-size:11px;font-weight:800;padding:2px 8px;cursor:pointer;font-family:inherit">${w}</button>`).join('')}</div></div>` : '',
+          nesten.length ? `<div><div style="font-size:9px;font-weight:800;letter-spacing:.1em;color:rgba(255,255,255,.25);text-transform:uppercase;margin-bottom:4px">Nesten</div><div style="display:flex;flex-wrap:wrap;gap:4px">${nesten.slice(0,6).map(w=>`<button onclick="event.stopPropagation();llInsertRhyme('${w}');document.getElementById('llRhymePopover')?.remove()" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:999px;color:rgba(255,255,255,.6);font-size:11px;font-weight:800;padding:2px 8px;cursor:pointer;font-family:inherit">${w}</button>`).join('')}</div></div>` : ''
+        ].join('');
+      } catch(e) {
+        const r = document.getElementById('llPopoverResults');
+        if (r) r.textContent = 'Feil: ' + e.message;
+      }
+    }
+
+    // Attach contextmenu on all .ll-textarea (delegated)
+    document.addEventListener('contextmenu', e => {
+      const ta = e.target.closest('.ll-textarea');
+      if (!ta) return;
+      showRhymePopover(e, ta);
+    });
+
+    window.llCloseRhymePopover = closePopover;
+  })();
+
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // 2. FLOW ANALYSIS — color-code rhyming lines
+  // ══════════════════════════════════════════════════════════════════════════
+  const FLOW_COLORS = [
+    'rgba(244,164,67,.35)',  // amber
+    'rgba(168,85,247,.35)',  // purple
+    'rgba(52,211,153,.35)',  // green
+    'rgba(96,165,250,.35)',  // blue
+    'rgba(251,113,133,.35)', // pink
+    'rgba(251,191,36,.35)',  // yellow
+  ];
+
+  function getLineEnding(line) {
+    const words = line.trim().split(/\s+/);
+    const last = words[words.length-1]?.toLowerCase().replace(/[^a-zæøå]/g,'') || '';
+    return last.slice(-3); // last 3 chars as rhyme key
+  }
+
+  window.llAnalyzeFlow = function(beatId) {
+    const beat = getBeat(beatId || window.currentLyricLabBeatId);
+    if (!beat) return;
+    const secs = getSections(beat);
+    const allLines = [];
+    secs.forEach(s => {
+      s.text.split('\n').forEach((line, i) => {
+        if (line.trim()) allLines.push({ secId: s.id, lineIdx: i, text: line, ending: getLineEnding(line) });
+      });
+    });
+
+    // Group lines by ending
+    const groups = {};
+    allLines.forEach(l => {
+      if (!l.ending || l.ending.length < 2) return;
+      if (!groups[l.ending]) groups[l.ending] = [];
+      groups[l.ending].push(l);
+    });
+
+    // Assign colors to groups with 2+ lines
+    const colorMap = {};
+    let colorIdx = 0;
+    Object.values(groups).filter(g => g.length >= 2).forEach(g => {
+      const color = FLOW_COLORS[colorIdx % FLOW_COLORS.length];
+      g.forEach(l => colorMap[l.secId + '-' + l.lineIdx] = color);
+      colorIdx++;
+    });
+
+    // Apply colors to textareas (overlay technique with divs behind)
+    secs.forEach(s => {
+      const ta = document.getElementById('lltxt-' + s.id);
+      if (!ta) return;
+      const lines = s.text.split('\n');
+      let overlay = document.getElementById('llflow-' + s.id);
+      if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'llflow-' + s.id;
+        overlay.style.cssText = `position:absolute;top:0;left:0;right:0;pointer-events:none;z-index:1;padding:${getComputedStyle(ta).padding};font-size:${getComputedStyle(ta).fontSize};line-height:${getComputedStyle(ta).lineHeight};font-family:${getComputedStyle(ta).fontFamily};white-space:pre-wrap;word-wrap:break-word;overflow:hidden;`;
+        ta.parentElement.style.position = 'relative';
+        ta.style.background = 'transparent';
+        ta.style.position = 'relative';
+        ta.style.zIndex = '2';
+        ta.parentElement.insertBefore(overlay, ta);
+      }
+      overlay.innerHTML = lines.map((line, i) => {
+        const color = colorMap[s.id + '-' + i];
+        const escaped = line.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') || '\u00a0';
+        return color
+          ? `<span style="background:${color};border-radius:3px;display:block">${escaped}</span>`
+          : `<span style="display:block">${escaped}</span>`;
+      }).join('');
+    });
+
+    // Show legend
+    const legend = document.getElementById('llFlowLegend');
+    if (legend) {
+      const rhymePairs = Object.entries(groups).filter(([,g])=>g.length>=2).length;
+      legend.textContent = rhymePairs > 0 ? `${rhymePairs} rimpar funnet` : 'Ingen rim funnet ennå';
+      legend.style.display = 'block';
+    }
+  };
+
+  window.llClearFlow = function() {
+    document.querySelectorAll('[id^="llflow-"]').forEach(el => el.remove());
+    document.querySelectorAll('.ll-textarea').forEach(ta => { ta.style.background=''; ta.style.position=''; ta.style.zIndex=''; });
+    const legend = document.getElementById('llFlowLegend');
+    if (legend) legend.style.display = 'none';
+  };
+
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // 3. VERSION HISTORY PER SECTION
+  // ══════════════════════════════════════════════════════════════════════════
+  function addVersionSnapshot(beat, secId) {
+    const sec = getSections(beat).find(s => s.id === secId);
+    if (!sec || !sec.text.trim()) return;
+    if (!sec.history) sec.history = [];
+    // Don't save if same as last
+    if (sec.history.length && sec.history[sec.history.length-1].text === sec.text) return;
+    sec.history.push({ text: sec.text, ts: Date.now() });
+    if (sec.history.length > 20) sec.history.shift(); // max 20 versions
+  }
+
+  window.llSaveVersion = function(secId) {
+    const beat = getBeat(window.currentLyricLabBeatId); if(!beat) return;
+    addVersionSnapshot(beat, secId);
+    if(typeof saveState==='function') saveState();
+    if(typeof showToast==='function') showToast('✓ Versjon lagret');
+  };
+
+  window.llShowHistory = function(secId) {
+    const beat = getBeat(window.currentLyricLabBeatId); if(!beat) return;
+    const sec  = getSections(beat).find(s=>s.id===secId); if(!sec) return;
+    const hist = sec.history || [];
+
+    document.getElementById('llHistoryModal')?.remove();
+    const modal = document.createElement('div');
+    modal.id = 'llHistoryModal';
+    modal.style.cssText = `position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,.75);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:20px`;
+    modal.innerHTML = `<div style="background:#141210;border:1px solid rgba(255,255,255,.1);border-radius:18px;width:100%;max-width:580px;max-height:80vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.7)">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid rgba(255,255,255,.07)">
+        <span style="font-size:15px;font-weight:900">Versjonshistorikk — ${esc(sec.title)}</span>
+        <button onclick="document.getElementById('llHistoryModal').remove()" style="background:none;border:none;color:rgba(255,255,255,.5);font-size:18px;cursor:pointer">✕</button>
+      </div>
+      <div style="overflow-y:auto;padding:8px">
+        ${hist.length === 0 ? '<p style="padding:16px;color:rgba(255,255,255,.3);font-size:13px">Ingen lagrede versjoner ennå. Klikk ⌛ i seksjonmenyen for å lagre.</p>'
+          : [...hist].reverse().map((v, i) => {
+            const d = new Date(v.ts);
+            const label = d.toLocaleString('no-NO',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+            const preview = v.text.slice(0,120).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+            return `<div style="padding:12px;border-bottom:1px solid rgba(255,255,255,.05)">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+                <span style="font-size:11px;color:rgba(255,255,255,.4);font-weight:700">${label}</span>
+                <button onclick="llRestoreVersion('${secId}',${hist.length-1-i})" style="background:rgba(244,164,67,.12);border:1px solid rgba(244,164,67,.3);border-radius:7px;color:#f4a443;font-size:11px;font-weight:800;padding:3px 10px;cursor:pointer;font-family:inherit">Gjenopprett</button>
+              </div>
+              <pre style="font-size:12px;color:rgba(255,255,255,.55);font-family:Georgia,serif;margin:0;white-space:pre-wrap;max-height:80px;overflow:hidden">${preview}${v.text.length>120?'…':''}</pre>
+            </div>`;
+          }).join('')}
+      </div>
+    </div>`;
+    document.body.appendChild(modal);
+    modal.addEventListener('click', e => { if(e.target===modal) modal.remove(); });
+  };
+
+  window.llRestoreVersion = function(secId, idx) {
+    const beat = getBeat(window.currentLyricLabBeatId); if(!beat) return;
+    const sec  = getSections(beat).find(s=>s.id===secId); if(!sec||!sec.history) return;
+    addVersionSnapshot(beat, secId); // save current before restoring
+    sec.text = sec.history[idx].text;
+    if(typeof saveState==='function') saveState();
+    document.getElementById('llHistoryModal')?.remove();
+    renderLyricLab();
+    if(typeof showToast==='function') showToast('↩ Versjon gjenopprettet');
+  };
+
+  // Auto-snapshot on every save (after debounce)
+  const _origSaveSections = saveSections;
+  function saveSections(beat) {
+    // Snapshot each dirty section before saving
+    if (beat?.lyricSections) {
+      beat.lyricSections.forEach(s => { if(s.text?.trim()) addVersionSnapshot(beat, s.id); });
+    }
+    _origSaveSections(beat);
+  }
+
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // 4. INSPIRASJON-MODUS
+  // ══════════════════════════════════════════════════════════════════════════
+  window.llInspirasjon = function() {
+    const st = getState();
+    const beats = (st?.beats||[]).filter(b => !b.archived && b.id !== window.currentLyricLabBeatId);
+    const allLines = [];
+    beats.forEach(b => {
+      (b.lyricSections||[]).forEach(s => {
+        s.text.split('\n').filter(l=>l.trim().length>10).forEach(l => allLines.push({line:l.trim(),beat:b.name}));
+      });
+      if(b.lyrics) b.lyrics.split('\n').filter(l=>l.trim().length>10).forEach(l=>allLines.push({line:l.trim(),beat:b.name}));
+    });
+
+    const el = document.getElementById('llInspirasjonBox');
+    if (!el) return;
+
+    if (allLines.length === 0) {
+      el.innerHTML = '<p style="font-size:12px;color:rgba(255,255,255,.3);margin:0">Skriv tekst på andre sanger for å få inspirasjon her</p>';
+      el.style.display = 'block';
+      return;
+    }
+
+    const pick = allLines[Math.floor(Math.random() * allLines.length)];
+    el.style.display = 'block';
+    el.innerHTML = `<div style="font-size:10px;font-weight:800;letter-spacing:.08em;color:rgba(255,255,255,.25);text-transform:uppercase;margin-bottom:6px">Inspirasjon fra "${esc(pick.beat)}"</div>
+      <div style="font-size:14px;font-family:Georgia,serif;color:rgba(255,255,255,.7);font-style:italic;line-height:1.6">"${esc(pick.line)}"</div>
+      <button onclick="llInspirasjon()" style="margin-top:8px;background:none;border:none;color:rgba(255,255,255,.3);font-size:11px;cursor:pointer;font-family:inherit;padding:0;font-weight:700">↻ Ny linje</button>`;
+  };
+
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // 5. DELING — generer demo-side
+  // ══════════════════════════════════════════════════════════════════════════
+  window.llShare = function(beatId) {
+    const beat = getBeat(beatId || window.currentLyricLabBeatId);
+    if (!beat) return;
+    const sections = getSections(beat);
+    const audioUrl = beat.audio_url || beat.url || null;
+
+    const html = `<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${beat.name}</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#0d0c0b;color:#f4ede4;font-family:'Georgia',serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:32px 16px}
+  .card{max-width:640px;width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:20px;overflow:hidden}
+  .header{padding:28px 32px 20px;border-bottom:1px solid rgba(255,255,255,.07)}
+  .label{font-size:10px;font-weight:800;letter-spacing:.15em;color:#f4a443;text-transform:uppercase;margin-bottom:8px;font-family:system-ui}
+  h1{font-size:26px;font-weight:900;letter-spacing:-.04em;line-height:1.15}
+  .meta{font-size:13px;color:rgba(255,255,255,.4);margin-top:6px;font-family:system-ui}
+  audio{width:100%;height:44px;margin:16px 0 4px;filter:invert(1) sepia(1) saturate(2) hue-rotate(0deg)}
+  .lyrics{padding:20px 32px 32px}
+  .section{margin-bottom:24px}
+  .section-label{font-size:9px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:8px;font-family:system-ui}
+  .text{font-size:15px;line-height:1.85;color:rgba(255,255,255,.85);white-space:pre-wrap}
+  .footer{text-align:center;padding:16px;font-size:11px;color:rgba(255,255,255,.2);font-family:system-ui;border-top:1px solid rgba(255,255,255,.06)}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="header">
+    <div class="label">Demo</div>
+    <h1>${beat.name}</h1>
+    ${beat.source ? `<div class="meta">prod. ${beat.source}</div>` : ''}
+    ${audioUrl ? `<audio controls src="${audioUrl}"></audio>` : ''}
+  </div>
+  <div class="lyrics">
+    ${sections.filter(s=>s.text.trim()).map(s=>`
+    <div class="section">
+      <div class="section-label">${s.title}</div>
+      <div class="text">${s.text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
+    </div>`).join('')}
+  </div>
+  <div class="footer">Laget med Music Vault</div>
+</div>
+</body>
+</html>`;
+
+    // Create blob URL and open in new tab
+    const blob = new Blob([html], {type:'text/html'});
+    const url  = URL.createObjectURL(blob);
+    window.open(url, '_blank');
+    if(typeof showToast==='function') showToast('✓ Demo-side åpnet i ny fane');
+  };
+
+
 
   // ── Public entry point ────────────────────────────────────────────────────
   window.openInLyricLab = function(beatId) {
