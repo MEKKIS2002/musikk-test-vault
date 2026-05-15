@@ -212,9 +212,16 @@
 
     <div class="ll-action-btns">
       <button class="ll-btn primary" onclick="llPlayBeat()">▶ Spill beat</button>
-      <button class="ll-btn muted" onclick="llLoopHook()">↺ Loop hook</button>
-      <button class="ll-btn muted" id="llMemoBtn" onclick="llRecordMemo()">⬤ Ta opp memo</button>
-      <div id="llMemoList" style="margin-top:6px;display:flex;flex-direction:column;gap:6px"></div>
+      <button class="ll-btn" id="llTakeBtn" onclick="llRecordTake()" style="background:rgba(251,113,133,.08);border-color:rgba(251,113,133,.3);color:#fb7185">🎙️ Spill inn over beat</button>
+      <button class="ll-btn muted" id="llMemoBtn" onclick="llRecordMemo()">⬤ Hurtigmemo</button>
+    </div>
+    <div style="margin-top:8px;display:flex;flex-direction:column;gap:5px">
+      <div style="font-size:10px;font-weight:800;letter-spacing:.08em;color:rgba(255,255,255,.25);text-transform:uppercase">Takes</div>
+      <div id="llTakeList"></div>
+    </div>
+    <div style="margin-top:8px;border-top:1px solid rgba(255,255,255,.06);padding-top:8px;display:flex;flex-direction:column;gap:5px">
+      <div style="font-size:10px;font-weight:800;letter-spacing:.08em;color:rgba(255,255,255,.25);text-transform:uppercase">Memoer</div>
+      <div id="llMemoList"></div>
     </div>
   </div>
 
@@ -336,10 +343,14 @@
     document.querySelectorAll('.ll-section-menu.open').forEach(m=>{ if(m.id!==`llmenu-${id}`) m.classList.remove('open'); });
     document.getElementById(`llmenu-${id}`)?.classList.toggle('open');
   };
-  document.addEventListener('click', e => {
-    if (!e.target.closest('.ll-section-menu-btn') && !e.target.closest('.ll-section-menu'))
-      document.querySelectorAll('.ll-section-menu.open').forEach(m=>m.classList.remove('open'));
-  });
+  // Only add the close-listener once
+  if (!window._llMenuListenerAttached) {
+    window._llMenuListenerAttached = true;
+    document.addEventListener('click', e => {
+      if (!e.target.closest('.ll-section-menu-btn') && !e.target.closest('.ll-section-menu'))
+        document.querySelectorAll('.ll-section-menu.open').forEach(m=>m.classList.remove('open'));
+    });
+  }
 
   window.llSectionInput = function(ta, id) {
     const beat = getBeat(window.currentLyricLabBeatId);
