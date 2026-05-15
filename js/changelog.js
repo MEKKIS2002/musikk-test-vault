@@ -6,6 +6,28 @@
 
   const VERSIONS = [
     {
+      version: 'v2.2',
+      date: '15. mai 2026',
+      label: 'Lyric Lab',
+      color: '#f4a443',
+      changes: [
+        'Ny Lyric Lab-fane — fullskjerm teksteditor med tre kolonner: beat-info, seksjonseditor og skriveanalyse',
+        'Seksjonseditor med Hook, Vers 1, Bro, Vers 2, Outro — linjenummer, collapse/expand, ⋯-meny per seksjon',
+        'Eksisterende lyrics migreres automatisk til seksjoner — gammel data beholdes trygt',
+        'Autosave 600ms etter tastetrykk via saveState() — synker til Supabase',
+        'Statistikk-panel: ord, linjer, seksjoner, estimert lengde (120 ord/min)',
+        'Rimbank med Claude AI — skriv et ord eller marker i teksten for rim-forslag (perfekte og nesten-rim)',
+        'Innspilling over beat — 3s nedtelling, mikrofon + beat mikses via Web Audio API, lagres som take',
+        'Hurtigmemo — ta opp korte vokal-ideer, lagres på beat med avspiller og slett-knapp',
+        'Åpne i Lyric Lab-knapp i beat-kort under albumer og mixtapes',
+        'Seksjonseditor erstattet gammel rich-text editor under albumer og mixtapes',
+        'Favorittstjerne flyttet til avspillingskontrollene i listevisning',
+        'Dropdown-meny på seksjoner fungerer nå riktig (var klippet av overflow:hidden)',
+        'Linjenummer vises nå vertikalt (white-space:pre-fix)',
+        'Rimbank rutes gjennom Cloudflare Worker med ANTHROPIC_API_KEY secret',
+      ],
+    },
+    {
       version: 'v2.1',
       date: '14. mai 2026',
       label: 'PNG-kassetter, arkiv-fix og view modes',
@@ -26,25 +48,6 @@
       ],
     },
 
-    {
-      version: 'v2.1',
-      date: '14. mai 2026',
-      label: 'PNG-kassetter, notater og feilfikser',
-      color: '#f4a443',
-      changes: [
-        'Kassettdesign byttet fra CSS-tegnet kassett til realistiske PNG-bilder (4 varianter)',
-        'Kassettvariant velges deterministisk per mixtape-ID — samme kassett alltid for samme mixtape',
-        'Tekst (navn + beat-antall) overlayert på hvit papir-label på kassetten',
-        '"Ny mixtape"-kortet bruker kassett-PNG med + NY MIXTAPE på labelen',
-        'Mixtape detail-header viser stor kassett-PNG istedenfor mini CSS-kassett',
-        'Arkivert-tabben var blank — fikset tab-handler til å kalle renderArchiveView() direkte',
-        'Arkiverte beats teller ikke lenger i mixtape/album-oversikter',
-        'Samme sang i mixtape og album fungerer nå (kontekst-bevisst card lookup)',
-        'Hero-vinyl clippes via clip-path — påvirker ingenting annet på siden',
-        'Tab-fade-overgang fungerer nå for alle tabs',
-        'Alle JS/CSS-filer oppdatert med vedlikeholdsnotater og arkitektur-dokumentasjon',
-      ],
-    },
     {
       version: 'v2.0',
       date: '13. mai 2026',
