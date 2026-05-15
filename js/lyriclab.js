@@ -546,10 +546,115 @@
 
   // ── Empty state actions ────────────────────────────────────────────────────
   window.llPickBeat = function() {
-    // Switch to beats tab
-    const btn = document.querySelector('.tab-btn[data-tab="beats"]');
-    if (btn) btn.click();
-    else if (typeof showToast === 'function') showToast('Gå til Beats-fanen for å velge');
+    llShowBeatPicker();
+  };
+
+  window.llShowBeatPicker = function() {
+    // Remove existing picker
+    document.getElementById('llBeatPicker')?.remove();
+
+    const st = getState();
+    if (!st) return;
+
+    const allBeats = (st.beats || []).filter(b => !b.archived);
+    const mixtapes = (st.mixtapes || []).filter(m => !m.archived);
+    const albums   = (st.albums   || []).filter(a => !a.archived);
+
+    function beatsByCollection(colId, colType) {
+      const col = colType === 'mixtape'
+        ? mixtapes.find(m => m.id === colId)
+        : albums.find(a => a.id === colId);
+      return (col?.beatIds || [])
+        .map(id => allBeats.find(b => b.id === id))
+        .filter(Boolean);
+    }
+
+    function renderList(beats, emptyMsg) {
+      if (!beats.length) return `<div class="ll-picker-empty">${emptyMsg}</div>`;
+      return beats.map(b => `
+        <div class="ll-picker-row" onclick="openInLyricLab('${esc(b.id)}');document.getElementById('llBeatPicker').remove()">
+          ${b.cover ? `<img class="ll-picker-thumb" src="${esc(b.cover)}" alt="">` : '<div class="ll-picker-thumb ll-picker-ph">🎵</div>'}
+          <div class="ll-picker-info">
+            <div class="ll-picker-name">${esc(b.name)}</div>
+            <div class="ll-picker-meta">${b.lyricLabStatus || 'utkast'}${b.bpm ? ' · ' + b.bpm + ' bpm' : ''}</div>
+          </div>
+          ${b.favorite ? '<span style="color:#f4a443;font-size:14px">★</span>' : ''}
+        </div>`).join('');
+    }
+
+    const overlay = document.createElement('div');
+    overlay.id = 'llBeatPicker';
+    overlay.className = 'll-picker-overlay';
+    overlay.innerHTML = `
+      <div class="ll-picker-modal">
+        <div class="ll-picker-header">
+          <span style="font-size:16px;font-weight:900;letter-spacing:-.03em">Velg låt for Lyric Lab</span>
+          <button onclick="document.getElementById('llBeatPicker').remove()" class="ll-picker-close">✕</button>
+        </div>
+        <input id="llPickerSearch" type="text" placeholder="Søk etter låt..." class="ll-picker-search"
+          oninput="llFilterPicker(this.value)">
+        <div class="ll-picker-tabs">
+          <button class="ll-picker-tab active" onclick="llPickerTab(this,'all')">Alle beats</button>
+          ${mixtapes.map(m => `<button class="ll-picker-tab" onclick="llPickerTab(this,'mt-${esc(m.id)}')">${esc(m.name)}</button>`).join('')}
+          ${albums.map(a => `<button class="ll-picker-tab" onclick="llPickerTab(this,'al-${esc(a.id)}')">${esc(a.name)}</button>`).join('')}
+        </div>
+        <div class="ll-picker-list" id="llPickerList">
+          ${renderList(allBeats, 'Ingen beats ennå')}
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+
+    // Close on backdrop click
+    overlay.addEventListener('click', e => { if(e.target === overlay) overlay.remove(); });
+
+    // Store data for filtering
+    overlay._allBeats = allBeats;
+    overlay._mixtapes = mixtapes;
+    overlay._albums   = albums;
+    overlay._currentTab = 'all';
+
+    document.getElementById('llPickerSearch')?.focus();
+  };
+
+  window.llPickerTab = function(btn, tabId) {
+    document.querySelectorAll('.ll-picker-tab').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const overlay = document.getElementById('llBeatPicker');
+    if (!overlay) return;
+    overlay._currentTab = tabId;
+    llFilterPicker(document.getElementById('llPickerSearch')?.value || '');
+  };
+
+  window.llFilterPicker = function(query) {
+    const overlay = document.getElementById('llBeatPicker');
+    if (!overlay) return;
+    const { _allBeats: all, _mixtapes: mts, _albums: albs, _currentTab: tab } = overlay;
+    const q = query.toLowerCase().trim();
+
+    let beats = all;
+    if (tab.startsWith('mt-')) {
+      const mt = mts.find(m => m.id === tab.slice(3));
+      beats = (mt?.beatIds || []).map(id => all.find(b => b.id === id)).filter(Boolean);
+    } else if (tab.startsWith('al-')) {
+      const al = albs.find(a => a.id === tab.slice(3));
+      beats = (al?.beatIds || []).map(id => all.find(b => b.id === id)).filter(Boolean);
+    }
+
+    if (q) beats = beats.filter(b => b.name.toLowerCase().includes(q));
+
+    const list = document.getElementById('llPickerList');
+    if (!list) return;
+    list.innerHTML = beats.length
+      ? beats.map(b => `
+          <div class="ll-picker-row" onclick="openInLyricLab('${esc(b.id)}');document.getElementById('llBeatPicker')?.remove()">
+            ${b.cover ? `<img class="ll-picker-thumb" src="${esc(b.cover)}" alt="">` : '<div class="ll-picker-thumb ll-picker-ph">🎵</div>'}
+            <div class="ll-picker-info">
+              <div class="ll-picker-name">${esc(b.name)}</div>
+              <div class="ll-picker-meta">${b.lyricLabStatus || 'utkast'}${b.bpm ? ' · ' + b.bpm + ' bpm' : ''}</div>
+            </div>
+            ${b.favorite ? '<span style="color:#f4a443;font-size:14px">★</span>' : ''}
+          </div>`).join('')
+      : `<div class="ll-picker-empty">Ingen treff for "${esc(query)}"</div>`;
   };
 
   window.llCreateNewBeat = function() {
