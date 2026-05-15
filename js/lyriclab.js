@@ -284,7 +284,7 @@
 </div><!-- /.ll-wrap -->
 `;
     _lastSaved = null;
-    setTimeout(renderMemoList, 50);
+    setTimeout(()=>{ renderMemoList(); renderTakeList(); }, 50);
     // Focus first empty textarea
     setTimeout(() => {
       const first = container.querySelector('.ll-textarea:not([data-has-content])');
@@ -441,10 +441,14 @@
     else console.log('[LyricLab] Loop hook — not implemented yet');
   };
 
-  // ── Voice memo recorder ──────────────────────────────────────────────────
+  // ── Voice memo + take recorder ───────────────────────────────────────────
   let _memoRecorder = null;
   let _memoChunks   = [];
   let _memoInterval = null;
+  let _takeRecorder = null;
+  let _takeChunks   = [];
+  let _takeSecs     = 0;
+  let _takeInterval = null;
 
   window.llRecordMemo = function() {
     if (_memoRecorder && _memoRecorder.state === 'recording') {
@@ -629,6 +633,122 @@
     if(secs[0]) secs[0].text = text;
     clearTimeout(_saveTimer);
     _saveTimer = setTimeout(() => saveSections(beat), 600);
+  };
+
+  // ── Record lyric take over beat ──────────────────────────────────────────
+  window.llRecordTake = function() {
+    if (_takeRecorder && _takeRecorder.state === 'recording') {
+      _takeRecorder.stop();
+      return;
+    }
+    if (!navigator.mediaDevices?.getUserMedia) {
+      if(typeof showToast==='function') showToast('Mikrofon ikke tilgjengelig');
+      return;
+    }
+
+    const beat = getBeat(window.currentLyricLabBeatId);
+    if (!beat) { if(typeof showToast==='function') showToast('Velg en sang først'); return; }
+
+    // Countdown UI
+    const btn = document.getElementById('llTakeBtn');
+    const overlay = document.getElementById('llTakeOverlay');
+    let count = 3;
+
+    function startCountdown() {
+      if(overlay) { overlay.style.display='flex'; overlay.querySelector('.ll-take-count').textContent = count; }
+      if(btn) btn.textContent = `🎙️ Starter om ${count}s...`;
+      const cd = setInterval(() => {
+        count--;
+        if(overlay) overlay.querySelector('.ll-take-count').textContent = count || 'REC';
+        if(btn) btn.textContent = count > 0 ? `🎙️ Starter om ${count}s...` : '⏹ Stopp innspilling';
+        if (count <= 0) {
+          clearInterval(cd);
+          startRecording();
+        }
+      }, 1000);
+    }
+
+    function startRecording() {
+      // Play the beat
+      if (typeof playSingleBeat === 'function') playSingleBeat(beat.id);
+
+      navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+        .then(stream => {
+          _takeChunks = [];
+          _takeSecs = 0;
+          const mime = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/ogg';
+          _takeRecorder = new MediaRecorder(stream, { mimeType: mime });
+          _takeRecorder.ondataavailable = e => { if(e.data.size>0) _takeChunks.push(e.data); };
+
+          _takeRecorder.onstart = () => {
+            if(overlay) {
+              overlay.querySelector('.ll-take-count').textContent = '⬤';
+              overlay.querySelector('.ll-take-label').textContent = `Spiller inn over ${esc(beat.name)}`;
+            }
+            _takeInterval = setInterval(() => {
+              _takeSecs++;
+              const m = Math.floor(_takeSecs/60);
+              const s = String(_takeSecs%60).padStart(2,'0');
+              const timer = document.getElementById('llTakeTimer');
+              if(timer) timer.textContent = `${m}:${s}`;
+            }, 1000);
+            if(typeof showToast==='function') showToast('🎙️ Innspilling startet');
+          };
+
+          _takeRecorder.onstop = () => {
+            clearInterval(_takeInterval);
+            stream.getTracks().forEach(t=>t.stop());
+            if(overlay) overlay.style.display='none';
+            if(btn){ btn.textContent='🎙️ Spill inn over beat'; btn.style.background=''; }
+            // Stop beat playback
+            if(window.bottomPlayer?.audio && !window.bottomPlayer.audio.paused) {
+              window.bottomPlayer.audio.pause();
+            }
+            const blob = new Blob(_takeChunks, { type: mime });
+            const reader = new FileReader();
+            reader.onload = e => {
+              if(!beat.takes) beat.takes = [];
+              beat.takes.push({ id: uid(), url: e.target.result, ts: Date.now(), dur: _takeSecs, mime });
+              if(typeof saveState==='function') saveState();
+              renderTakeList();
+              if(typeof showToast==='function') showToast(`✓ Take lagret (${_takeSecs}s)`);
+            };
+            reader.readAsDataURL(blob);
+          };
+
+          _takeRecorder.start(500);
+        })
+        .catch(err => {
+          if(overlay) overlay.style.display='none';
+          if(btn) btn.textContent='🎙️ Spill inn over beat';
+          if(typeof showToast==='function') showToast('Klarte ikke åpne mikrofon: ' + err.message);
+        });
+    }
+
+    startCountdown();
+  };
+
+  function renderTakeList() {
+    const beat = getBeat(window.currentLyricLabBeatId);
+    const el   = document.getElementById('llTakeList');
+    if(!el || !beat) return;
+    const takes = beat.takes || [];
+    el.innerHTML = takes.length
+      ? takes.map((t,i) => {
+          const m = Math.floor((t.dur||0)/60), s = String((t.dur||0)%60).padStart(2,'0');
+          return `<div class="ll-memo-row">
+            <audio controls src="${t.url}" style="height:28px;flex:1;min-width:0"></audio>
+            <span class="ll-memo-ts">${m}:${s}</span>
+            <button class="ll-memo-del" onclick="llDeleteTake('${esc(beat.id)}',${i})" title="Slett">✕</button>
+          </div>`;
+        }).join('')
+      : '<p style="font-size:11px;color:var(--muted);margin:0">Ingen takes ennå</p>';
+  }
+  window.llDeleteTake = function(beatId, idx) {
+    const beat = getBeat(beatId); if(!beat||!beat.takes) return;
+    beat.takes.splice(idx, 1);
+    if(typeof saveState==='function') saveState();
+    renderTakeList();
   };
 
   window.renderInlineSections = renderInlineSections;
