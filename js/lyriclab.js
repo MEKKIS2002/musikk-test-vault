@@ -394,65 +394,42 @@
   window._llSavedRange = null;
   window._llSavedEditor = null;
 
-  // Prevent color buttons from stealing focus (would clear the selection)
-  document.addEventListener('mousedown', e => {
-    if (e.target.closest('.ll-color-dot')) {
-      e.preventDefault();
-    }
-  }, true);
-
-  // Save selection whenever user selects text in a highlight editor
-  document.addEventListener('mouseup', () => {
+  // Track selection using selectionchange (most reliable cross-browser)
+  document.addEventListener('selectionchange', () => {
     const sel = window.getSelection();
-    if (!sel || sel.isCollapsed) return;
+    if (!sel || sel.isCollapsed || sel.rangeCount === 0) return;
     const anchor = sel.anchorNode;
     if (!anchor) return;
-    const editor = anchor.nodeType === 1
-      ? anchor.closest?.('.ll-highlight-editor')
-      : anchor.parentElement?.closest?.('.ll-highlight-editor');
+    const node = anchor.nodeType === 3 ? anchor.parentElement : anchor;
+    const editor = node?.closest?.('.ll-highlight-editor');
     if (editor) {
       window._llSavedRange  = sel.getRangeAt(0).cloneRange();
       window._llSavedEditor = editor;
-      // Show which section is active in color panel hint
-      const secId = editor.dataset.sectionId;
       const hint = document.getElementById('llColorHint');
-      if (hint && secId) {
-        const beat = getBeat(window.currentLyricLabBeatId);
-        const sec  = getSections(beat||{}).find(s=>s.id===secId);
-        hint.textContent = sec ? 'Aktiv: ' + sec.title : 'Tekst markert';
+      if (hint) {
+        const secId = editor.dataset.sectionId;
+        const beat  = getBeat(window.currentLyricLabBeatId);
+        const sec   = (getSections(beat||{})||[]).find(s=>s.id===secId);
+        hint.textContent = sec ? '✓ ' + sec.title + ' — klikk farge' : '✓ Klikk farge';
+        hint.style.color = '#f4a443';
       }
     }
   });
 
   window.llApplyColorActive = function(color) {
+    const editor = window._llSavedEditor;
+    const range  = window._llSavedRange;
+
+    if (!editor || !range) {
+      if(typeof showToast==='function') showToast('Marker tekst i en seksjon først');
+      return;
+    }
+
+    // Restore the saved selection into the editor
+    editor.focus();
     const sel = window.getSelection();
-
-    // Try to use saved range first (most reliable when clicking outside editor)
-    let editor = window._llSavedEditor;
-    if (editor && window._llSavedRange) {
-      sel.removeAllRanges();
-      sel.addRange(window._llSavedRange);
-    } else {
-      // Try live selection
-      if (sel && sel.rangeCount > 0 && !sel.isCollapsed) {
-        const anchor = sel.anchorNode;
-        editor = anchor?.nodeType === 1
-          ? anchor.closest?.('.ll-highlight-editor')
-          : anchor?.parentElement?.closest?.('.ll-highlight-editor');
-      }
-    }
-
-    if (!editor) {
-      if(typeof showToast==='function') showToast('Marker tekst i en seksjon først');
-      return;
-    }
-
-    // Ensure selection is in this editor and not collapsed
-    const currentSel = window.getSelection();
-    if (!currentSel || currentSel.isCollapsed) {
-      if(typeof showToast==='function') showToast('Marker tekst i en seksjon først');
-      return;
-    }
+    sel.removeAllRanges();
+    sel.addRange(range);
 
     if (color) {
       document.execCommand('backColor', false, color);
@@ -462,8 +439,7 @@
 
     const secId = editor.dataset.sectionId;
     if (secId) llHighlightInput(editor, secId);
-    // Keep saved range so user can apply another color without re-selecting
-    // (cleared on next mouseup selection)
+    // Keep range so user can re-apply without re-selecting
   };
 
   window.llApplyColor = function(secId, color) {
