@@ -208,7 +208,7 @@
 
 /* Section dropdown menu */
 .ll-section-menu {
-  position: absolute; right: 8px; bottom: calc(100% + 4px); z-index: 200;
+  position: absolute; right: 8px; top: 40px; z-index: 9999;
   background: #1a1825; border: 1px solid rgba(255,255,255,.12);
   border-radius: 12px; padding: 6px; min-width: 160px;
   box-shadow: 0 -8px 32px rgba(0,0,0,.5); display: none;
@@ -328,3 +328,5 @@
 }
 .ll-memo-del:hover { color: #fb7185; }
 audio::-webkit-media-controls-panel { background: rgba(255,255,255,.08); }
+
+.ll-center { overflow: visible !important; }
