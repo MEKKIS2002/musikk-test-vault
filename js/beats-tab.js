@@ -194,7 +194,6 @@
                 <span class="bl-cover">${coverHtml}</span>
                 <span class="bl-name">
                   <span class="bl-title">${esc(b.name)}</span>
-                  ${b.favorite ? '<span class="bl-fav">★</span>' : ''}
                   ${b.rating ? `<span class="bl-rating">${'★'.repeat(Math.round(b.rating/2))}</span>` : ''}
                 </span>
                 <span class="bl-collections">${colChips}</span>
@@ -203,6 +202,7 @@
                 <span class="bl-dur">${fmtDur(b.duration)}</span>
                 <span class="bl-actions">
                   <button class="bl-play" onclick="event.stopPropagation();beatsTab.playBeat('${b.id}')" title="Spill">▶</button>
+                  <button class="bl-star${b.favorite?' active':''}" onclick="event.stopPropagation();beatsTab.toggleFav('${b.id}')" title="${b.favorite?'Fjern favoritt':'Legg til favoritt'}">★</button>
                   <button class="bl-menu" onclick="event.stopPropagation();beatsTab.openDropdown('${b.id}',this)" title="Mer">⋯</button>
                 </span>
               </div>
