@@ -213,7 +213,8 @@
     <div class="ll-action-btns">
       <button class="ll-btn primary" onclick="llPlayBeat()">▶ Spill beat</button>
       <button class="ll-btn muted" onclick="llLoopHook()">↺ Loop hook</button>
-      <button class="ll-btn muted" onclick="llRecordMemo()">⬤ Ta opp memo</button>
+      <button class="ll-btn muted" id="llMemoBtn" onclick="llRecordMemo()">⬤ Ta opp memo</button>
+      <div id="llMemoList" style="margin-top:6px;display:flex;flex-direction:column;gap:6px"></div>
     </div>
   </div>
 
@@ -283,6 +284,7 @@
 </div><!-- /.ll-wrap -->
 `;
     _lastSaved = null;
+    setTimeout(renderMemoList, 50);
     // Focus first empty textarea
     setTimeout(() => {
       const first = container.querySelector('.ll-textarea:not([data-has-content])');
@@ -439,9 +441,79 @@
     else console.log('[LyricLab] Loop hook — not implemented yet');
   };
 
+  // ── Voice memo recorder ──────────────────────────────────────────────────
+  let _memoRecorder = null;
+  let _memoChunks   = [];
+  let _memoInterval = null;
+
   window.llRecordMemo = function() {
-    if (typeof showToast === 'function') showToast('Memofunksjon kommer snart');
-    else console.log('[LyricLab] Record memo — not implemented yet');
+    if (_memoRecorder && _memoRecorder.state === 'recording') {
+      _memoRecorder.stop();
+      return;
+    }
+    if (!navigator.mediaDevices?.getUserMedia) {
+      if(typeof showToast==='function') showToast('Mikrofon ikke tilgjengelig i denne nettleseren');
+      return;
+    }
+    navigator.mediaDevices.getUserMedia({ audio: true })
+      .then(stream => {
+        _memoChunks = [];
+        const mime = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/ogg';
+        _memoRecorder = new MediaRecorder(stream, { mimeType: mime });
+        _memoRecorder.ondataavailable = e => { if(e.data.size>0) _memoChunks.push(e.data); };
+        _memoRecorder.onstart = () => {
+          const btn = document.getElementById('llMemoBtn');
+          if(btn){ btn.textContent='⏹ Stopp memo'; btn.style.background='rgba(251,113,133,.2)'; btn.style.borderColor='rgba(251,113,133,.4)'; }
+          let secs = 0;
+          _memoInterval = setInterval(()=>{ secs++; const b=document.getElementById('llMemoBtn'); if(b) b.textContent=`⏹ Stopp (${secs}s)`; if(secs>=60) _memoRecorder?.stop(); }, 1000);
+          if(typeof showToast==='function') showToast('⬤ Tar opp memo... (maks 60s)');
+        };
+        _memoRecorder.onstop = () => {
+          clearInterval(_memoInterval);
+          stream.getTracks().forEach(t=>t.stop());
+          const btn = document.getElementById('llMemoBtn');
+          if(btn){ btn.textContent='⬤ Ta opp memo'; btn.style.background=''; btn.style.borderColor=''; }
+          const blob = new Blob(_memoChunks, { type: mime });
+          const reader = new FileReader();
+          reader.onload = e => {
+            const beat = getBeat(window.currentLyricLabBeatId);
+            if(!beat) return;
+            if(!beat.memos) beat.memos = [];
+            beat.memos.push({ id: uid(), url: e.target.result, ts: Date.now(), mime });
+            if(typeof saveState==='function') saveState();
+            renderMemoList();
+            if(typeof showToast==='function') showToast('✓ Memo lagret');
+          };
+          reader.readAsDataURL(blob);
+        };
+        _memoRecorder.start(500);
+      })
+      .catch(err => {
+        console.error('[LyricLab] Mic error:', err);
+        if(typeof showToast==='function') showToast('Klarte ikke åpne mikrofon: ' + err.message);
+      });
+  };
+
+  function renderMemoList() {
+    const beat = getBeat(window.currentLyricLabBeatId);
+    const el   = document.getElementById('llMemoList');
+    if(!el || !beat) return;
+    const memos = beat.memos || [];
+    el.innerHTML = memos.length
+      ? memos.map((m,i) => `
+          <div class="ll-memo-row">
+            <audio controls src="${m.url}" style="height:28px;flex:1;min-width:0"></audio>
+            <span class="ll-memo-ts">${new Date(m.ts).toLocaleTimeString('no-NO',{hour:'2-digit',minute:'2-digit'})}</span>
+            <button class="ll-memo-del" onclick="llDeleteMemo('${esc(beat.id)}',${i})" title="Slett">✕</button>
+          </div>`).join('')
+      : '<p style="font-size:11px;color:var(--muted);margin:0">Ingen memoer ennå</p>';
+  }
+
+  window.llDeleteMemo = function(beatId, idx) {
+    const beat = getBeat(beatId); if(!beat||!beat.memos) return;
+    beat.memos.splice(idx, 1);
+    if(typeof saveState==='function') saveState();
+    renderMemoList();
   };
 
   window.llSetStatus = function(val) {
