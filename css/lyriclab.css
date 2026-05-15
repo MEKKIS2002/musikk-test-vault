@@ -148,7 +148,20 @@
 /* Section card */
 .ll-section {
   background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.07);
-  border-radius: 14px; overflow: hidden; transition: border-color .15s;
+  border-radius: 14px; overflow: visible; transition: border-color .15s;
+  position: relative;
+}
+/* Keep header+body visually contained without clipping dropdown */
+.ll-section-header {
+  border-radius: 14px 14px 0 0;
+  overflow: hidden;
+}
+.ll-section-body {
+  border-radius: 0 0 14px 14px;
+  overflow: hidden;
+}
+.ll-section.collapsed .ll-section-header {
+  border-radius: 14px;
 }
 .ll-section:focus-within { border-color: rgba(244,164,67,.3); }
 
@@ -195,10 +208,10 @@
 
 /* Section dropdown menu */
 .ll-section-menu {
-  position: absolute; right: 8px; top: 40px; z-index: 50;
+  position: absolute; right: 8px; bottom: calc(100% + 4px); z-index: 200;
   background: #1a1825; border: 1px solid rgba(255,255,255,.12);
   border-radius: 12px; padding: 6px; min-width: 160px;
-  box-shadow: 0 8px 32px rgba(0,0,0,.5); display: none;
+  box-shadow: 0 -8px 32px rgba(0,0,0,.5); display: none;
 }
 .ll-section-menu.open { display: flex; flex-direction: column; }
 .ll-section-menu button {
@@ -302,3 +315,16 @@
 }
 .ab-lyric-editor .ll-inline-editor { gap: 6px; }
 .ab-lyric-editor .ll-inline-sections { gap: 5px; }
+
+/* ── Voice memo list ────────────────────────────────────── */
+.ll-memo-row {
+  display: flex; align-items: center; gap: 6px;
+  background: rgba(255,255,255,.04); border-radius: 8px; padding: 4px 8px;
+}
+.ll-memo-ts { font-size: 10px; color: var(--muted); white-space: nowrap; }
+.ll-memo-del {
+  background: none; border: none; color: rgba(255,255,255,.3);
+  cursor: pointer; font-size: 13px; padding: 2px 4px; flex-shrink:0;
+}
+.ll-memo-del:hover { color: #fb7185; }
+audio::-webkit-media-controls-panel { background: rgba(255,255,255,.08); }
