@@ -486,11 +486,3 @@ audio::-webkit-media-controls-panel { background: rgba(255,255,255,.08); }
   padding: 4px 0 6px; letter-spacing: .04em;
   background: rgba(0,0,0,.15);
 }
-
-.ll-wave-zoom-row {
-  display: flex; align-items: center; gap: 8px;
-  padding: 5px 10px 7px;
-  border-top: 1px solid rgba(255,255,255,.04);
-}
-.ll-wave-zoom-label { font-size: 11px; color: var(--muted); font-weight: 700; white-space: nowrap; }
-.ll-wave-zoom-val { font-size: 11px; color: var(--muted); min-width: 28px; text-align: right; }
