@@ -330,3 +330,24 @@
 audio::-webkit-media-controls-panel { background: rgba(255,255,255,.08); }
 
 .ll-center { overflow: visible !important; }
+
+/* ── Rhyme bank chips ───────────────────────────────────── */
+.ll-rhyme-chip {
+  background: rgba(244,164,67,.1);
+  border: 1px solid rgba(244,164,67,.25);
+  border-radius: 999px;
+  color: #f4a443;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 3px 10px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background .12s;
+}
+.ll-rhyme-chip:hover { background: rgba(244,164,67,.22); }
+.ll-rhyme-chip.muted {
+  background: rgba(255,255,255,.06);
+  border-color: rgba(255,255,255,.1);
+  color: rgba(255,255,255,.6);
+}
+.ll-rhyme-chip.muted:hover { background: rgba(255,255,255,.1); color: #fff; }
