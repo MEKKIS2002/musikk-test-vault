@@ -1013,164 +1013,177 @@
   });
 
 
-  // ── WaveSurfer waveform + loop region ────────────────────────────────────
-  let _ws = null;
-  let _wsRegion = null;   // { start, end } in seconds
+  // ── WaveSurfer waveform + Regions plugin for loop ───────────────────────────
+  let _ws       = null;
+  let _wsRegion = null;   // WaveSurfer Region object
   let _wsLooping = false;
-  let _wsTimeHandler = null;
+
+  const WS_URL      = 'https://cdnjs.cloudflare.com/ajax/libs/wavesurfer.js/7.8.7/wavesurfer.min.js';
+  const REGIONS_URL = 'https://cdnjs.cloudflare.com/ajax/libs/wavesurfer.js/7.8.7/plugins/regions.min.js';
 
   function initWaveSurfer(beat) {
     const container = document.getElementById('llWaveSurfer');
     if (!container) return;
-    if (_ws) { try { _ws.destroy(); } catch(e) {} _ws = null; }
-    _wsRegion = null; _wsLooping = false; _wsTimeHandler = null;
+    if (_ws) { try { _ws.destroy(); } catch(e) {} _ws = null; _wsRegion = null; }
 
     const audioUrl = beat.audio_url || beat.url || null;
     if (!audioUrl) {
-      container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:64px;color:rgba(255,255,255,.25);font-size:12px">Ingen lydfil lastet opp</div>';
+      container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:64px;color:rgba(255,255,255,.25);font-size:12px">Ingen lydfil</div>';
       return;
     }
-    if (!window.WaveSurfer) {
-      const s = document.createElement('script');
-      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/wavesurfer.js/7.8.7/wavesurfer.min.js';
-      s.onload = () => _buildWS(container, audioUrl);
-      document.head.appendChild(s);
-    } else {
-      _buildWS(container, audioUrl);
+
+    function load() {
+      if (window.WaveSurfer && window.RegionsPlugin) { _buildWS(container, audioUrl); return; }
+      if (!window.WaveSurfer) {
+        const s = document.createElement('script'); s.src = WS_URL;
+        s.onload = () => {
+          const r = document.createElement('script'); r.src = REGIONS_URL;
+          r.onload = () => _buildWS(container, audioUrl);
+          document.head.appendChild(r);
+        };
+        document.head.appendChild(s);
+      } else {
+        const r = document.createElement('script'); r.src = REGIONS_URL;
+        r.onload = () => _buildWS(container, audioUrl);
+        document.head.appendChild(r);
+      }
     }
+    load();
   }
 
   function _buildWS(container, audioUrl) {
+    const RegionsPlugin = window.RegionsPlugin ||
+      (window.WaveSurfer?.Regions) ||
+      (window.WaveSurfer?.default?.Regions);
+
+    let regions = null;
+    try { regions = (RegionsPlugin?.create || RegionsPlugin)(); } catch(e) {}
+
+    const plugins = regions ? [regions] : [];
+
     try {
       _ws = WaveSurfer.create({
         container,
-        waveColor:     'rgba(244,164,67,.4)',
-        progressColor: 'rgba(244,164,67,.85)',
-        cursorColor:   '#f4a443',
+        waveColor:      'rgba(244,164,67,.45)',
+        progressColor:  'rgba(244,164,67,.9)',
+        cursorColor:    '#f4a443',
         height: 64, barWidth: 2, barGap: 1, barRadius: 2,
-        normalize: true,
-        url: audioUrl,
-        minPxPerSec: 1,    // start zoomed out
+        normalize: true, url: audioUrl,
+        plugins,
       });
 
-      _ws.on('play',  () => { const b=document.getElementById('llWavePlayBtn'); if(b) b.textContent='⏸'; });
-      _ws.on('pause', () => { const b=document.getElementById('llWavePlayBtn'); if(b) b.textContent='▶'; });
-      _ws.on('finish',() => {
+      _ws.on('play',   () => { const b=document.getElementById('llWavePlayBtn'); if(b) b.textContent='⏸'; });
+      _ws.on('pause',  () => { const b=document.getElementById('llWavePlayBtn'); if(b) b.textContent='▶'; });
+      _ws.on('finish', () => {
         const b=document.getElementById('llWavePlayBtn'); if(b) b.textContent='▶';
-        if (_wsLooping && _wsRegion) { setTimeout(()=>{ _ws.setTime(_wsRegion.start); _ws.play(); }, 50); }
+        if (_wsLooping && _wsRegion) {
+          setTimeout(() => { _ws.setTime(_wsRegion.start); _ws.play(); }, 30);
+        }
       });
 
-      // Single timeupdate handler for looping
-      _wsTimeHandler = (t) => {
-        if (_wsLooping && _wsRegion && t >= _wsRegion.end) {
+      // Loop timeupdate — check every frame
+      _ws.on('timeupdate', t => {
+        if (_wsLooping && _wsRegion && t >= _wsRegion.end - 0.05) {
           _ws.setTime(_wsRegion.start);
-        }
-      };
-      _ws.on('timeupdate', _wsTimeHandler);
-
-      // Drag overlay — sits above WaveSurfer canvas to intercept drag without blocking clicks
-      const dragOverlay = document.createElement('div');
-      dragOverlay.style.cssText = 'position:absolute;inset:0;z-index:20;cursor:crosshair';
-      container.style.position = 'relative';
-      container.appendChild(dragOverlay);
-
-      let _dragStart = null;
-      let _dragMoved = false;
-      let _dragPreview = null;
-
-      dragOverlay.addEventListener('mousedown', e => {
-        const dur = _ws.getDuration?.();
-        if (!dur) return;
-        const rect = container.getBoundingClientRect();
-        _dragStart = ((e.clientX - rect.left) / rect.width) * dur;
-        _dragMoved = false;
-        e.stopPropagation();
-      });
-
-      dragOverlay.addEventListener('mousemove', e => {
-        if (_dragStart === null) return;
-        const rect = container.getBoundingClientRect();
-        const cur  = ((e.clientX - rect.left) / rect.width) * (_ws.getDuration?.() || 1);
-        const diff = Math.abs(cur - _dragStart);
-        if (diff > 0.2) {
-          _dragMoved = true;
-          // Show live preview
-          const s = Math.min(_dragStart, cur), en = Math.max(_dragStart, cur);
-          _drawRegion(s, en);
+          if (!_ws.isPlaying()) _ws.play();
         }
       });
 
-      dragOverlay.addEventListener('mouseup', e => {
-        if (_dragStart === null) return;
-        const dur = _ws.getDuration?.();
-        if (!dur || !_dragMoved) {
-          // It was a click — seek normally
-          if (!_dragMoved && dur) {
-            const rect = container.getBoundingClientRect();
-            const ratio = (e.clientX - rect.left) / rect.width;
-            _ws.seekTo(ratio);
+      // Use RegionsPlugin for visual region if available
+      if (regions) {
+        let dragging = false, dragT0 = null;
+
+        // On ready: enable drag-to-create
+        _ws.on('ready', () => {
+          if (regions.enableDragSelection) {
+            regions.enableDragSelection({ color: 'rgba(244,164,67,.2)' });
           }
-          _dragStart = null; _dragMoved = false;
-          return;
-        }
-        const rect = container.getBoundingClientRect();
-        const dragEnd = ((e.clientX - rect.left) / rect.width) * dur;
-        const start = Math.min(_dragStart, dragEnd);
-        const end   = Math.max(_dragStart, dragEnd);
-        _dragStart = null; _dragMoved = false;
-        if (end - start < 0.2) { llClearLoop(); return; }
-        _wsRegion  = { start, end };
-        _wsLooping = true;
-        _drawRegion(start, end);
-        const lb = document.getElementById('llWaveLoopBtn');
-        if (lb) { lb.classList.add('active'); lb.textContent = '↺ Looper'; }
-      });
+          regions.on('region-created', reg => {
+            // Remove previous region
+            if (_wsRegion && _wsRegion.id !== reg.id) {
+              try { regions.getRegions().forEach(r => { if(r.id !== reg.id) r.remove(); }); } catch(e) {}
+            }
+            reg.setOptions({ color: 'rgba(244,164,67,.18)', handleStyle: { left: { background:'#f4a443' }, right: { background:'#f4a443' } } });
+            _wsRegion  = reg;
+            _wsLooping = true;
+            const lb = document.getElementById('llWaveLoopBtn');
+            if (lb) { lb.classList.add('active'); lb.textContent = '↺ Looper'; }
+          });
+          regions.on('region-updated', reg => { _wsRegion = reg; });
+        });
+      } else {
+        // Fallback: manual drag overlay
+        _buildManualDrag(container);
+      }
 
-    } catch(e) { console.warn('[WaveSurfer] init error:', e); }
+    } catch(e) { console.warn('[WaveSurfer]', e); }
   }
 
-  function _drawRegion(start, end) {
-    const el = document.getElementById('llWaveSurfer');
-    if (!el || !_ws) return;
-    document.getElementById('llWaveRegion')?.remove();
-    const dur = _ws.getDuration?.() || 1;
-    const div = document.createElement('div');
-    div.id = 'llWaveRegion';
-    div.style.cssText = `position:absolute;top:0;bottom:0;pointer-events:none;z-index:5;`
-      + `left:${(start/dur)*100}%;width:${((end-start)/dur)*100}%;`
-      + `background:rgba(244,164,67,.15);border-left:2px solid #f4a443;border-right:2px solid #f4a443;`;
-    el.style.position = 'relative';
-    el.appendChild(div);
+  function _buildManualDrag(container) {
+    // Simple manual drag when RegionsPlugin unavailable
+    container.style.position = 'relative';
+    let ds = null, dm = false;
+    const ov = document.createElement('div');
+    ov.style.cssText='position:absolute;inset:0;z-index:20;cursor:crosshair';
+    container.appendChild(ov);
+
+    ov.addEventListener('mousedown', e => { if(_ws?.getDuration()) { ds=_tFromEvent(e); dm=false; } e.stopPropagation(); });
+    ov.addEventListener('mousemove', e => {
+      if(ds===null) return; dm=true;
+      const s=Math.min(ds,_tFromEvent(e)), en=Math.max(ds,_tFromEvent(e));
+      _drawFallbackRegion(s, en);
+    });
+    ov.addEventListener('mouseup', e => {
+      if(ds===null) return;
+      if(!dm) { _ws.seekTo(_tFromEvent(e)/(_ws.getDuration()||1)); ds=null; return; }
+      const s=Math.min(ds,_tFromEvent(e)), en=Math.max(ds,_tFromEvent(e));
+      ds=null; dm=false;
+      if(en-s<0.2) return;
+      _wsRegion={start:s,end:en};
+      _wsLooping=true;
+      _drawFallbackRegion(s,en);
+      const lb=document.getElementById('llWaveLoopBtn');
+      if(lb){lb.classList.add('active');lb.textContent='↺ Looper';}
+    });
+  }
+  function _tFromEvent(e) {
+    const r=document.getElementById('llWaveSurfer')?.getBoundingClientRect();
+    if(!r||!_ws) return 0;
+    return ((e.clientX-r.left)/r.width)*(_ws.getDuration()||1);
+  }
+  function _drawFallbackRegion(s,en) {
+    const c=document.getElementById('llWaveSurfer'); if(!c||!_ws) return;
+    let d=document.getElementById('llWaveRegion');
+    if(!d){d=document.createElement('div');d.id='llWaveRegion';d.style.cssText='position:absolute;top:0;bottom:0;pointer-events:none;z-index:5;';c.appendChild(d);}
+    const dur=_ws.getDuration()||1;
+    d.style.left=(s/dur*100)+'%';d.style.width=((en-s)/dur*100)+'%';
+    d.style.background='rgba(244,164,67,.15)';d.style.borderLeft='2px solid #f4a443';d.style.borderRight='2px solid #f4a443';
   }
 
   window.llWavePlay = function() {
     if (!_ws) return;
     if (_ws.isPlaying()) { _ws.pause(); return; }
-    if (_wsLooping && _wsRegion) _ws.setTime(_wsRegion.start);
+    if (_wsLooping && _wsRegion) _ws.setTime(_wsRegion.start || _wsRegion.start);
     _ws.play();
   };
-
   window.llToggleLoop = function() {
     _wsLooping = !_wsLooping;
     const btn = document.getElementById('llWaveLoopBtn');
     if (btn) { btn.classList.toggle('active', _wsLooping); btn.textContent = _wsLooping ? '↺ Looper' : '↺ Loop'; }
   };
-
   window.llClearLoop = function() {
-    _wsRegion = null; _wsLooping = false;
+    _wsLooping = false;
+    if (_wsRegion?.remove) { try { _wsRegion.remove(); } catch(e){} }
+    _wsRegion = null;
     document.getElementById('llWaveRegion')?.remove();
     const btn = document.getElementById('llWaveLoopBtn');
     if (btn) { btn.classList.remove('active'); btn.textContent = '↺ Loop'; }
   };
-
   window.llZoomWave = function(val) {
     if (!_ws) return;
-    const pxPerSec = Math.max(1, Number(val) * 10);
-    _ws.zoom(pxPerSec);
+    _ws.zoom(Number(val) * 10);
     const lbl = document.getElementById('llWaveZoomVal');
     if (lbl) lbl.textContent = val + '×';
-    // Re-draw region after zoom
-    if (_wsRegion) _drawRegion(_wsRegion.start, _wsRegion.end);
   };
 
   // ── Public entry point ────────────────────────────────────────────────────
