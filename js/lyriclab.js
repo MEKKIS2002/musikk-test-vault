@@ -142,12 +142,12 @@
           oninput="llSectionInput(this,'${esc(sec.id)}')"
           rows="${Math.max(5, sec.text.split('\n').length + 2)}"
         >${esc(sec.text)}</textarea>
-        <div class="ll-section-menu" id="llmenu-${esc(sec.id)}">
-          <button onclick="llDuplicateSection('${esc(sec.id)}')">⧉ Dupliser</button>
-          <button onclick="llMoveSectionUp('${esc(sec.id)}')">↑ Flytt opp</button>
-          <button onclick="llMoveSectionDown('${esc(sec.id)}')">↓ Flytt ned</button>
-          <button class="danger" onclick="llDeleteSection('${esc(sec.id)}')">🗑 Slett seksjon</button>
-        </div>
+      </div>
+      <div class="ll-section-menu" id="llmenu-${esc(sec.id)}">
+        <button onclick="llDuplicateSection('${esc(sec.id)}')">⧉ Dupliser</button>
+        <button onclick="llMoveSectionUp('${esc(sec.id)}')">↑ Flytt opp</button>
+        <button onclick="llMoveSectionDown('${esc(sec.id)}')">↓ Flytt ned</button>
+        <button class="danger" onclick="llDeleteSection('${esc(sec.id)}')">🗑 Slett seksjon</button>
       </div>
     </div>`;
   }
@@ -680,14 +680,39 @@
     }
 
     function startRecording() {
-      // Play the beat
+      // Play the beat first
       if (typeof playSingleBeat === 'function') playSingleBeat(beat.id);
 
       navigator.mediaDevices.getUserMedia({ audio: true, video: false })
-        .then(stream => {
+        .then(micStream => {
           _takeChunks = [];
           _takeSecs = 0;
           const mime = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/ogg';
+
+          // Mix mic + beat audio using Web Audio API
+          const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          const dest     = audioCtx.createMediaStreamDestination();
+
+          // Mic input → mixer
+          const micSource = audioCtx.createMediaStreamSource(micStream);
+          micSource.connect(dest);
+
+          // Beat audio element → mixer (also keep connected to speakers)
+          const beatAudio = window.bottomPlayer?.audio;
+          if (beatAudio) {
+            try {
+              const beatSource = audioCtx.createMediaElementSource(beatAudio);
+              beatSource.connect(dest);
+              beatSource.connect(audioCtx.destination); // still hear it
+            } catch(e) {
+              // Already captured — connect mic only, beat plays separately
+              console.log('[LyricLab] Beat already captured, recording mic only');
+            }
+          }
+
+          const mixedStream = dest.stream;
+          const stream = mixedStream; // use mixed for recorder
+
           _takeRecorder = new MediaRecorder(stream, { mimeType: mime });
           _takeRecorder.ondataavailable = e => { if(e.data.size>0) _takeChunks.push(e.data); };
 
@@ -708,7 +733,8 @@
 
           _takeRecorder.onstop = () => {
             clearInterval(_takeInterval);
-            stream.getTracks().forEach(t=>t.stop());
+            micStream.getTracks().forEach(t=>t.stop());
+            audioCtx.close().catch(()=>{});
             if(overlay) overlay.style.display='none';
             if(btn){ btn.textContent='🎙️ Spill inn over beat'; btn.style.background=''; }
             // Stop beat playback
