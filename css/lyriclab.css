@@ -255,3 +255,50 @@
 .ll-empty h2 { font-size: 22px; font-weight: 900; letter-spacing: -.04em; }
 .ll-empty p  { font-size: 14px; color: var(--muted); max-width: 360px; line-height: 1.65; margin: 0; }
 .ll-empty-btns { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+
+/* ── Inline section editor (inside album/mixtape beat cards) ──── */
+.ll-inline-editor { display: flex; flex-direction: column; gap: 0; }
+.ll-inline-sections { display: flex; flex-direction: column; gap: 6px; }
+.ll-inline-editor .ll-section { margin-bottom: 0; }
+.ll-inline-editor .ll-textarea { min-height: 80px; font-size: 13px; padding: 10px 12px; }
+.ll-inline-editor .ll-section-header { padding: 8px 12px; }
+.ll-inline-editor .ll-section-type { font-size: 9px; padding: 2px 7px; }
+.ll-inline-editor .ll-line-numbers { font-size: 10px; padding: 10px 6px 10px 10px; min-width: 24px; }
+
+/* ── ab-expand redesign with section editor ──────────────────── */
+.ab-expand { padding: 0 !important; flex-direction: column !important; gap: 0 !important; }
+
+.ab-expand-top-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(255,255,255,.06);
+  background: rgba(0,0,0,.15);
+}
+
+.ab-lyric-editor {
+  padding: 12px 14px 14px;
+}
+.ab-lyric-editor .ll-section {
+  background: rgba(255,255,255,.03);
+  border-color: rgba(255,255,255,.06);
+}
+.ab-lyric-editor .ll-section:focus-within {
+  border-color: rgba(244,164,67,.25);
+}
+.ab-lyric-editor .ll-textarea {
+  font-size: 13px;
+  min-height: 70px;
+  padding: 10px 12px;
+}
+.ab-lyric-editor .ll-section-header { padding: 8px 12px; }
+.ab-lyric-editor .ll-section-type { font-size: 9px; padding: 2px 7px; }
+.ab-lyric-editor .ll-line-numbers {
+  font-size: 10px;
+  padding: 10px 6px 10px 10px;
+  min-width: 24px;
+}
+.ab-lyric-editor .ll-inline-editor { gap: 6px; }
+.ab-lyric-editor .ll-inline-sections { gap: 5px; }
