@@ -198,22 +198,22 @@
       <div class="ll-beat-title">${esc(beat.name)}</div>
       ${beat.source ? `<div class="ll-beat-source">prod. ${esc(beat.source)}</div>` : ''}
 
-      <div class="ll-wavesurfer-wrap">
-      <div id="llWaveSurfer" style="width:100%;height:64px;cursor:crosshair"></div>
-      <div class="ll-wave-controls">
-        <button class="ll-wave-btn" id="llWavePlayBtn" onclick="llWavePlay()" title="Spill/pause">▶</button>
-        <button class="ll-wave-btn" id="llWaveLoopBtn" onclick="llToggleLoop()" title="Loop region">↺ Loop</button>
-        <button class="ll-wave-btn" onclick="llClearLoop()" title="Fjern loop">✕ Fjern</button>
+      <div style="background:rgba(0,0,0,.3);border-radius:12px;border:1px solid rgba(255,255,255,.08);overflow:hidden;margin-bottom:8px">
+        <div id="llWaveSurfer" style="width:100%;height:64px;cursor:crosshair;display:block"></div>
+        <div style="display:flex;align-items:center;gap:6px;padding:8px 10px;background:rgba(0,0,0,.2);border-top:1px solid rgba(255,255,255,.06)">
+          <button id="llWavePlayBtn" onclick="llWavePlay()" style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#fff;font-size:11px;font-weight:800;font-family:inherit;padding:5px 10px;cursor:pointer;white-space:nowrap">▶</button>
+          <button id="llWaveLoopBtn" onclick="llToggleLoop()" style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#fff;font-size:11px;font-weight:800;font-family:inherit;padding:5px 10px;cursor:pointer;white-space:nowrap">↺ Loop</button>
+          <button onclick="llClearLoop()" style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#fff;font-size:11px;font-weight:800;font-family:inherit;padding:5px 10px;cursor:pointer;white-space:nowrap">✕ Fjern</button>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;padding:6px 10px 8px;background:rgba(0,0,0,.2);border-top:1px solid rgba(255,255,255,.04)">
+          <span style="font-size:11px;color:rgba(255,255,255,.4);font-weight:700;white-space:nowrap;flex-shrink:0">🔍 Zoom</span>
+          <input type="range" id="llWaveZoom" min="1" max="20" value="1"
+            style="flex:1;accent-color:#f4a443;cursor:pointer"
+            oninput="llZoomWave(this.value)">
+          <span id="llWaveZoomVal" style="font-size:11px;color:rgba(255,255,255,.4);min-width:28px;text-align:right;font-weight:700;flex-shrink:0">1×</span>
+        </div>
+        <div style="font-size:10px;color:rgba(255,255,255,.2);text-align:center;padding:4px 0 6px;background:rgba(0,0,0,.2)">Klikk og dra for å markere loopområde</div>
       </div>
-      <div class="ll-wave-zoom-row">
-        <span class="ll-wave-zoom-label">🔍 Zoom</span>
-        <input type="range" id="llWaveZoom" min="1" max="20" value="1"
-          style="flex:1;accent-color:#f4a443;cursor:pointer"
-          oninput="llZoomWave(this.value)">
-        <span id="llWaveZoomVal" class="ll-wave-zoom-val">1×</span>
-      </div>
-      <div class="ll-wave-hint">Klikk og dra på bølgeformen for å markere loopområde</div>
-    </div>
 
       <div class="ll-meta-row"><span class="ll-meta-key">Varighet</span><span class="ll-meta-val">${dur}</span></div>
       ${beat.bpm ? `<div class="ll-meta-row"><span class="ll-meta-key">BPM</span><span class="ll-meta-val">${esc(String(beat.bpm))}</span></div>` : ''}
