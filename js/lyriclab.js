@@ -329,6 +329,21 @@
       </div>
     </div>` : ''}
 
+    <div class="ll-card ll-stat-card">
+      <div class="ll-stat-title">Fargemark</div>
+      <div style="font-size:11px;color:rgba(255,255,255,.3);margin-bottom:8px">Marker tekst i en seksjon, velg farge</div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <button class="ll-color-dot" style="background:#f59e0b" onclick="llApplyColorActive('#f59e0b')" title="Gul"></button>
+        <button class="ll-color-dot" style="background:#10b981" onclick="llApplyColorActive('#10b981')" title="Grønn"></button>
+        <button class="ll-color-dot" style="background:#3b82f6" onclick="llApplyColorActive('#3b82f6')" title="Blå"></button>
+        <button class="ll-color-dot" style="background:#ec4899" onclick="llApplyColorActive('#ec4899')" title="Rosa"></button>
+        <button class="ll-color-dot" style="background:#ef4444" onclick="llApplyColorActive('#ef4444')" title="Rød"></button>
+        <button class="ll-color-dot" style="background:#a855f7" onclick="llApplyColorActive('#a855f7')" title="Lilla"></button>
+        <button class="ll-color-dot ll-color-clear" onclick="llApplyColorActive(null)" title="Fjern farge">✕</button>
+      </div>
+      <div id="llColorHint" style="font-size:10px;color:rgba(255,255,255,.2);margin-top:6px">Marker tekst i editoren, klikk så farge</div>
+    </div>
+
     <div class="ll-card ll-stat-card" id="llRhymeCard">
       <div class="ll-stat-title">Rimbank</div>
       <div style="display:flex;gap:6px;margin-bottom:10px">
@@ -375,6 +390,22 @@
   }
 
   // ── Section actions ───────────────────────────────────────────────────────
+  // Apply color to the currently active (focused) highlight editor
+  window._llActiveSectionId = null;
+
+  window.llApplyColorActive = function(color) {
+    // Find the editor that currently has focus or was last focused
+    const secId = window._llActiveSectionId;
+    if (secId) { llApplyColor(secId, color); return; }
+    // Fallback: try document.activeElement
+    const active = document.activeElement;
+    if (active?.classList?.contains('ll-highlight-editor')) {
+      const id = active.dataset.sectionId;
+      if (id) { llApplyColor(id, color); return; }
+    }
+    if (typeof showToast==='function') showToast('Klikk i en seksjon for å velge den');
+  };
+
   window.llApplyColor = function(secId, color) {
     const editor = document.getElementById('lltxt-' + secId);
     if (!editor) return;
