@@ -686,7 +686,7 @@
     }
 
     function startRecording() {
-      if (typeof playSingleBeat === 'function') playSingleBeat(beat.id);
+      // Don't use playSingleBeat — the blob Audio element handles playback
       const beatUrl = beat.audio_url || beat.url || null;
 
       function doRecord(blobUrl) {
