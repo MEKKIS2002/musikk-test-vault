@@ -121,7 +121,7 @@ document.documentElement.classList.add('mv-mixed-ui');
         const ph = card.querySelector('.ab-cover-ph');
         if(ph) ph.outerHTML = `<img class="ab-cover" src="${safe(cover)}" alt="${safe(b.name)}">`;
       }
-      // Quick play button
+      // Quick play button + move star into actions group
       const titleRow = card.querySelector('.ab-body > div:first-child');
       if(titleRow && !titleRow.querySelector('.quick-play-btn')){
         const btn = document.createElement('button');
@@ -131,6 +131,11 @@ document.documentElement.classList.add('mv-mixed-ui');
         let actions = titleRow.querySelector('.track-card-actions');
         if(!actions){ actions=document.createElement('div'); actions.className='track-card-actions'; titleRow.appendChild(actions); }
         actions.prepend(btn);
+        // Move the star-btn into actions so it's right next to play
+        const starBtn = titleRow.querySelector('.star-btn');
+        if(starBtn && !actions.querySelector('.star-btn')){
+          actions.appendChild(starBtn);
+        }
       }
       // Duration in list mode
       if(getView()==='list' && b.duration){
