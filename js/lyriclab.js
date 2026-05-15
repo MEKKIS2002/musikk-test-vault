@@ -1181,9 +1181,11 @@
   };
   window.llZoomWave = function(val) {
     if (!_ws) return;
-    _ws.zoom(Number(val) * 10);
+    const n = Number(val);
+    // val=1 → fully zoomed out (auto-fit), val>1 → zoom in
+    _ws.zoom(n <= 1 ? 0 : n * 12);
     const lbl = document.getElementById('llWaveZoomVal');
-    if (lbl) lbl.textContent = val + '×';
+    if (lbl) lbl.textContent = n <= 1 ? '1×' : n + '×';
   };
 
   // ── Public entry point ────────────────────────────────────────────────────
