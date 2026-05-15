@@ -18,11 +18,11 @@
 
   // ── Constants ─────────────────────────────────────────────────────────────
   const DEFAULT_SECTIONS = [
-    { id: 'hook',   type: 'hook',   title: 'Hook',   text: '', collapsed: false, order: 0 },
-    { id: 'verse1', type: 'verse',  title: 'Vers 1', text: '', collapsed: false, order: 1 },
-    { id: 'bridge', type: 'bridge', title: 'Bro',    text: '', collapsed: false, order: 2 },
-    { id: 'verse2', type: 'verse',  title: 'Vers 2', text: '', collapsed: false, order: 3 },
-    { id: 'outro',  type: 'outro',  title: 'Outro',  text: '', collapsed: true,  order: 4 },
+    { id: 'hook',   type: 'hook',   title: 'Hook',   text: '', collapsed: false, done: false, order: 0 },
+    { id: 'verse1', type: 'verse',  title: 'Vers 1', text: '', collapsed: false, done: false, order: 1 },
+    { id: 'bridge', type: 'bridge', title: 'Bro',    text: '', collapsed: false, done: false, order: 2 },
+    { id: 'verse2', type: 'verse',  title: 'Vers 2', text: '', collapsed: false, done: false, order: 3 },
+    { id: 'outro',  type: 'outro',  title: 'Outro',  text: '', collapsed: true,  done: false, order: 4 },
   ];
   const STATUS_OPTIONS = ['utkast','skriver','demo','revisjon','ferdig'];
   const TYPE_LABELS    = { hook:'Hook', verse:'Vers', bridge:'Bro', outro:'Outro', custom:'Custom' };
@@ -97,7 +97,7 @@
     return Object.entries(freq).filter(([,n])=>n>=3).sort((a,b)=>b[1]-a[1]).slice(0,8);
   }
   function missingSections(beat) {
-    const have = new Set((getSections(beat)||[]).filter(s=>s.text.trim()).map(s=>s.type));
+    const have = new Set((getSections(beat)||[]).filter(s=>s.done || s.text.trim()).map(s=>s.type));
     return ['hook','verse','bridge'].filter(t=>!have.has(t));
   }
 
@@ -133,6 +133,9 @@
           onchange="llRenameSection('${esc(sec.id)}',this.value)">
         <span class="ll-section-line-count">${lineCount} ${lineCount===1?'linje':'linjer'}</span>
         <button class="ll-section-menu-btn" onclick="event.stopPropagation();llToggleSectionMenu('${esc(sec.id)}')">⋯</button>
+        <button class="ll-section-done-btn${sec.done?' done':''}" onclick="event.stopPropagation();llToggleSectionDone('${esc(sec.id)}')" title="${sec.done?'Ferdig':'Merk som ferdig'}">
+          ${sec.done?'✓':'○'}
+        </button>
         <button class="ll-section-toggle">${sec.collapsed?'▸':'▾'}</button>
       </div>
       <div class="ll-section-body">
@@ -195,7 +198,19 @@
       <div class="ll-beat-title">${esc(beat.name)}</div>
       ${beat.source ? `<div class="ll-beat-source">prod. ${esc(beat.source)}</div>` : ''}
 
-      <div class="ll-waveform paused" id="llWaveform">${waveformHTML()}</div>
+      <div class="ll-wavesurfer-wrap">
+      <div id="llWaveSurfer" style="width:100%;height:64px;cursor:crosshair"></div>
+      <div class="ll-wave-controls">
+        <button class="ll-wave-btn" id="llWavePlayBtn" onclick="llWavePlay()" title="Spill/pause">▶</button>
+        <button class="ll-wave-btn" id="llWaveLoopBtn" onclick="llToggleLoop()" title="Loop valgt region">↺ Loop</button>
+        <button class="ll-wave-btn" onclick="llClearLoop()" title="Fjern loop">✕ Loop</button>
+        <input type="range" id="llWaveZoom" min="1" max="200" value="1"
+          style="flex:1;accent-color:#f4a443;cursor:pointer"
+          oninput="llZoomWave(this.value)" title="Zoom inn">
+        <span style="font-size:10px;color:var(--muted);min-width:24px" id="llWaveZoomVal">1×</span>
+      </div>
+      <div class="ll-wave-hint">Dra på bølgeformen for å sette loopområde</div>
+    </div>
 
       <div class="ll-meta-row"><span class="ll-meta-key">Varighet</span><span class="ll-meta-val">${dur}</span></div>
       ${beat.bpm ? `<div class="ll-meta-row"><span class="ll-meta-key">BPM</span><span class="ll-meta-val">${esc(String(beat.bpm))}</span></div>` : ''}
@@ -297,7 +312,7 @@
 </div><!-- /.ll-wrap -->
 `;
     _lastSaved = null;
-    setTimeout(()=>{ renderMemoList(); renderTakeList(); }, 50);
+    setTimeout(()=>{ renderMemoList(); renderTakeList(); initWaveSurfer(beat); }, 100);
     // Focus first empty textarea
     setTimeout(() => {
       const first = container.querySelector('.ll-textarea:not([data-has-content])');
@@ -324,6 +339,17 @@
   }
 
   // ── Section actions ───────────────────────────────────────────────────────
+  window.llToggleSectionDone = function(id) {
+    const beat = getBeat(window.currentLyricLabBeatId); if(!beat) return;
+    const sec = getSections(beat).find(s=>s.id===id); if(!sec) return;
+    sec.done = !sec.done;
+    // Update button
+    const btn = document.querySelector(`#llsec-${id} .ll-section-done-btn, #llins-sec-${id} .ll-section-done-btn`);
+    if(btn){ btn.classList.toggle('done', sec.done); btn.textContent = sec.done ? '✓' : '○'; btn.title = sec.done ? 'Ferdig' : 'Merk som ferdig'; }
+    saveSections(beat);
+    // Update right panel missing sections
+    updateRightPanel(beat);
+  };
   window.llToggleSection = function(id) {
     const beat = getBeat(window.currentLyricLabBeatId);
     if (!beat) return;
@@ -982,6 +1008,145 @@
       if(input) { input.value = word; clearTimeout(window._rhymeTimer); window._rhymeTimer = setTimeout(llFindRhymes, 300); }
     }
   });
+
+
+  // ── WaveSurfer waveform + loop region ────────────────────────────────────
+  let _ws = null;
+  let _wsRegion = null;
+  let _wsLooping = false;
+
+  function initWaveSurfer(beat) {
+    const container = document.getElementById('llWaveSurfer');
+    if (!container) return;
+
+    // Destroy previous instance
+    if (_ws) { try { _ws.destroy(); } catch(e) {} _ws = null; }
+
+    const audioUrl = beat.audio_url || beat.url || null;
+    if (!audioUrl) {
+      container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:64px;color:rgba(255,255,255,.2);font-size:12px">Ingen lydfil</div>';
+      return;
+    }
+
+    // Load WaveSurfer dynamically
+    if (!window.WaveSurfer) {
+      const script = document.createElement('script');
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/wavesurfer.js/7.8.7/wavesurfer.min.js';
+      script.onload = () => _createWaveSurfer(container, audioUrl, beat);
+      document.head.appendChild(script);
+    } else {
+      _createWaveSurfer(container, audioUrl, beat);
+    }
+  }
+
+  function _createWaveSurfer(container, audioUrl, beat) {
+    try {
+      _ws = WaveSurfer.create({
+        container,
+        waveColor:    'rgba(244,164,67,.45)',
+        progressColor:'rgba(244,164,67,.9)',
+        cursorColor:  '#f4a443',
+        height: 64,
+        barWidth: 2,
+        barGap: 1,
+        barRadius: 2,
+        normalize: true,
+        backend: 'WebAudio',
+        url: audioUrl,
+      });
+
+      _ws.on('play',  () => { const b=document.getElementById('llWavePlayBtn'); if(b) b.textContent='⏸'; });
+      _ws.on('pause', () => { const b=document.getElementById('llWavePlayBtn'); if(b) b.textContent='▶'; });
+      _ws.on('finish',() => {
+        if (_wsLooping && _wsRegion) {
+          _ws.setTime(_wsRegion.start);
+          _ws.play();
+        } else {
+          const b=document.getElementById('llWavePlayBtn'); if(b) b.textContent='▶';
+        }
+      });
+
+      // Drag to create loop region
+      let dragStart = null;
+      container.addEventListener('mousedown', e => {
+        if (!_ws.getDuration()) return;
+        const rect = container.getBoundingClientRect();
+        const ratio = (e.clientX - rect.left) / rect.width;
+        dragStart = ratio * _ws.getDuration();
+      });
+      container.addEventListener('mouseup', e => {
+        if (dragStart === null || !_ws.getDuration()) return;
+        const rect = container.getBoundingClientRect();
+        const ratio = (e.clientX - rect.left) / rect.width;
+        const dragEnd = ratio * _ws.getDuration();
+        const start = Math.min(dragStart, dragEnd);
+        const end   = Math.max(dragStart, dragEnd);
+        if (end - start > 0.5) {
+          _wsRegion = { start, end };
+          _drawRegion(start, end);
+          _wsLooping = true;
+          const lb = document.getElementById('llWaveLoopBtn');
+          if (lb) { lb.classList.add('active'); lb.textContent = '↺ Looper'; }
+        }
+        dragStart = null;
+      });
+
+    } catch(e) {
+      console.warn('[LyricLab] WaveSurfer init failed:', e);
+    }
+  }
+
+  function _drawRegion(start, end) {
+    const el = document.getElementById('llWaveSurfer');
+    let region = document.getElementById('llWaveRegion');
+    if (!region) {
+      region = document.createElement('div');
+      region.id = 'llWaveRegion';
+      el.style.position = 'relative';
+      el.appendChild(region);
+    }
+    const dur = _ws.getDuration();
+    region.style.cssText = `position:absolute;top:0;bottom:0;left:${(start/dur)*100}%;width:${((end-start)/dur)*100}%;background:rgba(244,164,67,.18);border-left:2px solid #f4a443;border-right:2px solid #f4a443;pointer-events:none;z-index:10`;
+  }
+
+  window.llWavePlay = function() {
+    if (!_ws) return;
+    if (_ws.isPlaying()) { _ws.pause(); return; }
+    if (_wsLooping && _wsRegion) {
+      _ws.setTime(_wsRegion.start);
+    }
+    _ws.play();
+
+    // Loop check on timeupdate
+    if (_wsLooping && _wsRegion) {
+      _ws.on('timeupdate', t => {
+        if (_wsLooping && _wsRegion && t >= _wsRegion.end) {
+          _ws.setTime(_wsRegion.start);
+        }
+      });
+    }
+  };
+
+  window.llToggleLoop = function() {
+    _wsLooping = !_wsLooping;
+    const btn = document.getElementById('llWaveLoopBtn');
+    if (btn) { btn.classList.toggle('active', _wsLooping); btn.textContent = _wsLooping ? '↺ Looper' : '↺ Loop'; }
+    if (typeof showToast === 'function') showToast(_wsLooping ? '↺ Loop aktivert' : 'Loop deaktivert');
+  };
+
+  window.llClearLoop = function() {
+    _wsRegion  = null;
+    _wsLooping = false;
+    document.getElementById('llWaveRegion')?.remove();
+    const btn = document.getElementById('llWaveLoopBtn');
+    if (btn) { btn.classList.remove('active'); btn.textContent = '↺ Loop'; }
+  };
+
+  window.llZoomWave = function(val) {
+    if (_ws) _ws.zoom(Number(val));
+    const lbl = document.getElementById('llWaveZoomVal');
+    if (lbl) lbl.textContent = val + '×';
+  };
 
   // ── Public entry point ────────────────────────────────────────────────────
   window.openInLyricLab = function(beatId) {
