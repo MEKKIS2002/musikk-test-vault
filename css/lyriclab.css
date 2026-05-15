@@ -447,24 +447,44 @@ audio::-webkit-media-controls-panel { background: rgba(255,255,255,.08); }
 
 /* ── WaveSurfer wrap ────────────────────────────────────────── */
 .ll-wavesurfer-wrap {
-  background: rgba(0,0,0,.2); border-radius: 10px;
-  overflow: hidden; border: 1px solid rgba(255,255,255,.06);
+  background: rgba(0,0,0,.25); border-radius: 12px;
+  border: 1px solid rgba(255,255,255,.07);
+  overflow: hidden;
 }
+/* Waveform canvas area */
+#llWaveSurfer { display: block; }
+
+/* Buttons row */
 .ll-wave-controls {
   display: flex; align-items: center; gap: 6px;
-  padding: 6px 10px; border-top: 1px solid rgba(255,255,255,.05);
+  padding: 8px 10px 6px;
+  background: rgba(0,0,0,.15);
+  border-top: 1px solid rgba(255,255,255,.05);
 }
 .ll-wave-btn {
-  background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1);
-  border-radius: 6px; color: var(--text); font-size: 11px; font-weight: 800;
-  font-family: inherit; padding: 4px 8px; cursor: pointer;
-  white-space: nowrap; flex-shrink: 0; transition: background .12s;
+  background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.1);
+  border-radius: 8px; color: rgba(255,255,255,.7); font-size: 11px; font-weight: 800;
+  font-family: inherit; padding: 5px 10px; cursor: pointer;
+  white-space: nowrap; flex-shrink: 0; transition: background .12s, color .12s;
 }
-.ll-wave-btn:hover { background: rgba(255,255,255,.12); }
-.ll-wave-btn.active { background: rgba(244,164,67,.15); border-color: rgba(244,164,67,.4); color: #f4a443; }
+.ll-wave-btn:hover { background: rgba(255,255,255,.13); color: #fff; }
+.ll-wave-btn.active { background: rgba(244,164,67,.18); border-color: rgba(244,164,67,.4); color: #f4a443; }
+
+/* Zoom row */
+.ll-wave-zoom-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 10px 8px;
+  background: rgba(0,0,0,.15);
+  border-top: 1px solid rgba(255,255,255,.04);
+}
+.ll-wave-zoom-label { font-size: 11px; color: rgba(255,255,255,.35); font-weight: 700; white-space: nowrap; flex-shrink: 0; }
+.ll-wave-zoom-val { font-size: 11px; color: rgba(255,255,255,.35); min-width: 28px; text-align: right; font-weight: 700; flex-shrink: 0; }
+
+/* Hint text */
 .ll-wave-hint {
-  font-size: 10px; color: rgba(255,255,255,.2); text-align: center;
-  padding: 3px 0 5px; letter-spacing: .04em;
+  font-size: 10px; color: rgba(255,255,255,.18); text-align: center;
+  padding: 4px 0 6px; letter-spacing: .04em;
+  background: rgba(0,0,0,.15);
 }
 
 .ll-wave-zoom-row {
