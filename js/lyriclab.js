@@ -477,6 +477,90 @@
     setTxt('llStatDur',    estimateDuration(w));
   }
 
+
+  // ── Inline section editor (used inside album/mixtape beat cards) ──────────
+  function renderInlineSections(beatId) {
+    const beat = getBeat(beatId);
+    if (!beat) return '<p style="color:var(--muted);font-size:12px">Beat ikke funnet</p>';
+    const sections = getSections(beat);
+    return `<div class="ll-inline-editor" data-beat-id="${esc(beatId)}">
+      <div class="ll-inline-sections" id="llins-${esc(beatId)}">
+        ${sections.sort((a,b)=>a.order-b.order).map(s => inlineSectionHTML(s, beatId)).join('')}
+      </div>
+      <div style="display:flex;gap:8px;margin-top:8px;align-items:center">
+        <button class="ghost-btn" style="font-size:11px;padding:5px 10px" onclick="llInlineAddSection('${esc(beatId)}')">+ Seksjon</button>
+        <button class="ghost-btn" style="font-size:11px;padding:5px 10px" onclick="openInLyricLab('${esc(beatId)}')">✍️ Åpne i Lyric Lab</button>
+      </div>
+    </div>`;
+  }
+
+  function inlineSectionHTML(sec, beatId) {
+    const typeClass = `ll-type-${sec.type}`;
+    const lineCount = countLines(sec.text);
+    return `<div class="ll-section${sec.collapsed?' collapsed':''}" id="llins-sec-${esc(beatId)}-${esc(sec.id)}" style="margin-bottom:8px">
+      <div class="ll-section-header" onclick="llInlineToggle('${esc(beatId)}','${esc(sec.id)}')">
+        <span class="ll-section-type ${typeClass}">${esc(TYPE_LABELS[sec.type]||sec.type)}</span>
+        <input class="ll-section-title-input" value="${esc(sec.title)}" onclick="event.stopPropagation()"
+          onchange="llInlineRename('${esc(beatId)}','${esc(sec.id)}',this.value)">
+        <span class="ll-section-line-count">${lineCount} ${lineCount===1?'linje':'linjer'}</span>
+        <button class="ll-section-toggle">${sec.collapsed?'▸':'▾'}</button>
+      </div>
+      <div class="ll-section-body">
+        <div class="ll-line-numbers" id="llins-nums-${esc(beatId)}-${esc(sec.id)}">${sec.text.split('\n').map((_,i)=>i+1).join('\n')}</div>
+        <textarea class="ll-textarea" id="llins-txt-${esc(beatId)}-${esc(sec.id)}"
+          placeholder="Skriv ${esc(sec.title.toLowerCase())} her..."
+          oninput="llInlineInput(this,'${esc(beatId)}','${esc(sec.id)}')"
+          rows="${Math.max(4, sec.text.split('\n').length + 2)}"
+        >${esc(sec.text)}</textarea>
+      </div>
+    </div>`;
+  }
+
+  // Inline section actions
+  window.llInlineToggle = function(beatId, secId) {
+    const beat = getBeat(beatId); if(!beat) return;
+    const sec = getSections(beat).find(s=>s.id===secId); if(!sec) return;
+    sec.collapsed = !sec.collapsed;
+    const el = document.getElementById(`llins-sec-${beatId}-${secId}`);
+    if(el){ el.classList.toggle('collapsed', sec.collapsed); el.querySelector('.ll-section-toggle').textContent = sec.collapsed?'▸':'▾'; }
+    saveSections(beat);
+  };
+  window.llInlineRename = function(beatId, secId, title) {
+    const beat = getBeat(beatId); if(!beat) return;
+    const sec = getSections(beat).find(s=>s.id===secId); if(!sec) return;
+    sec.title = title; saveSections(beat);
+  };
+  window.llInlineInput = function(ta, beatId, secId) {
+    const beat = getBeat(beatId); if(!beat) return;
+    const sec = getSections(beat).find(s=>s.id===secId); if(!sec) return;
+    sec.text = ta.value;
+    const nums = document.getElementById(`llins-nums-${beatId}-${secId}`);
+    if(nums) nums.textContent = ta.value.split('\n').map((_,i)=>i+1).join('\n');
+    const cnt = document.getElementById(`llins-sec-${beatId}-${secId}`)?.querySelector('.ll-section-line-count');
+    const l = countLines(ta.value);
+    if(cnt) cnt.textContent = `${l} ${l===1?'linje':'linjer'}`;
+    clearTimeout(_saveTimer);
+    _saveTimer = setTimeout(() => saveSections(beat), 600);
+  };
+  window.llInlineAddSection = function(beatId) {
+    const beat = getBeat(beatId); if(!beat) return;
+    const secs = getSections(beat);
+    const newSec = {id: uid(), type:'custom', title:'Ny seksjon', text:'', collapsed:false, order:secs.length};
+    secs.push(newSec);
+    saveSections(beat);
+    const container = document.getElementById(`llins-${beatId}`);
+    if(container) container.insertAdjacentHTML('beforeend', inlineSectionHTML(newSec, beatId));
+  };
+  window.llInlineSave = function(beatId, text) {
+    const beat = getBeat(beatId); if(!beat) return;
+    const secs = getSections(beat);
+    if(secs[0]) secs[0].text = text;
+    clearTimeout(_saveTimer);
+    _saveTimer = setTimeout(() => saveSections(beat), 600);
+  };
+
+  window.renderInlineSections = renderInlineSections;
+
   // ── Public entry point ────────────────────────────────────────────────────
   window.openInLyricLab = function(beatId) {
     window.currentLyricLabBeatId = beatId;
@@ -488,4 +572,6 @@
   window.renderLyricLab = renderLyricLab;
 
   console.log('[LyricLab] Loaded ✓');
+  // Fill any beat cards that rendered before lyriclab.js loaded
+  if(typeof mountInlineEditors === 'function') mountInlineEditors();
 })();
