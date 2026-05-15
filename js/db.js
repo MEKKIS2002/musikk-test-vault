@@ -223,8 +223,11 @@ function colorToolbar(editorId){
 function applyLyricColor(editorId,color){const ed=document.getElementById(editorId);if(!ed)return;ed.focus();document.execCommand("styleWithCSS",false,true);document.execCommand("hiliteColor",false,color);const id=ed.dataset.beatId;if(id)autosaveLyrics(id,ed.innerHTML);}
 function clearLyricColor(editorId){const ed=document.getElementById(editorId);if(!ed)return;ed.focus();document.execCommand("removeFormat",false,null);const id=ed.dataset.beatId;if(id)autosaveLyrics(id,ed.innerHTML);}
 function lyricsEditorMarkup(beatId,placeholder){
-  // Render a placeholder container — lyriclab.js fills it after load
-  // This avoids load-order dependency between db.js and lyriclab.js
+  // Always return a mount point — filled immediately if lyriclab.js is ready,
+  // or filled by mountInlineEditors() called from toggleAlbumBeat/toggleBeat
+  if(typeof window.renderInlineSections === 'function'){
+    return `<div class="ll-inline-mount" id="llmount-${beatId}" data-beat-id="${beatId}" data-mounted="1">${window.renderInlineSections(beatId)}</div>`;
+  }
   return `<div class="ll-inline-mount" id="llmount-${beatId}" data-beat-id="${beatId}">
     <div style="color:var(--muted);font-size:12px;padding:8px 0">Laster editor...</div>
   </div>`;
@@ -323,7 +326,7 @@ function renderBeats(container,beats,albumMode){
           <label class="ghost-btn" style="cursor:pointer;font-size:12px;display:inline-flex;align-items:center;gap:6px;padding:6px 12px">🎵 Last opp / bytt lydfil<input type="file" accept="audio/*" hidden onchange="uploadBeatAudio('${b.id}',this.files[0])"></label>
         </div>
         <div class="ab-lyric-editor">
-          ${typeof window.renderInlineSections === 'function' ? window.renderInlineSections(b.id) : lyricsEditorMarkup(b.id,"Skriv hook, vers, tekst, ideer, flows...")}
+          ${lyricsEditorMarkup(b.id,"Skriv hook, vers, tekst, ideer, flows...")}
         </div>
         <div class="beat-expand-actions">
           <button class="ghost-btn" onclick="openInLyricLab('${b.id}')">✍️ Åpne i Lyric Lab</button>
@@ -339,7 +342,10 @@ function renderBeats(container,beats,albumMode){
 function toggleBeat(id){
   const item=document.getElementById(`bi-${id}`);if(!item)return;
   item.classList.toggle("expanded");
-  if(item.classList.contains("expanded"))loadAudioForBeat(id);
+  if(item.classList.contains("expanded")){
+    loadAudioForBeat(id);
+    requestAnimationFrame(()=>{ if(typeof mountInlineEditors==='function') mountInlineEditors(); });
+  }
 }
 const _lt={};
 function autosaveLyrics(id,val){clearTimeout(_lt[id]);_lt[id]=setTimeout(()=>{const b=state.beats.find(x=>x.id===id);if(b){b.lyrics=val;saveState();}},800);}
@@ -662,15 +668,16 @@ function renderAlbumBeats(beats,mode,customEl){
       </div>
       <div class="ab-expand">
         <div class="ab-expand-top-bar">
-          <div id="au-wrap-${b.id}">
+          <div id="au-wrap-${b.id}" style="display:flex;align-items:center;gap:8px">
             <button class="primary-btn" style="font-size:12px;padding:7px 14px" onclick="playSingleBeat('${b.id}')">▶ Spill</button>
+            <button class="star-btn${b.favorite?" active":""}" data-fav-id="${b.id}" onclick="event.stopPropagation();toggleFav('${b.id}',this)" title="Favoritt" style="font-size:20px;background:none;border:none;cursor:pointer;padding:0;color:${b.favorite?'#f4a443':'rgba(255,255,255,.25)'}">★</button>
           </div>
           <label class="ghost-btn" style="cursor:pointer;font-size:12px;padding:6px 12px">🎵 Bytt lydfil<input type="file" accept="audio/*" hidden onchange="uploadBeatAudio('${b.id}',this.files[0])"></label>
           <label class="ghost-btn" style="cursor:pointer;font-size:12px;padding:6px 12px">🖼️ Coverbilde<input type="file" accept="image/*" hidden onchange="setAlbumBeatCover('${b.id}',this)"></label>
           <button class="small-btn danger" onclick="removeFromCollection('${b.id}','${listMode}')">Fjern fra ${listMode==="mixtape"?"mixtape":"album"}</button>
         </div>
         <div class="ab-lyric-editor">
-          ${typeof window.renderInlineSections === 'function' ? window.renderInlineSections(b.id) : lyricsEditorMarkup(b.id,"Skriv tekst, hooks, vers, ideer...")}
+          ${lyricsEditorMarkup(b.id,"Skriv tekst, hooks, vers, ideer...")}
         </div>
       </div>
     </div>`;
