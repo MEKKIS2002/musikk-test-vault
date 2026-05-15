@@ -203,12 +203,14 @@
       <div class="ll-wave-controls">
         <button class="ll-wave-btn" id="llWavePlayBtn" onclick="llWavePlay()" title="Spill/pause">▶</button>
         <button class="ll-wave-btn" id="llWaveLoopBtn" onclick="llToggleLoop()" title="Loop region">↺ Loop</button>
-        <button class="ll-wave-btn" onclick="llClearLoop()" title="Fjern loop">✕</button>
-        <span style="font-size:10px;color:var(--muted);margin-left:4px">Zoom:</span>
+        <button class="ll-wave-btn" onclick="llClearLoop()" title="Fjern loop">✕ Fjern</button>
+      </div>
+      <div class="ll-wave-zoom-row">
+        <span class="ll-wave-zoom-label">🔍 Zoom</span>
         <input type="range" id="llWaveZoom" min="1" max="20" value="1"
-          style="flex:1;accent-color:#f4a443;cursor:pointer;min-width:60px"
-          oninput="llZoomWave(this.value)" title="Zoom inn">
-        <span style="font-size:10px;color:var(--muted);min-width:28px;text-align:right" id="llWaveZoomVal">1×</span>
+          style="flex:1;accent-color:#f4a443;cursor:pointer"
+          oninput="llZoomWave(this.value)">
+        <span id="llWaveZoomVal" class="ll-wave-zoom-val">1×</span>
       </div>
       <div class="ll-wave-hint">Klikk og dra på bølgeformen for å markere loopområde</div>
     </div>
@@ -1066,27 +1068,57 @@
       };
       _ws.on('timeupdate', _wsTimeHandler);
 
-      // Drag to set loop region
+      // Drag overlay — sits above WaveSurfer canvas to intercept drag without blocking clicks
+      const dragOverlay = document.createElement('div');
+      dragOverlay.style.cssText = 'position:absolute;inset:0;z-index:20;cursor:crosshair';
+      container.style.position = 'relative';
+      container.appendChild(dragOverlay);
+
       let _dragStart = null;
-      container.addEventListener('mousedown', e => {
-        if (e.target.closest('canvas') || e.target.tagName === 'CANVAS') {
-          const dur = _ws.getDuration?.();
-          if (!dur) return;
-          const rect = container.getBoundingClientRect();
-          _dragStart = ((e.clientX - rect.left) / rect.width) * dur;
-          e.preventDefault();
+      let _dragMoved = false;
+      let _dragPreview = null;
+
+      dragOverlay.addEventListener('mousedown', e => {
+        const dur = _ws.getDuration?.();
+        if (!dur) return;
+        const rect = container.getBoundingClientRect();
+        _dragStart = ((e.clientX - rect.left) / rect.width) * dur;
+        _dragMoved = false;
+        e.stopPropagation();
+      });
+
+      dragOverlay.addEventListener('mousemove', e => {
+        if (_dragStart === null) return;
+        const rect = container.getBoundingClientRect();
+        const cur  = ((e.clientX - rect.left) / rect.width) * (_ws.getDuration?.() || 1);
+        const diff = Math.abs(cur - _dragStart);
+        if (diff > 0.2) {
+          _dragMoved = true;
+          // Show live preview
+          const s = Math.min(_dragStart, cur), en = Math.max(_dragStart, cur);
+          _drawRegion(s, en);
         }
       });
-      container.addEventListener('mouseup', e => {
+
+      dragOverlay.addEventListener('mouseup', e => {
         if (_dragStart === null) return;
         const dur = _ws.getDuration?.();
-        if (!dur) { _dragStart = null; return; }
+        if (!dur || !_dragMoved) {
+          // It was a click — seek normally
+          if (!_dragMoved && dur) {
+            const rect = container.getBoundingClientRect();
+            const ratio = (e.clientX - rect.left) / rect.width;
+            _ws.seekTo(ratio);
+          }
+          _dragStart = null; _dragMoved = false;
+          return;
+        }
         const rect = container.getBoundingClientRect();
         const dragEnd = ((e.clientX - rect.left) / rect.width) * dur;
         const start = Math.min(_dragStart, dragEnd);
         const end   = Math.max(_dragStart, dragEnd);
-        _dragStart = null;
-        if (end - start < 0.3) return; // too small — just a click
+        _dragStart = null; _dragMoved = false;
+        if (end - start < 0.2) { llClearLoop(); return; }
         _wsRegion  = { start, end };
         _wsLooping = true;
         _drawRegion(start, end);
