@@ -390,45 +390,86 @@
   }
 
   // ── Section actions ───────────────────────────────────────────────────────
-  // Apply color to the currently active (focused) highlight editor
-  window._llActiveSectionId = null;
+  // Preserve selection across button clicks
+  window._llSavedRange = null;
+  window._llSavedEditor = null;
+
+  // Prevent color buttons from stealing focus (would clear the selection)
+  document.addEventListener('mousedown', e => {
+    if (e.target.closest('.ll-color-dot')) {
+      e.preventDefault();
+    }
+  }, true);
+
+  // Save selection whenever user selects text in a highlight editor
+  document.addEventListener('mouseup', () => {
+    const sel = window.getSelection();
+    if (!sel || sel.isCollapsed) return;
+    const anchor = sel.anchorNode;
+    if (!anchor) return;
+    const editor = anchor.nodeType === 1
+      ? anchor.closest?.('.ll-highlight-editor')
+      : anchor.parentElement?.closest?.('.ll-highlight-editor');
+    if (editor) {
+      window._llSavedRange  = sel.getRangeAt(0).cloneRange();
+      window._llSavedEditor = editor;
+      // Show which section is active in color panel hint
+      const secId = editor.dataset.sectionId;
+      const hint = document.getElementById('llColorHint');
+      if (hint && secId) {
+        const beat = getBeat(window.currentLyricLabBeatId);
+        const sec  = getSections(beat||{}).find(s=>s.id===secId);
+        hint.textContent = sec ? 'Aktiv: ' + sec.title : 'Tekst markert';
+      }
+    }
+  });
 
   window.llApplyColorActive = function(color) {
-    // Find the editor that currently has focus or was last focused
-    const secId = window._llActiveSectionId;
-    if (secId) { llApplyColor(secId, color); return; }
-    // Fallback: try document.activeElement
-    const active = document.activeElement;
-    if (active?.classList?.contains('ll-highlight-editor')) {
-      const id = active.dataset.sectionId;
-      if (id) { llApplyColor(id, color); return; }
+    const range  = window._llSavedRange;
+    const editor = window._llSavedEditor;
+    if (!range || !editor) {
+      if(typeof showToast==='function') showToast('Marker tekst i en seksjon først');
+      return;
     }
-    if (typeof showToast==='function') showToast('Klikk i en seksjon for å velge den');
+    // Restore the saved selection
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+
+    if (color) {
+      // Remove existing mark elements inside range
+      document.execCommand('removeFormat');
+      // Re-add range (removeFormat may clear it)
+      sel.removeAllRanges();
+      sel.addRange(range);
+      document.execCommand('backColor', false, color);
+    } else {
+      document.execCommand('removeFormat');
+    }
+
+    // Save to state
+    const secId = editor.dataset.sectionId;
+    if (secId) llHighlightInput(editor, secId);
+
+    // Clear saved range after use
+    window._llSavedRange  = null;
+    window._llSavedEditor = null;
   };
 
   window.llApplyColor = function(secId, color) {
+    // Legacy — used by contextmenu / popover
     const editor = document.getElementById('lltxt-' + secId);
     if (!editor) return;
-    editor.focus();
     const sel = window.getSelection();
     if (!sel || sel.rangeCount === 0 || sel.isCollapsed) {
-      if(typeof showToast==='function') showToast('Marker tekst først, deretter velg farge');
+      if(typeof showToast==='function') showToast('Marker tekst først');
       return;
     }
-    const range = sel.getRangeAt(0);
-    // Remove existing marks in selection first
-    document.execCommand('removeFormat');
     if (color) {
-      const mark = document.createElement('mark');
-      mark.style.cssText = `background:${color};border-radius:3px;padding:0 1px`;
-      try {
-        range.surroundContents(mark);
-      } catch(e) {
-        // Selection spans multiple elements — use execCommand fallback
-        document.execCommand('hiliteColor', false, color);
-      }
+      document.execCommand('backColor', false, color);
+    } else {
+      document.execCommand('removeFormat');
     }
-    // Trigger save
     llHighlightInput(editor, secId);
   };
 
