@@ -418,3 +418,15 @@ audio::-webkit-media-controls-panel { background: rgba(255,255,255,.08); }
 .ll-picker-name { font-size: 13px; font-weight: 800; letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ll-picker-meta { font-size: 11px; color: var(--muted); margin-top: 2px; text-transform: capitalize; }
 .ll-picker-empty { text-align: center; color: var(--muted); font-size: 13px; padding: 32px; }
+
+.ll-change-beat-btn {
+  margin-left: auto;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 8px;
+  color: rgba(255,255,255,.6);
+  font-size: 12px; font-weight: 800; font-family: inherit;
+  padding: 5px 12px; cursor: pointer;
+  transition: background .12s, color .12s;
+}
+.ll-change-beat-btn:hover { background: rgba(255,255,255,.1); color: var(--text); }
