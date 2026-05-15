@@ -1018,8 +1018,8 @@
   let _wsRegion = null;   // WaveSurfer Region object
   let _wsLooping = false;
 
-  const WS_URL      = 'https://cdnjs.cloudflare.com/ajax/libs/wavesurfer.js/7.8.7/wavesurfer.min.js';
-  const REGIONS_URL = 'https://cdnjs.cloudflare.com/ajax/libs/wavesurfer.js/7.8.7/plugins/regions.min.js';
+  const WS_URL      = 'https://unpkg.com/wavesurfer.js@7/dist/wavesurfer.min.js';
+  const REGIONS_URL = 'https://unpkg.com/wavesurfer.js@7/dist/plugins/regions.min.js';
 
   function initWaveSurfer(beat) {
     const container = document.getElementById('llWaveSurfer');
@@ -1033,7 +1033,7 @@
     }
 
     function load() {
-      if (window.WaveSurfer && window.RegionsPlugin) { _buildWS(container, audioUrl); return; }
+      if (window.WaveSurfer && window.WaveSurfer.Regions) { _buildWS(container, audioUrl); return; }
       if (!window.WaveSurfer) {
         const s = document.createElement('script'); s.src = WS_URL;
         s.onload = () => {
@@ -1052,13 +1052,10 @@
   }
 
   function _buildWS(container, audioUrl) {
-    const RegionsPlugin = window.RegionsPlugin ||
-      (window.WaveSurfer?.Regions) ||
-      (window.WaveSurfer?.default?.Regions);
-
+    // WaveSurfer v7 UMD: plugin exposed as WaveSurfer.Regions
+    const RegionsCtor = window.WaveSurfer?.Regions;
     let regions = null;
-    try { regions = (RegionsPlugin?.create || RegionsPlugin)(); } catch(e) {}
-
+    try { regions = RegionsCtor ? RegionsCtor.create() : null; } catch(e) {}
     const plugins = regions ? [regions] : [];
 
     try {
@@ -1096,14 +1093,12 @@
         // On ready: enable drag-to-create
         _ws.on('ready', () => {
           if (regions.enableDragSelection) {
-            regions.enableDragSelection({ color: 'rgba(244,164,67,.2)' });
+            regions.enableDragSelection({ color: 'rgba(244,164,67,.18)' });
           }
           regions.on('region-created', reg => {
-            // Remove previous region
-            if (_wsRegion && _wsRegion.id !== reg.id) {
-              try { regions.getRegions().forEach(r => { if(r.id !== reg.id) r.remove(); }); } catch(e) {}
-            }
-            reg.setOptions({ color: 'rgba(244,164,67,.18)', handleStyle: { left: { background:'#f4a443' }, right: { background:'#f4a443' } } });
+            // Clear old regions
+            try { regions.getRegions().forEach(r => { if(r !== reg) r.remove(); }); } catch(e) {}
+            try { reg.setOptions({ color: 'rgba(244,164,67,.18)' }); } catch(e) {}
             _wsRegion  = reg;
             _wsLooping = true;
             const lb = document.getElementById('llWaveLoopBtn');
