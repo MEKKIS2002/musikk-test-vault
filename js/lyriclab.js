@@ -179,7 +179,7 @@
 
     container.innerHTML = `
 <div class="ll-wrap">
-<div class="ll-header">\n  <button class="ll-back-btn" onclick="llGoBack()">← Mixtapes</button>\n  <span class="ll-header-sep">|</span>\n  <span class="ll-header-beat">✍️ Lyric Lab · ${esc(beat.name)}</span>\n</div>
+<div class="ll-header">\n  <button class="ll-back-btn" onclick="llGoBack()">← Tilbake</button>\n  <span class="ll-header-sep">|</span>\n  <span class="ll-header-beat">✍️ Lyric Lab · ${esc(beat.name)}</span>\n  <button class="ll-change-beat-btn" onclick="llShowBeatPicker()" title="Velg annen låt">⇄ Bytt låt</button>\n</div>
 <div class="ll-layout">
 
   <!-- LEFT: Beat info -->
