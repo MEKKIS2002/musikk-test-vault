@@ -425,22 +425,72 @@
       return;
     }
 
-    // Restore the saved selection into the editor
-    editor.focus();
-    const sel = window.getSelection();
-    sel.removeAllRanges();
-    sel.addRange(range);
+    try {
+      if (color) {
+        // Remove any existing mark elements inside the range first
+        _unwrapMarks(range);
+        // Create a fresh clone of the range (unwrapMarks may have changed DOM)
+        const freshRange = window._llSavedRange;
+        if (!freshRange || freshRange.collapsed) {
+          if(typeof showToast==='function') showToast('Marker tekst på nytt');
+          return;
+        }
+        // Wrap with <mark>
+        const mark = document.createElement('mark');
+        mark.style.cssText = 'background:' + color + ';border-radius:3px;padding:0 2px;';
+        try {
+          freshRange.surroundContents(mark);
+        } catch(e) {
+          // Selection spans elements — extract and wrap
+          const frag = freshRange.extractContents();
+          mark.appendChild(frag);
+          freshRange.insertNode(mark);
+        }
+      } else {
+        // Clear — replace marks with plain text
+        _unwrapMarks(range);
+      }
 
-    if (color) {
-      document.execCommand('backColor', false, color);
-    } else {
-      document.execCommand('removeFormat');
+      // Trigger save
+      const secId = editor.dataset.sectionId;
+      if (secId) llHighlightInput(editor, secId);
+
+      // Reset saved range after applying
+      window._llSavedRange  = null;
+      window._llSavedEditor = null;
+      const hint = document.getElementById('llColorHint');
+      if (hint) { hint.textContent = 'Marker tekst i editoren, klikk så farge'; hint.style.color = ''; }
+
+    } catch(e) {
+      console.warn('[LyricLab] Color apply error:', e);
+      if(typeof showToast==='function') showToast('Feil ved fargemarkering: ' + e.message);
     }
-
-    const secId = editor.dataset.sectionId;
-    if (secId) llHighlightInput(editor, secId);
-    // Keep range so user can re-apply without re-selecting
   };
+
+  function _unwrapMarks(range) {
+    if (!range) return;
+    const editor = window._llSavedEditor;
+    if (!editor) return;
+    // Find all marks within the range and replace with their contents
+    const marks = Array.from(editor.querySelectorAll('mark'));
+    marks.forEach(mark => {
+      const mRange = document.createRange();
+      mRange.selectNode(mark);
+      // Check if mark overlaps with range
+      if (range.compareBoundaryPoints(Range.END_TO_START, mRange) < 0 &&
+          range.compareBoundaryPoints(Range.START_TO_END, mRange) > 0) {
+        const parent = mark.parentNode;
+        while (mark.firstChild) parent.insertBefore(mark.firstChild, mark);
+        parent.removeChild(mark);
+        parent.normalize();
+      }
+    });
+    // Update saved range after DOM change
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0) {
+      window._llSavedRange = sel.getRangeAt(0).cloneRange();
+    }
+  }
 
   window.llApplyColor = function(secId, color) {
     // Legacy — used by contextmenu / popover
