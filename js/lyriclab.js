@@ -425,33 +425,40 @@
   });
 
   window.llApplyColorActive = function(color) {
-    const range  = window._llSavedRange;
-    const editor = window._llSavedEditor;
-    if (!range || !editor) {
+    // Since mousedown called preventDefault, selection is still alive — read it directly
+    const sel = window.getSelection();
+
+    // Try live selection first
+    let editor = null;
+    if (sel && sel.rangeCount > 0 && !sel.isCollapsed) {
+      const anchor = sel.anchorNode;
+      editor = anchor?.nodeType === 1
+        ? anchor.closest?.('.ll-highlight-editor')
+        : anchor?.parentElement?.closest?.('.ll-highlight-editor');
+    }
+
+    // Fallback to saved range
+    if (!editor && window._llSavedEditor) {
+      editor = window._llSavedEditor;
+      if (window._llSavedRange) {
+        sel.removeAllRanges();
+        sel.addRange(window._llSavedRange);
+      }
+    }
+
+    if (!editor || !sel || sel.isCollapsed) {
       if(typeof showToast==='function') showToast('Marker tekst i en seksjon først');
       return;
     }
-    // Restore the saved selection
-    const sel = window.getSelection();
-    sel.removeAllRanges();
-    sel.addRange(range);
 
     if (color) {
-      // Remove existing mark elements inside range
-      document.execCommand('removeFormat');
-      // Re-add range (removeFormat may clear it)
-      sel.removeAllRanges();
-      sel.addRange(range);
       document.execCommand('backColor', false, color);
     } else {
       document.execCommand('removeFormat');
     }
 
-    // Save to state
     const secId = editor.dataset.sectionId;
     if (secId) llHighlightInput(editor, secId);
-
-    // Clear saved range after use
     window._llSavedRange  = null;
     window._llSavedEditor = null;
   };
