@@ -222,7 +222,24 @@ function colorToolbar(editorId){
 }
 function applyLyricColor(editorId,color){const ed=document.getElementById(editorId);if(!ed)return;ed.focus();document.execCommand("styleWithCSS",false,true);document.execCommand("hiliteColor",false,color);const id=ed.dataset.beatId;if(id)autosaveLyrics(id,ed.innerHTML);}
 function clearLyricColor(editorId){const ed=document.getElementById(editorId);if(!ed)return;ed.focus();document.execCommand("removeFormat",false,null);const id=ed.dataset.beatId;if(id)autosaveLyrics(id,ed.innerHTML);}
-function lyricsEditorMarkup(beatId,placeholder){const eid=`lyrics-${beatId}`;return `<div class="lyrics-editor-wrap">${colorToolbar(eid)}<div id="${eid}" class="rich-lyrics-editor" contenteditable="true" data-beat-id="${beatId}" data-placeholder="${esc(placeholder)}" oninput="autosaveLyrics('${beatId}',this.innerHTML)">${lyricHTML((state.beats.find(x=>x.id===beatId)||{}).lyrics||"")}</div></div>`;}
+function lyricsEditorMarkup(beatId,placeholder){
+  // Render a placeholder container — lyriclab.js fills it after load
+  // This avoids load-order dependency between db.js and lyriclab.js
+  return `<div class="ll-inline-mount" id="llmount-${beatId}" data-beat-id="${beatId}">
+    <div style="color:var(--muted);font-size:12px;padding:8px 0">Laster editor...</div>
+  </div>`;
+}
+
+// Called by lyriclab.js after it loads — fills all pending mount points
+function mountInlineEditors(){
+  document.querySelectorAll('.ll-inline-mount:not([data-mounted])').forEach(el=>{
+    const id = el.dataset.beatId;
+    if(id && typeof window.renderInlineSections === 'function'){
+      el.innerHTML = window.renderInlineSections(id);
+      el.setAttribute('data-mounted','1');
+    }
+  });
+}
 
 function phCover(t){const s=encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400"><rect width="600" height="400" fill="#11111a"/><circle cx="100" cy="80" r="160" fill="#a855f7" opacity=".3"/><circle cx="530" cy="340" r="190" fill="#22d3ee" opacity=".2"/><text x="40" y="230" fill="white" font-family="Arial" font-size="38" font-weight="800">${String(t).slice(0,20).replace(/[<>&"]/g,"")}</text></svg>`);return`data:image/svg+xml,${s}`;}
 
@@ -305,11 +322,11 @@ function renderBeats(container,beats,albumMode){
         <div style="margin-bottom:12px">
           <label class="ghost-btn" style="cursor:pointer;font-size:12px;display:inline-flex;align-items:center;gap:6px;padding:6px 12px">🎵 Last opp / bytt lydfil<input type="file" accept="audio/*" hidden onchange="uploadBeatAudio('${b.id}',this.files[0])"></label>
         </div>
-        ${lyricsEditorMarkup(b.id,"Skriv hook, vers, tekst, ideer, flows...")}
+        <div class="ab-lyric-editor">
+          ${typeof window.renderInlineSections === 'function' ? window.renderInlineSections(b.id) : lyricsEditorMarkup(b.id,"Skriv hook, vers, tekst, ideer, flows...")}
+        </div>
         <div class="beat-expand-actions">
-          <button class="primary-btn" onclick="saveBeatLyrics('${b.id}')">Lagre tekst</button>
-          <button class="ghost-btn" onclick="copyBeatLyrics('${b.id}')">Kopier tekst</button>
-          <button class="ghost-btn" onclick="openInLyricLab('${b.id}')">✍️ Lyric Lab</button>
+          <button class="ghost-btn" onclick="openInLyricLab('${b.id}')">✍️ Åpne i Lyric Lab</button>
           ${albumMode
   ? `<button class="small-btn danger" onclick="removeFromCollection('${b.id}','${listMode}')">Fjern fra ${listMode==="mixtape"?"mixtape":"album"}</button>
      ${isAdmin()?`<button class="small-btn danger" onclick="deleteBeat('${b.id}')">Slett sang</button>`:''}`
@@ -644,36 +661,26 @@ function renderAlbumBeats(beats,mode,customEl){
         </div>
       </div>
       <div class="ab-expand">
-        <div class="ab-expand-left">
-          <div>
-            <div id="au-wrap-${b.id}" style="margin-bottom:12px">
-              <button class="primary-btn" onclick="playSingleBeat('${b.id}')">▶ Spill denne</button>
-            </div>
-            <div style="margin-bottom:12px">
-              <label class="ghost-btn" style="cursor:pointer;font-size:12px;display:inline-flex;align-items:center;gap:6px;padding:6px 12px">🎵 Last opp / bytt lydfil<input type="file" accept="audio/*" hidden onchange="uploadBeatAudio('${b.id}',this.files[0])"></label>
-            </div>
-            <label style="color:var(--muted);font-size:12px;font-weight:700;display:block;margin-bottom:7px">Tekst / Lyrics / Ideer</label>
-            ${lyricsEditorMarkup(b.id,"Skriv tekst, hooks, vers, ideer...")}
-            <div class="ab-expand-actions" style="margin-top:8px">
-              <button class="primary-btn" onclick="saveBeatLyrics('${b.id}')">Lagre tekst</button>
-              <button class="ghost-btn" onclick="copyBeatLyrics('${b.id}')">Kopier</button>
-            </div>
+        <div class="ab-expand-top-bar">
+          <div id="au-wrap-${b.id}">
+            <button class="primary-btn" style="font-size:12px;padding:7px 14px" onclick="playSingleBeat('${b.id}')">▶ Spill</button>
           </div>
+          <label class="ghost-btn" style="cursor:pointer;font-size:12px;padding:6px 12px">🎵 Bytt lydfil<input type="file" accept="audio/*" hidden onchange="uploadBeatAudio('${b.id}',this.files[0])"></label>
+          <label class="ghost-btn" style="cursor:pointer;font-size:12px;padding:6px 12px">🖼️ Coverbilde<input type="file" accept="image/*" hidden onchange="setAlbumBeatCover('${b.id}',this)"></label>
+          <button class="small-btn danger" onclick="removeFromCollection('${b.id}','${listMode}')">Fjern fra ${listMode==="mixtape"?"mixtape":"album"}</button>
         </div>
-        <div class="ab-expand-right">
-          <div>
-            <label style="color:var(--muted);font-size:12px;font-weight:700;display:block;margin-bottom:7px">Coverbilde</label>
-            <input type="file" accept="image/*" onchange="setAlbumBeatCover('${b.id}',this)">
-          </div>
-          <div class="ab-expand-actions" style="margin-top:auto;padding-top:8px">
-            <button class="small-btn danger" onclick="removeFromCollection('${b.id}','${listMode}')">Fjern fra ${listMode==="mixtape"?"mixtape":"album"}</button>
-          </div>
+        <div class="ab-lyric-editor">
+          ${typeof window.renderInlineSections === 'function' ? window.renderInlineSections(b.id) : lyricsEditorMarkup(b.id,"Skriv tekst, hooks, vers, ideer...")}
         </div>
       </div>
     </div>`;
   }).join("");
 }
 function toggleAlbumBeat(id){
+  // Mount inline editors that appear when card expands
+  requestAnimationFrame(()=>{
+    if(typeof mountInlineEditors === 'function') mountInlineEditors();
+  });
   // Find card in the currently VISIBLE beat list (mixtape or album context)
   const mixList = document.getElementById('mixtapeBeatList');
   const albList = document.getElementById('albumBeatList');
