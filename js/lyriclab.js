@@ -150,6 +150,8 @@
         <button onclick="llDuplicateSection('${esc(sec.id)}')">⧉ Dupliser</button>
         <button onclick="llMoveSectionUp('${esc(sec.id)}')">↑ Flytt opp</button>
         <button onclick="llMoveSectionDown('${esc(sec.id)}')">↓ Flytt ned</button>
+        <button onclick="llSaveVersion('${esc(sec.id)}')">💾 Lagre versjon</button>
+        <button onclick="llShowHistory('${esc(sec.id)}')">⌛ Historikk</button>
         <button class="danger" onclick="llDeleteSection('${esc(sec.id)}')">🗑 Slett seksjon</button>
       </div>
     </div>`;
@@ -1292,22 +1294,22 @@
     const beat = getBeat(beatId || window.currentLyricLabBeatId);
     if (!beat) return;
     const secs = getSections(beat);
+
+    // Collect all non-empty lines
     const allLines = [];
     secs.forEach(s => {
       s.text.split('\n').forEach((line, i) => {
-        if (line.trim()) allLines.push({ secId: s.id, lineIdx: i, text: line, ending: getLineEnding(line) });
+        if (line.trim()) allLines.push({ secId: s.id, lineIdx: i, ending: getLineEnding(line) });
       });
     });
 
-    // Group lines by ending
+    // Group by ending → assign colors to groups with 2+ matches
     const groups = {};
     allLines.forEach(l => {
       if (!l.ending || l.ending.length < 2) return;
       if (!groups[l.ending]) groups[l.ending] = [];
       groups[l.ending].push(l);
     });
-
-    // Assign colors to groups with 2+ lines
     const colorMap = {};
     let colorIdx = 0;
     Object.values(groups).filter(g => g.length >= 2).forEach(g => {
@@ -1316,43 +1318,41 @@
       colorIdx++;
     });
 
-    // Apply colors to textareas (overlay technique with divs behind)
+    // Color the LINE NUMBER column per line (no overlap with textarea text)
     secs.forEach(s => {
-      const ta = document.getElementById('lltxt-' + s.id);
-      if (!ta) return;
+      const numsEl = document.getElementById('llnums-' + s.id);
+      if (!numsEl) return;
       const lines = s.text.split('\n');
-      let overlay = document.getElementById('llflow-' + s.id);
-      if (!overlay) {
-        overlay = document.createElement('div');
-        overlay.id = 'llflow-' + s.id;
-        overlay.style.cssText = `position:absolute;top:0;left:0;right:0;pointer-events:none;z-index:1;padding:${getComputedStyle(ta).padding};font-size:${getComputedStyle(ta).fontSize};line-height:${getComputedStyle(ta).lineHeight};font-family:${getComputedStyle(ta).fontFamily};white-space:pre-wrap;word-wrap:break-word;overflow:hidden;`;
-        ta.parentElement.style.position = 'relative';
-        ta.style.background = 'transparent';
-        ta.style.position = 'relative';
-        ta.style.zIndex = '2';
-        ta.parentElement.insertBefore(overlay, ta);
-      }
-      overlay.innerHTML = lines.map((line, i) => {
+      numsEl.innerHTML = lines.map((_, i) => {
         const color = colorMap[s.id + '-' + i];
-        const escaped = line.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') || '\u00a0';
+        const num = i + 1;
         return color
-          ? `<span style="background:${color};border-radius:3px;display:block">${escaped}</span>`
-          : `<span style="display:block">${escaped}</span>`;
+          ? `<div style="background:${color};border-radius:3px;padding:0 4px;margin:0 -4px;line-height:inherit">${num}</div>`
+          : `<div style="line-height:inherit">${num}</div>`;
       }).join('');
     });
 
-    // Show legend
+    // Legend
     const legend = document.getElementById('llFlowLegend');
     if (legend) {
-      const rhymePairs = Object.entries(groups).filter(([,g])=>g.length>=2).length;
-      legend.textContent = rhymePairs > 0 ? `${rhymePairs} rimpar funnet` : 'Ingen rim funnet ennå';
+      const pairs = Object.values(groups).filter(g=>g.length>=2).length;
+      legend.textContent = pairs ? `${pairs} rimgruppe${pairs>1?'r':''} fargekodet` : 'Ingen rim funnet';
       legend.style.display = 'block';
     }
   };
 
   window.llClearFlow = function() {
-    document.querySelectorAll('[id^="llflow-"]').forEach(el => el.remove());
-    document.querySelectorAll('.ll-textarea').forEach(ta => { ta.style.background=''; ta.style.position=''; ta.style.zIndex=''; });
+    // Restore plain line numbers
+    document.querySelectorAll('[id^="llnums-"]').forEach(el => {
+      const count = el.textContent.replace(/\D/g,'').length > 0
+        ? el.querySelectorAll('div').length || el.textContent.trim().split('\n').length
+        : 0;
+      const lines = el.querySelectorAll('div');
+      lines.forEach((d, i) => { d.style.background=''; d.style.borderRadius=''; });
+      // Re-render as plain text
+      el.style.whiteSpace = 'pre';
+      el.innerHTML = Array.from({length: lines.length}, (_,i)=>i+1).join('\n');
+    });
     const legend = document.getElementById('llFlowLegend');
     if (legend) legend.style.display = 'none';
   };
