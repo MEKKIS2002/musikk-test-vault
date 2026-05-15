@@ -202,14 +202,15 @@
       <div id="llWaveSurfer" style="width:100%;height:64px;cursor:crosshair"></div>
       <div class="ll-wave-controls">
         <button class="ll-wave-btn" id="llWavePlayBtn" onclick="llWavePlay()" title="Spill/pause">▶</button>
-        <button class="ll-wave-btn" id="llWaveLoopBtn" onclick="llToggleLoop()" title="Loop valgt region">↺ Loop</button>
-        <button class="ll-wave-btn" onclick="llClearLoop()" title="Fjern loop">✕ Loop</button>
-        <input type="range" id="llWaveZoom" min="1" max="200" value="1"
-          style="flex:1;accent-color:#f4a443;cursor:pointer"
+        <button class="ll-wave-btn" id="llWaveLoopBtn" onclick="llToggleLoop()" title="Loop region">↺ Loop</button>
+        <button class="ll-wave-btn" onclick="llClearLoop()" title="Fjern loop">✕</button>
+        <span style="font-size:10px;color:var(--muted);margin-left:4px">Zoom:</span>
+        <input type="range" id="llWaveZoom" min="1" max="20" value="1"
+          style="flex:1;accent-color:#f4a443;cursor:pointer;min-width:60px"
           oninput="llZoomWave(this.value)" title="Zoom inn">
-        <span style="font-size:10px;color:var(--muted);min-width:24px" id="llWaveZoomVal">1×</span>
+        <span style="font-size:10px;color:var(--muted);min-width:28px;text-align:right" id="llWaveZoomVal">1×</span>
       </div>
-      <div class="ll-wave-hint">Dra på bølgeformen for å sette loopområde</div>
+      <div class="ll-wave-hint">Klikk og dra på bølgeformen for å markere loopområde</div>
     </div>
 
       <div class="ll-meta-row"><span class="ll-meta-key">Varighet</span><span class="ll-meta-val">${dur}</span></div>
@@ -1012,140 +1013,132 @@
 
   // ── WaveSurfer waveform + loop region ────────────────────────────────────
   let _ws = null;
-  let _wsRegion = null;
+  let _wsRegion = null;   // { start, end } in seconds
   let _wsLooping = false;
+  let _wsTimeHandler = null;
 
   function initWaveSurfer(beat) {
     const container = document.getElementById('llWaveSurfer');
     if (!container) return;
-
-    // Destroy previous instance
     if (_ws) { try { _ws.destroy(); } catch(e) {} _ws = null; }
+    _wsRegion = null; _wsLooping = false; _wsTimeHandler = null;
 
     const audioUrl = beat.audio_url || beat.url || null;
     if (!audioUrl) {
-      container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:64px;color:rgba(255,255,255,.2);font-size:12px">Ingen lydfil</div>';
+      container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:64px;color:rgba(255,255,255,.25);font-size:12px">Ingen lydfil lastet opp</div>';
       return;
     }
-
-    // Load WaveSurfer dynamically
     if (!window.WaveSurfer) {
-      const script = document.createElement('script');
-      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/wavesurfer.js/7.8.7/wavesurfer.min.js';
-      script.onload = () => _createWaveSurfer(container, audioUrl, beat);
-      document.head.appendChild(script);
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/wavesurfer.js/7.8.7/wavesurfer.min.js';
+      s.onload = () => _buildWS(container, audioUrl);
+      document.head.appendChild(s);
     } else {
-      _createWaveSurfer(container, audioUrl, beat);
+      _buildWS(container, audioUrl);
     }
   }
 
-  function _createWaveSurfer(container, audioUrl, beat) {
+  function _buildWS(container, audioUrl) {
     try {
       _ws = WaveSurfer.create({
         container,
-        waveColor:    'rgba(244,164,67,.45)',
-        progressColor:'rgba(244,164,67,.9)',
-        cursorColor:  '#f4a443',
-        height: 64,
-        barWidth: 2,
-        barGap: 1,
-        barRadius: 2,
+        waveColor:     'rgba(244,164,67,.4)',
+        progressColor: 'rgba(244,164,67,.85)',
+        cursorColor:   '#f4a443',
+        height: 64, barWidth: 2, barGap: 1, barRadius: 2,
         normalize: true,
-        backend: 'WebAudio',
         url: audioUrl,
+        minPxPerSec: 1,    // start zoomed out
       });
 
       _ws.on('play',  () => { const b=document.getElementById('llWavePlayBtn'); if(b) b.textContent='⏸'; });
       _ws.on('pause', () => { const b=document.getElementById('llWavePlayBtn'); if(b) b.textContent='▶'; });
       _ws.on('finish',() => {
-        if (_wsLooping && _wsRegion) {
-          _ws.setTime(_wsRegion.start);
-          _ws.play();
-        } else {
-          const b=document.getElementById('llWavePlayBtn'); if(b) b.textContent='▶';
-        }
+        const b=document.getElementById('llWavePlayBtn'); if(b) b.textContent='▶';
+        if (_wsLooping && _wsRegion) { setTimeout(()=>{ _ws.setTime(_wsRegion.start); _ws.play(); }, 50); }
       });
 
-      // Drag to create loop region
-      let dragStart = null;
+      // Single timeupdate handler for looping
+      _wsTimeHandler = (t) => {
+        if (_wsLooping && _wsRegion && t >= _wsRegion.end) {
+          _ws.setTime(_wsRegion.start);
+        }
+      };
+      _ws.on('timeupdate', _wsTimeHandler);
+
+      // Drag to set loop region
+      let _dragStart = null;
       container.addEventListener('mousedown', e => {
-        if (!_ws.getDuration()) return;
-        const rect = container.getBoundingClientRect();
-        const ratio = (e.clientX - rect.left) / rect.width;
-        dragStart = ratio * _ws.getDuration();
+        if (e.target.closest('canvas') || e.target.tagName === 'CANVAS') {
+          const dur = _ws.getDuration?.();
+          if (!dur) return;
+          const rect = container.getBoundingClientRect();
+          _dragStart = ((e.clientX - rect.left) / rect.width) * dur;
+          e.preventDefault();
+        }
       });
       container.addEventListener('mouseup', e => {
-        if (dragStart === null || !_ws.getDuration()) return;
+        if (_dragStart === null) return;
+        const dur = _ws.getDuration?.();
+        if (!dur) { _dragStart = null; return; }
         const rect = container.getBoundingClientRect();
-        const ratio = (e.clientX - rect.left) / rect.width;
-        const dragEnd = ratio * _ws.getDuration();
-        const start = Math.min(dragStart, dragEnd);
-        const end   = Math.max(dragStart, dragEnd);
-        if (end - start > 0.5) {
-          _wsRegion = { start, end };
-          _drawRegion(start, end);
-          _wsLooping = true;
-          const lb = document.getElementById('llWaveLoopBtn');
-          if (lb) { lb.classList.add('active'); lb.textContent = '↺ Looper'; }
-        }
-        dragStart = null;
+        const dragEnd = ((e.clientX - rect.left) / rect.width) * dur;
+        const start = Math.min(_dragStart, dragEnd);
+        const end   = Math.max(_dragStart, dragEnd);
+        _dragStart = null;
+        if (end - start < 0.3) return; // too small — just a click
+        _wsRegion  = { start, end };
+        _wsLooping = true;
+        _drawRegion(start, end);
+        const lb = document.getElementById('llWaveLoopBtn');
+        if (lb) { lb.classList.add('active'); lb.textContent = '↺ Looper'; }
       });
 
-    } catch(e) {
-      console.warn('[LyricLab] WaveSurfer init failed:', e);
-    }
+    } catch(e) { console.warn('[WaveSurfer] init error:', e); }
   }
 
   function _drawRegion(start, end) {
     const el = document.getElementById('llWaveSurfer');
-    let region = document.getElementById('llWaveRegion');
-    if (!region) {
-      region = document.createElement('div');
-      region.id = 'llWaveRegion';
-      el.style.position = 'relative';
-      el.appendChild(region);
-    }
-    const dur = _ws.getDuration();
-    region.style.cssText = `position:absolute;top:0;bottom:0;left:${(start/dur)*100}%;width:${((end-start)/dur)*100}%;background:rgba(244,164,67,.18);border-left:2px solid #f4a443;border-right:2px solid #f4a443;pointer-events:none;z-index:10`;
+    if (!el || !_ws) return;
+    document.getElementById('llWaveRegion')?.remove();
+    const dur = _ws.getDuration?.() || 1;
+    const div = document.createElement('div');
+    div.id = 'llWaveRegion';
+    div.style.cssText = `position:absolute;top:0;bottom:0;pointer-events:none;z-index:5;`
+      + `left:${(start/dur)*100}%;width:${((end-start)/dur)*100}%;`
+      + `background:rgba(244,164,67,.15);border-left:2px solid #f4a443;border-right:2px solid #f4a443;`;
+    el.style.position = 'relative';
+    el.appendChild(div);
   }
 
   window.llWavePlay = function() {
     if (!_ws) return;
     if (_ws.isPlaying()) { _ws.pause(); return; }
-    if (_wsLooping && _wsRegion) {
-      _ws.setTime(_wsRegion.start);
-    }
+    if (_wsLooping && _wsRegion) _ws.setTime(_wsRegion.start);
     _ws.play();
-
-    // Loop check on timeupdate
-    if (_wsLooping && _wsRegion) {
-      _ws.on('timeupdate', t => {
-        if (_wsLooping && _wsRegion && t >= _wsRegion.end) {
-          _ws.setTime(_wsRegion.start);
-        }
-      });
-    }
   };
 
   window.llToggleLoop = function() {
     _wsLooping = !_wsLooping;
     const btn = document.getElementById('llWaveLoopBtn');
     if (btn) { btn.classList.toggle('active', _wsLooping); btn.textContent = _wsLooping ? '↺ Looper' : '↺ Loop'; }
-    if (typeof showToast === 'function') showToast(_wsLooping ? '↺ Loop aktivert' : 'Loop deaktivert');
   };
 
   window.llClearLoop = function() {
-    _wsRegion  = null;
-    _wsLooping = false;
+    _wsRegion = null; _wsLooping = false;
     document.getElementById('llWaveRegion')?.remove();
     const btn = document.getElementById('llWaveLoopBtn');
     if (btn) { btn.classList.remove('active'); btn.textContent = '↺ Loop'; }
   };
 
   window.llZoomWave = function(val) {
-    if (_ws) _ws.zoom(Number(val));
+    if (!_ws) return;
+    const pxPerSec = Math.max(1, Number(val) * 10);
+    _ws.zoom(pxPerSec);
     const lbl = document.getElementById('llWaveZoomVal');
     if (lbl) lbl.textContent = val + '×';
+    // Re-draw region after zoom
+    if (_wsRegion) _drawRegion(_wsRegion.start, _wsRegion.end);
   };
 
   // ── Public entry point ────────────────────────────────────────────────────
