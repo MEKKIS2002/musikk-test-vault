@@ -902,3 +902,6 @@ body.admin-mode .admin-only-btn { display: inline-flex !important; }
   color: var(--muted);
   margin-top: 2px;
 }
+
+.bl-star{background:none;border:none;color:rgba(255,255,255,.25);font-size:16px;cursor:pointer;padding:4px;line-height:1;transition:color .15s}
+.bl-star:hover,.bl-star.active{color:#f4a443}
