@@ -290,9 +290,13 @@
   // Patch the existing renderPipeline to use our version
   window.renderPipeline = renderPipelineV2;
 
+  // Override db.js's renderPipeline immediately
+  window.renderPipeline    = renderPipelineV2;
+  window.renderPipelineV2  = renderPipelineV2;
+
   // Boot if pipeline tab is already active
   if (!document.getElementById('pipelineTab')?.classList.contains('hidden')) {
-    renderPipelineV2();
+    setTimeout(renderPipelineV2, 0);
   }
 
 })();
