@@ -333,13 +333,13 @@
       <div class="ll-stat-title">Fargemark</div>
       <div style="font-size:11px;color:rgba(255,255,255,.3);margin-bottom:8px">Marker tekst i en seksjon, velg farge</div>
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <button class="ll-color-dot" style="background:#f59e0b" onclick="llApplyColorActive('#f59e0b')" title="Gul"></button>
-        <button class="ll-color-dot" style="background:#10b981" onclick="llApplyColorActive('#10b981')" title="Grønn"></button>
-        <button class="ll-color-dot" style="background:#3b82f6" onclick="llApplyColorActive('#3b82f6')" title="Blå"></button>
-        <button class="ll-color-dot" style="background:#ec4899" onclick="llApplyColorActive('#ec4899')" title="Rosa"></button>
-        <button class="ll-color-dot" style="background:#ef4444" onclick="llApplyColorActive('#ef4444')" title="Rød"></button>
-        <button class="ll-color-dot" style="background:#a855f7" onclick="llApplyColorActive('#a855f7')" title="Lilla"></button>
-        <button class="ll-color-dot ll-color-clear" onclick="llApplyColorActive(null)" title="Fjern farge">✕</button>
+        <button class="ll-color-dot" style="background:#f59e0b" onmousedown="event.preventDefault()" onclick="llApplyColorActive('#f59e0b')" title="Gul"></button>
+        <button class="ll-color-dot" style="background:#10b981" onmousedown="event.preventDefault()" onclick="llApplyColorActive('#10b981')" title="Grønn"></button>
+        <button class="ll-color-dot" style="background:#3b82f6" onmousedown="event.preventDefault()" onclick="llApplyColorActive('#3b82f6')" title="Blå"></button>
+        <button class="ll-color-dot" style="background:#ec4899" onmousedown="event.preventDefault()" onclick="llApplyColorActive('#ec4899')" title="Rosa"></button>
+        <button class="ll-color-dot" style="background:#ef4444" onmousedown="event.preventDefault()" onclick="llApplyColorActive('#ef4444')" title="Rød"></button>
+        <button class="ll-color-dot" style="background:#a855f7" onmousedown="event.preventDefault()" onclick="llApplyColorActive('#a855f7')" title="Lilla"></button>
+        <button class="ll-color-dot ll-color-clear" onmousedown="event.preventDefault()" onclick="llApplyColorActive(null)" title="Fjern farge">✕</button>
       </div>
       <div id="llColorHint" style="font-size:10px;color:rgba(255,255,255,.2);margin-top:6px">Marker tekst i editoren, klikk så farge</div>
     </div>
@@ -350,7 +350,7 @@
         <input id="llRhymeInput" type="text" placeholder="Skriv et ord..."
           style="flex:1;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:6px 10px;color:var(--text);font-family:inherit;font-size:12px;outline:none"
           onkeydown="if(event.key==='Enter')llFindRhymes()"
-          oninput="clearTimeout(window._rhymeTimer);window._rhymeTimer=setTimeout(llFindRhymes,500)">
+          >
         <button onclick="llFindRhymes()" style="background:rgba(244,164,67,.15);border:1px solid rgba(244,164,67,.3);border-radius:8px;padding:6px 10px;color:#f4a443;font-size:11px;font-weight:800;cursor:pointer;font-family:inherit;white-space:nowrap">Finn rim</button>
       </div>
       <div id="llRhymeResults" style="min-height:40px">
@@ -425,28 +425,31 @@
   });
 
   window.llApplyColorActive = function(color) {
-    // Since mousedown called preventDefault, selection is still alive — read it directly
     const sel = window.getSelection();
 
-    // Try live selection first
-    let editor = null;
-    if (sel && sel.rangeCount > 0 && !sel.isCollapsed) {
-      const anchor = sel.anchorNode;
-      editor = anchor?.nodeType === 1
-        ? anchor.closest?.('.ll-highlight-editor')
-        : anchor?.parentElement?.closest?.('.ll-highlight-editor');
-    }
-
-    // Fallback to saved range
-    if (!editor && window._llSavedEditor) {
-      editor = window._llSavedEditor;
-      if (window._llSavedRange) {
-        sel.removeAllRanges();
-        sel.addRange(window._llSavedRange);
+    // Try to use saved range first (most reliable when clicking outside editor)
+    let editor = window._llSavedEditor;
+    if (editor && window._llSavedRange) {
+      sel.removeAllRanges();
+      sel.addRange(window._llSavedRange);
+    } else {
+      // Try live selection
+      if (sel && sel.rangeCount > 0 && !sel.isCollapsed) {
+        const anchor = sel.anchorNode;
+        editor = anchor?.nodeType === 1
+          ? anchor.closest?.('.ll-highlight-editor')
+          : anchor?.parentElement?.closest?.('.ll-highlight-editor');
       }
     }
 
-    if (!editor || !sel || sel.isCollapsed) {
+    if (!editor) {
+      if(typeof showToast==='function') showToast('Marker tekst i en seksjon først');
+      return;
+    }
+
+    // Ensure selection is in this editor and not collapsed
+    const currentSel = window.getSelection();
+    if (!currentSel || currentSel.isCollapsed) {
       if(typeof showToast==='function') showToast('Marker tekst i en seksjon først');
       return;
     }
@@ -459,8 +462,8 @@
 
     const secId = editor.dataset.sectionId;
     if (secId) llHighlightInput(editor, secId);
-    window._llSavedRange  = null;
-    window._llSavedEditor = null;
+    // Keep saved range so user can apply another color without re-selecting
+    // (cleared on next mouseup selection)
   };
 
   window.llApplyColor = function(secId, color) {
@@ -1148,7 +1151,7 @@
     const word = sel.split(/\s+/)[0].replace(/[^a-zæøåA-ZÆØÅ]/g,'');
     if(word.length > 1) {
       const input = document.getElementById('llRhymeInput');
-      if(input) { input.value = word; clearTimeout(window._rhymeTimer); window._rhymeTimer = setTimeout(llFindRhymes, 300); }
+      if(input) { input.value = word; }  // just fill the field, user presses Finn rim manually
     }
   });
 
