@@ -264,6 +264,7 @@ setTimeout(updateAdminUi, 50);
   const SYNC_STATUS_ID = 'supabaseSyncStatus';
   let isPullingFromSupabase = false;
   let pushTimer = null;
+  let pushMaxTimer = null; // maxWait guard
   let lastPushAt = 0;
 
   function client(){ return window.supabaseClient || null; }
@@ -517,10 +518,22 @@ setTimeout(updateAdminUi, 50);
     }
   }
 
+  // Debounce with maxWait: push 1.5s after last change, but force push
+  // every 6s during continuous writing so lyrics stay in sync underveis.
   function schedulePush(){
     if(isPullingFromSupabase || !canWrite()) return;
     clearTimeout(pushTimer);
-    pushTimer = setTimeout(()=>pushToSupabase(), 900);
+    pushTimer = setTimeout(()=>{
+      clearTimeout(pushMaxTimer); pushMaxTimer = null;
+      pushToSupabase();
+    }, 1500);
+    if(!pushMaxTimer){
+      pushMaxTimer = setTimeout(()=>{
+        pushMaxTimer = null;
+        clearTimeout(pushTimer); pushTimer = null;
+        pushToSupabase();
+      }, 6000);
+    }
   }
 
   function installSyncPanel(){
