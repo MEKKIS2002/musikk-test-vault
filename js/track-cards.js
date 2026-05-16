@@ -136,6 +136,13 @@ document.documentElement.classList.add('mv-mixed-ui');
         if(starBtn && !actions.querySelector('.star-btn')){
           actions.appendChild(starBtn);
         }
+        // Move status dot (no audio / no lyric) next to play button
+        const statusDot = titleRow.querySelector('.ab-status-dot');
+        if(statusDot && !actions.querySelector('.ab-status-dot')){
+          const star = actions.querySelector('.star-btn');
+          if(star) actions.insertBefore(statusDot, star);
+          else actions.appendChild(statusDot);
+        }
       }
       // Duration in list mode
       if(getView()==='list' && b.duration){
