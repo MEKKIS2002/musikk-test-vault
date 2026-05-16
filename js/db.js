@@ -674,9 +674,9 @@ function renderAlbumBeats(beats,mode,customEl){
               <span style="font-size:11px;color:rgba(255,255,255,.25);font-variant-numeric:tabular-nums;font-weight:700;flex-shrink:0">${String(idx+1).padStart(2,'0')}</span>
               <div class="ab-title" style="min-width:0">${esc(b.name)}</div>
               ${b.uploadedBy?`<span style="font-size:10px;font-weight:700;letter-spacing:.06em;color:var(--mv-amber,#ff8a1f);opacity:.8;white-space:nowrap">👤 ${esc(b.uploadedBy)}</span>`:''}
+              ${(()=>{ const noAudio=!(b.audio_url||b.url); const noLyric=!(b.lyrics||(b.lyricSections||[]).some(s=>s.text?.trim())); if(noAudio) return '<span class="ab-status-dot" title="Mangler lydfil" style="width:7px;height:7px;border-radius:50%;background:#fb7185;flex-shrink:0;display:inline-block"></span>'; if(noLyric) return '<span class="ab-status-dot" title="Mangler tekst" style="width:7px;height:7px;border-radius:50%;background:#f97316;flex-shrink:0;display:inline-block"></span>'; return ''; })()}
             </div>
             <button class="star-btn${b.favorite?" active":""}" data-fav-id="${b.id}" onclick="event.stopPropagation();toggleFav('${b.id}',this)" style="font-size:20px;padding:0;flex-shrink:0">★</button>
-            ${(()=>{ const noAudio=!(b.audio_url||b.url); const noLyric=!(b.lyrics||(b.lyricSections||[]).some(s=>s.text?.trim())); if(noAudio) return '<span title="Mangler lydfil" style="width:7px;height:7px;border-radius:50%;background:#fb7185;flex-shrink:0;display:inline-block;margin-top:2px"></span>'; if(noLyric) return '<span title="Mangler tekst" style="width:7px;height:7px;border-radius:50%;background:#f97316;flex-shrink:0;display:inline-block;margin-top:2px"></span>'; return ''; })()}
           </div>
           <div class="ab-stars" onclick="event.stopPropagation()">${stars}</div>
           ${listMode==="album"?`<div class="progress-wrap" onclick="event.stopPropagation()">
