@@ -195,7 +195,7 @@ body::before{
 .stats-card{
   height:520px!important;
   min-height:520px!important;
-  border-radius:22px!important;
+  border-radius:0!important;
 }
 .hero-main{
   position:relative!important;
