@@ -29,6 +29,26 @@
 
   let _lastSaved = null;
   let _saveTimer = null;
+  let _saveMaxTimer = null; // maxWait guard — ensures save even during non-stop typing
+
+  // Debounce with maxWait: saves 600ms after last keystroke, but forces save every 5s
+  // during continuous typing so Supabase stays in sync underveis.
+  function scheduleAutoSave(beat, updateRight) {
+    clearTimeout(_saveTimer);
+    _saveTimer = setTimeout(() => {
+      clearTimeout(_saveMaxTimer); _saveMaxTimer = null;
+      saveSections(beat);
+      if (updateRight) updateRightPanel(beat);
+    }, 600);
+    if (!_saveMaxTimer) {
+      _saveMaxTimer = setTimeout(() => {
+        _saveMaxTimer = null;
+        clearTimeout(_saveTimer); _saveTimer = null;
+        saveSections(beat);
+        if (updateRight) updateRightPanel(beat);
+      }, 5000);
+    }
+  }
 
   // ── Helpers ───────────────────────────────────────────────────────────────
   function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -568,7 +588,7 @@
     const l = countLines(sec.text);
     if (cnt) cnt.textContent = `${l} ${l===1?'linje':'linjer'}`;
     clearTimeout(_saveTimer);
-    _saveTimer = setTimeout(() => { saveSections(beat); updateRightPanel(beat); }, 600);
+    scheduleAutoSave(beat, true);
   };
   // Keep backward compat alias
   window.llSectionInput = window.llHighlightInput;
@@ -936,7 +956,7 @@
     const l = countLines(ta.value);
     if(cnt) cnt.textContent = `${l} ${l===1?'linje':'linjer'}`;
     clearTimeout(_saveTimer);
-    _saveTimer = setTimeout(() => saveSections(beat), 600);
+    scheduleAutoSave(beat, false);
   };
   window.llInlineAddSection = function(beatId) {
     const beat = getBeat(beatId); if(!beat) return;
@@ -952,7 +972,7 @@
     const secs = getSections(beat);
     if(secs[0]) secs[0].text = text;
     clearTimeout(_saveTimer);
-    _saveTimer = setTimeout(() => saveSections(beat), 600);
+    scheduleAutoSave(beat, false);
   };
 
   // ── Record lyric take over beat ──────────────────────────────────────────
