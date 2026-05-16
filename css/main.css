@@ -905,3 +905,26 @@ body.admin-mode .admin-only-btn { display: inline-flex !important; }
 
 .bl-star{background:none;border:none;color:rgba(255,255,255,.25);font-size:16px;cursor:pointer;padding:4px;line-height:1;transition:color .15s}
 .bl-star:hover,.bl-star.active{color:#f4a443}
+
+/* ── Album A/B side dividers ─────────────────────────────────── */
+.ab-side-divider {
+  padding: 8px 0 4px;
+  display: flex; align-items: center; gap: 10px;
+}
+.ab-side-label {
+  font-size: 9px; font-weight: 900; letter-spacing: .2em;
+  color: rgba(244,164,67,.5); font-family: system-ui;
+}
+.ab-side-divider::after {
+  content: ''; flex: 1; height: 1px; background: rgba(244,164,67,.15);
+}
+
+/* ── Vinyl spin animation ─────────────────────────────────────── */
+@keyframes vinylSpin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+#albumDetailHd.vinyl-spinning .album-detail-vinyl,
+#albumDetailHd.is-playing-album .album-detail-vinyl {
+  animation: vinylSpin 2s linear infinite !important;
+}
