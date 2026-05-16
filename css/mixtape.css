@@ -14,7 +14,7 @@
 .cass-png {
   width: 100%;
   display: block;
-  border-radius: 4px;
+  border-radius: 0;
 }
 
 /* Label overlay — positioned over the white label area of the PNG */
@@ -83,7 +83,7 @@
     max-height:none!important;
     object-fit:cover!important;
     object-position:center!important;
-    border-radius:inherit!important;
+    border-radius: 0;
     aspect-ratio:auto!important;
     position:absolute!important;
     inset:0!important;
@@ -107,7 +107,7 @@
     grid-column:1/-1!important;
   }
   .album-beat-grid:not(.album-beat-listmode) .album-beat-card:not(.expanded){
-    border-radius:18px!important;
+    border-radius: 0;
     overflow:hidden!important;
     min-height:0!important;
     background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.018))!important;
@@ -126,7 +126,7 @@
     aspect-ratio:1/1!important;
     border-right:0!important;
     border-bottom:1px solid rgba(255,255,255,.075)!important;
-    border-radius:0!important;
+    border-radius: 0;
     margin:0!important;
   }
   .album-beat-grid:not(.album-beat-listmode) .album-beat-card:not(.expanded) .ab-body{
@@ -156,19 +156,19 @@
     display:block!important;
     background:rgba(0,0,0,.22)!important;
     border:1px solid rgba(255,255,255,.065)!important;
-    border-radius:14px!important;
+    border-radius: 0;
     padding:6px!important;
     overflow:hidden!important;
   }
   .album-beat-listmode .reorder-hint,
   .album-beat-listmode .batch-bar{
     margin:0 0 6px!important;
-    border-radius:10px!important;
+    border-radius: 0;
   }
   .album-beat-listmode .album-beat-card:not(.expanded){
     display:block!important;
     min-height:64px!important;
-    border-radius:8px!important;
+    border-radius: 0;
     border:0!important;
     border-bottom:1px solid rgba(255,255,255,.055)!important;
     background:transparent!important;
@@ -198,7 +198,7 @@
     aspect-ratio:1/1!important;
     margin:0!important;
     border:0!important;
-    border-radius:6px!important;
+    border-radius: 0;
     box-shadow:0 6px 14px rgba(0,0,0,.28)!important;
   }
   .album-beat-listmode .album-beat-card:not(.expanded) .ab-cover-wrap::before,
@@ -266,7 +266,7 @@
     min-width:34px!important;
     padding:0!important;
     margin:0!important;
-    border-radius:999px!important;
+    border-radius: 0;
     display:inline-grid!important;
     place-items:center!important;
     position:static!important;
@@ -337,7 +337,7 @@
   padding:8px 10px!important;
   border:1px solid rgba(255,255,255,.10)!important;
   background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.018))!important;
-  border-radius:12px!important;
+  border-radius: 0;
   box-shadow:inset 0 1px 0 rgba(255,255,255,.035)!important;
 }
 #mixtapeDetailView .marcus-mixtape-local-search .mixtape-search-icon{
@@ -371,7 +371,7 @@
   font-size:12px!important;
   font-weight:900!important;
   padding:7px 9px!important;
-  border-radius:999px!important;
+  border-radius: 0;
   cursor:pointer!important;
 }
 #mixtapeDetailView .marcus-mixtape-local-search button:hover{
@@ -387,7 +387,7 @@
   background:rgba(255,255,255,.025)!important;
   color:#bfae99!important;
   text-align:center!important;
-  border-radius:12px!important;
+  border-radius: 0;
   font-weight:850!important;
 }
 #mixtapeDetailView .marcus-mixtape-search-empty.show{display:block!important;}
@@ -430,7 +430,7 @@
   background:rgba(255,255,255,.025)!important;
   color:#bfae99!important;
   text-align:center!important;
-  border-radius:12px!important;
+  border-radius: 0;
   font-weight:850!important;
 }
 #mixtapeDetailView .marcus-mixtape-search-empty.show{display:block!important;}
@@ -446,7 +446,7 @@
   height:46px!important;
   background:rgba(255,255,255,.06)!important;
   border:1px solid rgba(255,255,255,.12)!important;
-  border-radius:14px!important;
+  border-radius: 0;
   padding:0 14px!important;
   color:var(--text)!important;
   font:inherit!important;
