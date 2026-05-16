@@ -2,7 +2,7 @@
 
 /* ── Header stats ───────────────────────────────────────────── */
 .pl-header { margin-bottom: 20px; }
-.pl-stats-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.pl-stats-row { display: flex !important; gap: 8px; flex-wrap: wrap; }
 .pl-stat-pill {
   background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.1);
   border-radius: 999px; padding: 5px 14px; font-size: 12px; font-weight: 800;
@@ -60,7 +60,7 @@
 
 /* ── Kanban board ───────────────────────────────────────────── */
 .pl-kanban {
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+  display: grid !important; grid-template-columns: repeat(3, 1fr) !important; gap: 10px;
 }
 @media (max-width: 900px) { .pl-kanban { grid-template-columns: 1fr; } }
 
