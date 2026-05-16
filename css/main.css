@@ -924,7 +924,16 @@ body.admin-mode .admin-only-btn { display: inline-flex !important; }
   from { transform: rotate(0deg); }
   to   { transform: rotate(360deg); }
 }
+@keyframes vinylSpinFast {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+/* Slow idle spin always */
+.album-detail-vinyl {
+  animation: vinylSpin 8s linear infinite;
+}
+/* Fast spin when playing */
 #albumDetailHd.vinyl-spinning .album-detail-vinyl,
 #albumDetailHd.is-playing-album .album-detail-vinyl {
-  animation: vinylSpin 2s linear infinite !important;
+  animation: vinylSpinFast 1.5s linear infinite !important;
 }
