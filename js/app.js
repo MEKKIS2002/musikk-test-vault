@@ -191,15 +191,17 @@
           <div class="eyebrow">Album</div>
           <h2>${esc(album.name)}</h2>
           <p class="album-detail-sub">
-            <span>${beats.length} demo${beats.length===1?'':'er'}</span>
+            <span>${beats.length} sang${beats.length===1?'':'er'}</span>
             <span>•</span>
-            <span>${avg}% snitt ferdig</span>
+            <span>${(()=>{const s=beats.reduce((t,b)=>t+Number(b.duration||0),0);const m=Math.floor(s/60),sec=Math.floor(s%60);return s>0?m+':'+String(sec).padStart(2,'0'):'--:--';})()}</span>
             <span>•</span>
-            <span>${esc(album.status||'Idé')}</span>
+            <span>${avg}% ferdig</span>
           </p>
           <div class="album-detail-actions">
-            <button class="primary-btn" id="playAlbumBtn" onclick="playAlbumFromStart('${album.id}')">▶ Spill fra start</button>
+            <button class="primary-btn" id="playAlbumBtn" onclick="playAlbumFromStart('${album.id}');document.getElementById('albumDetailHd')?.classList.add('vinyl-spinning')">▶ Spill fra start</button>
             <label class="ghost-btn" style="cursor:pointer">🖼️ Bytt albumbilde<input type="file" accept="image/*" hidden onchange="setAlbumCover('${album.id}',this.files[0])"></label>
+            <button class="ghost-btn" onclick="albumToggleABSide('${album.id}')" id="abSideBtn" title="A/B-side visning">💿 A/B-side</button>
+            <button class="ghost-btn" onclick="albumPitchMode('${album.id}')" title="Artist one-pager">📄 Pitch</button>
             <button class="small-btn danger hidden" id="stopAlbumBtn" onclick="stopCollectionPlayback()">⏹ Stopp</button>
           </div>
         </div>
@@ -221,6 +223,71 @@
       </div>`;
   }
   window.albumStatusChange=function(id,val){const a=state.albums.find(x=>x.id===id);if(a){a.status=val;saveState();showToast('✓ Albumstatus oppdatert');renderAlbumDetail();}};
+
+  // ── A/B Side toggle ────────────────────────────────────────────────────────
+  let _abSideActive = false;
+  window.albumToggleABSide = function(albumId) {
+    _abSideActive = !_abSideActive;
+    const btn = document.getElementById('abSideBtn');
+    if (btn) { btn.classList.toggle('active', _abSideActive); btn.textContent = _abSideActive ? '💿 Full liste' : '💿 A/B-side'; }
+    const album = state.albums.find(a=>a.id===albumId);
+    if (!album) return;
+    const beats = beatsFromIds(album.beatIds);
+    const list  = document.getElementById('albumBeatList');
+    if (!list) return;
+    if (_abSideActive) {
+      const mid = Math.ceil(beats.length / 2);
+      list.insertAdjacentHTML('afterbegin', `
+        <div class="ab-side-divider" id="abSideA"><span class="ab-side-label">A-SIDE</span></div>`);
+      const bCards = list.querySelectorAll('.album-beat-card');
+      if (bCards[mid]) bCards[mid].insertAdjacentHTML('beforebegin',
+        `<div class="ab-side-divider" id="abSideB"><span class="ab-side-label">B-SIDE</span></div>`);
+    } else {
+      list.querySelectorAll('.ab-side-divider').forEach(el=>el.remove());
+    }
+  };
+
+  // ── Pitch mode (one-pager) ────────────────────────────────────────────────
+  window.albumPitchMode = function(albumId) {
+    const album = state.albums?.find(a=>a.id===albumId);
+    if (!album) return;
+    const beats = beatsFromIds(album.beatIds);
+    const totalSec = beats.reduce((s,b)=>s+Number(b.duration||0),0);
+    const dur = totalSec>0 ? Math.floor(totalSec/60)+':'+String(Math.floor(totalSec%60)).padStart(2,'0') : null;
+    const STATUS_COLORS = {'Idé':'#a855f7','Skriving':'#60a5fa','Innspilling':'#f97316','Mixing':'#f4a443','Ferdig':'#34d399'};
+    const stCol = STATUS_COLORS[album.status||'Idé'] || '#f4a443';
+    const mid = Math.ceil(beats.length/2);
+    const rows = beats.map((b,i)=>{
+      const sideDiv = beats.length>=4&&(i===0||i===mid)
+        ? '<div style="font-size:9px;font-weight:800;letter-spacing:.18em;color:'+stCol+';text-transform:uppercase;font-family:system-ui;padding:12px 0 4px;opacity:.6">'+(i===0?'A-SIDE':'B-SIDE')+'</div>' : '';
+      const d=Number(b.duration||0), dStr=d>0?Math.floor(d/60)+':'+String(Math.floor(d%60)).padStart(2,'0'):'';
+      return sideDiv+'<div style="display:flex;align-items:center;gap:14px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.05)">'
+        +'<span style="font-size:11px;color:rgba(255,255,255,.25);min-width:24px;font-family:system-ui">'+String(i+1).padStart(2,'0')+'</span>'
+        +'<span style="font-size:15px;font-weight:700;flex:1">'+b.name.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</span>'
+        +'<span style="font-size:11px;color:rgba(255,255,255,.3);font-family:system-ui">'+dStr+'</span></div>';
+    }).join('');
+    const coverHtml = album.cover
+      ? '<img style="width:180px;height:180px;border-radius:16px;object-fit:cover;box-shadow:0 20px 60px rgba(0,0,0,.6)" src="'+album.cover+'" alt="">'
+      : '<div style="width:180px;height:180px;border-radius:16px;background:rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;font-size:48px">🎵</div>';
+    const html = '<!DOCTYPE html><html lang="no"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
+      + '<title>'+album.name+' — Pitch</title>'
+      + '<style>*{box-sizing:border-box;margin:0;padding:0}body{background:#0d0b09;color:#f4ede4;font-family:Georgia,serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:40px 20px}.page{max-width:700px;width:100%}</style>'
+      + '</head><body><div class="page">'
+      + '<div style="display:flex;align-items:flex-start;gap:32px;margin-bottom:48px">'+coverHtml
+      + '<div style="padding-top:8px">'
+      + '<div style="font-size:11px;font-weight:800;letter-spacing:.18em;color:'+stCol+';text-transform:uppercase;font-family:system-ui;margin-bottom:10px">'+(album.status||'Album')+'</div>'
+      + '<h1 style="font-size:40px;font-weight:900;letter-spacing:-.04em;line-height:1.1;margin-bottom:12px">'+album.name+'</h1>'
+      + '<div style="display:flex;gap:16px;font-size:12px;color:rgba(255,255,255,.45);font-family:system-ui;font-weight:700">'
+      + '<span>'+beats.length+' sanger</span>'+(dur?'<span>• '+dur+' total</span>':'')+'<span>• '+new Date().getFullYear()+'</span></div>'
+      + '</div></div>'
+      + '<div style="font-size:10px;font-weight:800;letter-spacing:.18em;color:rgba(255,255,255,.3);text-transform:uppercase;font-family:system-ui;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,.08);margin-bottom:8px">Trackliste</div>'
+      + rows
+      + '<div style="font-size:11px;color:rgba(255,255,255,.2);font-family:system-ui;text-align:center;padding-top:24px;border-top:1px solid rgba(255,255,255,.06);margin-top:32px">Laget med Music Vault</div>'
+      + '</div></body></html>';
+    const blob = new Blob([html], {type:'text/html'});
+    window.open(URL.createObjectURL(blob), '_blank');
+    if(typeof showToast==='function') showToast('✓ Pitch-side åpnet i ny fane');
+  };
   window.setAlbumCover=function(id,file){if(!file)return;const r=new FileReader();r.onload=e=>{const a=state.albums.find(x=>x.id===id);if(a){a.cover=e.target.result;saveState();renderAlbumDetail();renderAlbums();showToast('✓ Albumbilde oppdatert');}};r.readAsDataURL(file);};
 
   const _oldRenderAlbumBeats=window.renderAlbumBeats;
