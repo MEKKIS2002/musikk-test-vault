@@ -674,9 +674,9 @@ function renderAlbumBeats(beats,mode,customEl){
               <span style="font-size:11px;color:rgba(255,255,255,.25);font-variant-numeric:tabular-nums;font-weight:700;flex-shrink:0">${String(idx+1).padStart(2,'0')}</span>
               <div class="ab-title" style="min-width:0">${esc(b.name)}</div>
               ${b.uploadedBy?`<span style="font-size:10px;font-weight:700;letter-spacing:.06em;color:var(--mv-amber,#ff8a1f);opacity:.8;white-space:nowrap">👤 ${esc(b.uploadedBy)}</span>`:''}
-              ${(()=>{ const noAudio=!(b.audio_url||b.url); const noLyric=!(b.lyrics||(b.lyricSections||[]).some(s=>s.text?.trim())); if(noAudio) return '<span class="ab-status-dot" title="Mangler lydfil" style="width:7px;height:7px;border-radius:50%;background:#fb7185;flex-shrink:0;display:inline-block"></span>'; if(noLyric) return '<span class="ab-status-dot" title="Mangler tekst" style="width:7px;height:7px;border-radius:50%;background:#f97316;flex-shrink:0;display:inline-block"></span>'; return ''; })()}
             </div>
             <button class="star-btn${b.favorite?" active":""}" data-fav-id="${b.id}" onclick="event.stopPropagation();toggleFav('${b.id}',this)" style="font-size:20px;padding:0;flex-shrink:0">★</button>
+            ${(()=>{ const noAudio=!(b.audio_url||b.url); const noLyric=!(b.lyrics||(b.lyricSections||[]).some(s=>s.text?.trim())); if(noAudio) return '<span title="Mangler lydfil" style="width:7px;height:7px;border-radius:50%;background:#fb7185;flex-shrink:0;display:inline-block;margin-top:2px"></span>'; if(noLyric) return '<span title="Mangler tekst" style="width:7px;height:7px;border-radius:50%;background:#f97316;flex-shrink:0;display:inline-block;margin-top:2px"></span>'; return ''; })()}
           </div>
           <div class="ab-stars" onclick="event.stopPropagation()">${stars}</div>
           ${listMode==="album"?`<div class="progress-wrap" onclick="event.stopPropagation()">
@@ -725,13 +725,30 @@ function toggleAlbumBeat(id){
   // Fallback: first visible card with this id
   if(!card){
     const all = document.querySelectorAll(`[data-beat-id="${id}"], #abi-${id}`);
-    for(const c of all){
-      if(c.offsetParent !== null){ card = c; break; }
-    }
+    for(const c of all){ if(c.offsetParent !== null){ card = c; break; } }
   }
   if(!card) return;
-  card.classList.toggle("expanded");
-  if(card.classList.contains("expanded")) loadAudioForBeat(id);
+
+  const isExpanded = card.classList.contains("expanded");
+
+  if(isExpanded){
+    // Animate out, then collapse
+    const expandEl = card.querySelector('.ab-expand');
+    if(expandEl && !expandEl.dataset.collapsing){
+      expandEl.dataset.collapsing = '1';
+      expandEl.style.animation = 'mvCollapseOut 0.18s ease forwards';
+      setTimeout(()=>{
+        card.classList.remove("expanded");
+        expandEl.style.animation = '';
+        delete expandEl.dataset.collapsing;
+      }, 170);
+    } else if(!expandEl){
+      card.classList.remove("expanded");
+    }
+  } else {
+    card.classList.add("expanded");
+    loadAudioForBeat(id);
+  }
 }
 function setAlbumBeatRating(id,r){
   const b=state.beats.find(x=>x.id===id);if(!b)return;
@@ -1501,6 +1518,30 @@ document.getElementById('deleteConfirmInput').addEventListener('input',function(
   btn.disabled=!ok;btn.style.opacity=ok?'1':'.5';
 });
 document.getElementById('deleteConfirmModal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeModal('deleteConfirmModal');});
+
+// ── Beat card expand/collapse animation ──────────────────────────────────────
+(function injectExpandAnimation(){
+  if(document.getElementById('mv-expand-anim')) return;
+  const s = document.createElement('style');
+  s.id = 'mv-expand-anim';
+  s.textContent = `
+    @keyframes mvExpandIn {
+      from { opacity: 0; transform: translateY(-10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes mvCollapseOut {
+      from { opacity: 1; transform: translateY(0); }
+      to   { opacity: 0; transform: translateY(-8px); }
+    }
+    .album-beat-card.expanded .ab-expand {
+      animation: mvExpandIn 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+    .album-beat-card {
+      transition: box-shadow 0.25s ease;
+    }
+  `;
+  document.head.appendChild(s);
+})();
 
 renderAll();
 // Add tab-visible class to initial active tab (no transition needed on first load)
