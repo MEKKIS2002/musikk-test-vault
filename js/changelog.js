@@ -6,6 +6,31 @@
 
   const VERSIONS = [
     {
+      version: 'v2.3',
+      date: '16. mai 2026',
+      label: 'Album & Pipeline',
+      color: '#60a5fa',
+      changes: [
+        'Album-kortene viser nå status-badge med fargekoding (Idé/Skriving/Innspilling/Mixing/Ferdig) og total spilletid',
+        'Tracklist-nummer (01. 02. 03.) vises foran hvert sangnavn i albumvisningen',
+        'Mangler-indikator: rød prikk = ingen lydfil, oransje prikk = ingen tekst — vises i utvidet kortvisning',
+        'A/B-side-knapp deler tracklisten i to sider som på en vinyl',
+        'Vinyl-animator: snurrer langsomt alltid, raskere ved avspilling',
+        'Pitch-modus: generer en artist one-pager med cover, trackliste og A/B-side klar til deling',
+        'Total albumvarighet vises i albumdetalj-headeren',
+        'Beat-varighet lagres automatisk på beatet når bottom player laster audio metadata',
+        'Pipeline v2: Kanban-visning med tre kolonner (Ikke startet / I arbeid / Ferdig)',
+        'Pipeline: drag sanger mellom kolonner for å oppdatere ferdigstillelse',
+        'Pipeline: neste steg per sang (Last opp lydfil / Skriv tekst / Ferdigstill seksjoner)',
+        'Pipeline: drag-rekkefølge for prioritering innad i kolonner',
+        'Pipeline: ✍️ Lyric Lab-knapp direkte fra sangkortet',
+        'Pipeline: hurtig-slider for ferdigstillelse uten å åpne sangen',
+        'Pipeline: ukentlig fremgang-pill og streak-teller',
+        'Pipeline: albumnotater med 📝-knapp',
+        'Pipeline: album-status dropdown (Idé/Skriving/Innspilling/Mixing/Masterering/Ferdig)',
+      ],
+    },
+    {
       version: 'v2.2',
       date: '15. mai 2026',
       label: 'Lyric Lab',

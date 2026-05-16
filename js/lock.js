@@ -35,11 +35,9 @@ function applyRoleMode(){
       const tab = b.dataset.tab;
       b.style.display = (tab === 'beats' || tab === 'mixtapes') ? '' : 'none';
     });
-    // Show mixtapes as default tab
     document.querySelectorAll('.tab-view').forEach(v=>v.classList.add('hidden'));
     const mix = document.getElementById('mixtapesTab');
     if(mix){ mix.classList.remove('hidden'); }
-    // Activate mixtapes tab button
     document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active', b.dataset.tab==='mixtapes'));
   } else if(isProducer){
     const active=document.querySelector('.tab-btn.active');
