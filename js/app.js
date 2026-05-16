@@ -222,6 +222,37 @@
         </aside>
       </div>`;
   }
+  // Load beat durations in background by probing audio metadata
+  function loadMissingDurations(beats) {
+    beats.forEach(b => {
+      if (b.duration > 0) return; // already known
+      const url = b.audio_url || b.url;
+      if (!url) return;
+      const audio = new Audio();
+      audio.preload = 'metadata';
+      audio.addEventListener('loadedmetadata', () => {
+        if (audio.duration > 0 && isFinite(audio.duration)) {
+          b.duration = Math.round(audio.duration);
+          if (typeof saveState === 'function') saveState();
+          // Re-render header to show updated duration
+          if (typeof redesignAlbumDetail === 'function') redesignAlbumDetail();
+        }
+      }, { once: true });
+      audio.src = url;
+    });
+  }
+
+  // Patch renderAlbumDetail to also load durations
+  const _origRedesign = redesignAlbumDetail;
+  redesignAlbumDetail = function() {
+    _origRedesign();
+    const album = state.albums?.find(a=>a.id===currentAlbumId);
+    if (album) {
+      const beats = beatsFromIds(album.beatIds).filter(b=>!b.duration||b.duration===0);
+      if (beats.length) loadMissingDurations(beats);
+    }
+  };
+
   window.albumStatusChange=function(id,val){const a=state.albums.find(x=>x.id===id);if(a){a.status=val;saveState();showToast('✓ Albumstatus oppdatert');renderAlbumDetail();}};
 
   // ── A/B Side toggle ────────────────────────────────────────────────────────
