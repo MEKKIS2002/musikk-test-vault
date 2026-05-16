@@ -189,7 +189,7 @@
 
         <div class="album-detail-main">
           <div class="eyebrow">Album</div>
-          <h2>${esc(album.name)}</h2>
+          <h2 style="display:flex;align-items:center;gap:8px">${esc(album.name)}<button onclick="renameAlbum('${album.id}')" title="Gi nytt navn" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:14px;padding:2px 4px;opacity:.7;transition:opacity .15s" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.7">✏️</button></h2>
           <p class="album-detail-sub">
             <span>${beats.length} sang${beats.length===1?'':'er'}</span>
             <span>•</span>
@@ -764,6 +764,18 @@
     renderStats();
     setTimeout(()=>{installArchiveCss();installArchiveTab();installBeatArchiveButtons();installCollectionArchiveButtons();patchAddBeatModals();if(isArchiveTab())renderArchiveView();},0);
   };
+
+  // Double-click on beat title in album/mixtape beat lists to rename
+  document.addEventListener('dblclick', e => {
+    const titleEl = e.target.closest('.ab-title');
+    if (!titleEl) return;
+    const card = titleEl.closest('[data-beat-id]');
+    if (!card) return;
+    const admin = typeof isAdmin === 'function' ? isAdmin() : sessionStorage.getItem('mv_role') === 'admin';
+    if (!admin) return;
+    e.stopPropagation();
+    if (typeof window.renameBeat === 'function') window.renameBeat(card.dataset.beatId);
+  });
 
   installArchiveCss();
   ensureArchiveData();

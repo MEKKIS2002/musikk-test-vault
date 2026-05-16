@@ -1037,7 +1037,7 @@ function renderMixtapeDetail(){
       </div>
       <div class="mixtape-detail-copy">
         <div class="mixtape-detail-kicker">Mixtape</div>
-        <h2>${esc(mt.name)}</h2>
+        <h2 style="display:flex;align-items:center;gap:8px">${esc(mt.name)}<button onclick="renameMixtape('${mt.id}')" title="Gi nytt navn" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:14px;padding:2px 4px;opacity:.7;transition:opacity .15s" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.7">✏️</button></h2>
         <span style="color:var(--muted);font-size:13px">${(()=>{const n=(mt.beatIds||[]).filter(id=>{const b=state.beats.find(x=>x.id===id);return b&&!b.archived;}).length;return n+' beat'+(n===1?'':'s');})()}</span>
         <div id="mixtapeNowPlaying" class="hint" style="margin-top:6px"></div>
       </div>
@@ -1498,6 +1498,68 @@ document.getElementById("deleteMixtapeBtn").addEventListener("click",()=>{
 // ── REMOVE old beat listeners that reference gone elements ──
 
 let _deleteCallback=null;
+// ── Rename modal ────────────────────────────────────────────────────────────
+function showRenameModal(label, currentName, onSave) {
+  let modal = document.getElementById('mvRenameModal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'mvRenameModal';
+    modal.className = 'modal';
+    modal.innerHTML = `
+      <div class="modal-card modal-sm" style="max-width:380px">
+        <div class="modal-hd">
+          <div class="modal-hd-left"><h2 id="mvRenameTitle">Gi nytt navn</h2></div>
+          <div class="modal-hd-right"><button class="close-btn" onclick="closeModal('mvRenameModal')">×</button></div>
+        </div>
+        <div class="modal-body" style="padding:22px 28px 28px;display:grid;gap:14px">
+          <input id="mvRenameInput" class="text-input" style="font-size:15px;padding:10px 14px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:8px;color:var(--text);width:100%;box-sizing:border-box" />
+          <button id="mvRenameSaveBtn" class="primary-btn" style="width:100%">Lagre</button>
+        </div>
+      </div>`;
+    document.body.appendChild(modal);
+    modal.addEventListener('click', e => { if (e.target === modal) closeModal('mvRenameModal'); });
+  }
+  document.getElementById('mvRenameTitle').textContent = `Gi nytt navn — ${label}`;
+  const inp = document.getElementById('mvRenameInput');
+  inp.value = currentName;
+  modal._onSave = onSave;
+  const btn = document.getElementById('mvRenameSaveBtn');
+  btn.onclick = () => {
+    const val = inp.value.trim();
+    if (!val) return;
+    modal._onSave(val);
+    closeModal('mvRenameModal');
+  };
+  inp.onkeydown = e => { if (e.key === 'Enter') btn.click(); if (e.key === 'Escape') closeModal('mvRenameModal'); };
+  modal.classList.add('open');
+  setTimeout(() => { inp.focus(); inp.select(); }, 80);
+}
+
+window.renameBeat = function(id) {
+  const b = state.beats.find(x => x.id === id); if (!b) return;
+  showRenameModal('sang', b.name, val => {
+    b.name = val; saveState();
+    if (typeof window.beatsTab?.renderBeatsTab === 'function') window.beatsTab.renderBeatsTab();
+    renderAll(); showToast('✓ Navn oppdatert');
+  });
+};
+window.renameAlbum = function(id) {
+  const a = state.albums.find(x => x.id === id); if (!a) return;
+  showRenameModal('album', a.name, val => {
+    a.name = val; saveState(); renderAlbums();
+    if (id === currentAlbumId) renderAlbumDetail();
+    showToast('✓ Navn oppdatert');
+  });
+};
+window.renameMixtape = function(id) {
+  const mt = state.mixtapes.find(x => x.id === id); if (!mt) return;
+  showRenameModal('mixtape', mt.name, val => {
+    mt.name = val; saveState(); renderMixtapes();
+    if (id === currentMixtapeId) renderMixtapeDetail();
+    showToast('✓ Navn oppdatert');
+  });
+};
+
 function showDeleteConfirm(msg,cb){
   _deleteCallback=cb;
   document.getElementById('deleteConfirmTitle').textContent='Bekreft sletting';

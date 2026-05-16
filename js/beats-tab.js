@@ -79,6 +79,7 @@
     menu.className = 'bt-dropdown';
     menu.innerHTML = `
       <button onclick="beatsTab.playBeat('${beatId}')">▶ Spill</button>
+      ${admin ? `<button onclick="renameBeat('${beatId}')">✏️ Gi nytt navn</button>` : ''}
       ${admin ? `<button onclick="beatsTab.toggleFav('${beatId}')">${beat.favorite ? '★ Fjern favoritt' : '☆ Legg til favoritt'}</button>` : ''}
       ${admin ? `<button onclick="beatsTab.archiveBeat('${beatId}')">${isArch ? '↩ Gjenopprett' : '📦 Arkiver sang'}</button>` : ''}
       ${admin ? `<hr style="border:none;border-top:1px solid rgba(255,255,255,.08);margin:4px 0">` : ''}
@@ -431,6 +432,18 @@
       };
     }
 
+    // Double-click on song title to rename
+    document.addEventListener('dblclick', e => {
+      const titleEl = e.target.closest('.bl-title');
+      if (!titleEl) return;
+      const row = titleEl.closest('[data-beat-id]');
+      if (!row) return;
+      const admin = typeof isAdmin === 'function' ? isAdmin() : sessionStorage.getItem('mv_role') === 'admin';
+      if (!admin) return;
+      e.stopPropagation();
+      if (typeof window.renameBeat === 'function') window.renameBeat(row.dataset.beatId);
+    });
+
     // Store duration whenever beat audio loads
     document.addEventListener('loadedmetadata', e => {
       const audio = e.target;
@@ -441,7 +454,7 @@
   }
 
   // ── Public API ────────────────────────────────────────────────────────────
-  window.beatsTab = { renderBeatsTab, onSearch, onSort, openDropdown, playBeat, toggleFav, archiveBeat, deleteBeat };
+  window.beatsTab = { renderBeatsTab, onSearch, onSort, openDropdown, playBeat, toggleFav, archiveBeat, deleteBeat, renameBeat: (id) => window.renameBeat?.(id) };
   window.renderBeatsTab = renderBeatsTab;
 
   if (document.readyState !== 'loading') init();
