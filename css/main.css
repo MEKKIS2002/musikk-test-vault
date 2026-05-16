@@ -742,8 +742,9 @@ button.primary-btn,.primary-btn{background:linear-gradient(135deg,var(--accent),
   z-index:1;
   animation:none;
 }
+.album-detail-vinyl{animation:vinylSpin 8s linear infinite}
 #albumDetailHd.is-playing-album .album-detail-vinyl,
-body.is-playing-album #albumDetailHd .album-detail-vinyl{animation:vinylSpin 7s linear infinite}
+body.is-playing-album #albumDetailHd .album-detail-vinyl{animation:vinylSpin 1.5s linear infinite}
 .album-detail-vinyl::before{
   content:"";
   position:absolute;
@@ -920,20 +921,3 @@ body.admin-mode .admin-only-btn { display: inline-flex !important; }
 }
 
 /* ── Vinyl spin animation ─────────────────────────────────────── */
-@keyframes vinylSpin {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
-}
-@keyframes vinylSpinFast {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
-}
-/* Slow idle spin always */
-.album-detail-vinyl {
-  animation: vinylSpin 8s linear infinite;
-}
-/* Fast spin when playing */
-#albumDetailHd.vinyl-spinning .album-detail-vinyl,
-#albumDetailHd.is-playing-album .album-detail-vinyl {
-  animation: vinylSpinFast 1.5s linear infinite !important;
-}
