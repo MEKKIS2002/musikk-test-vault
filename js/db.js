@@ -79,7 +79,17 @@ const bottomPlayer={audio:new Audio(),queue:[],index:0,context:null,objectUrl:nu
 bottomPlayer.audio.preload="auto";
 bottomPlayer.audio.addEventListener("ended",()=>bottomNext(true));
 bottomPlayer.audio.addEventListener("timeupdate",updateBottomProgress);
-bottomPlayer.audio.addEventListener("loadedmetadata",updateBottomProgress);
+bottomPlayer.audio.addEventListener("loadedmetadata",function(){
+  updateBottomProgress();
+  // Persist duration on the current beat so album totals work
+  if(bottomPlayer.context?.beatId){
+    const b=state.beats.find(x=>x.id===bottomPlayer.context.beatId);
+    if(b&&bottomPlayer.audio.duration>0){
+      b.duration=Math.round(bottomPlayer.audio.duration);
+      if(typeof saveState==='function') saveState();
+    }
+  }
+});
 bottomPlayer.audio.addEventListener("play",updateBottomUI);
 bottomPlayer.audio.addEventListener("pause",updateBottomUI);
 bottomPlayer.audio.addEventListener("error",()=>{const b=bottomPlayer.queue[bottomPlayer.index];if(b)showToast(`Kunne ikke spille "${b.name}"`);bottomNext(true);});
@@ -681,6 +691,7 @@ function renderAlbumBeats(beats,mode,customEl){
           <div id="au-wrap-${b.id}" style="display:flex;align-items:center;gap:8px">
             <button class="primary-btn" style="font-size:12px;padding:7px 14px" onclick="playSingleBeat('${b.id}')">▶ Spill</button>
             <button class="star-btn${b.favorite?" active":""}" data-fav-id="${b.id}" onclick="event.stopPropagation();toggleFav('${b.id}',this)" title="Favoritt" style="font-size:20px;background:none;border:none;cursor:pointer;padding:0;color:${b.favorite?'#f4a443':'rgba(255,255,255,.25)'}">★</button>
+            ${(()=>{ const noAudio=!(b.audio_url||b.url); const noLyric=!(b.lyrics||(b.lyricSections||[]).some(s=>s.text?.trim())); if(noAudio) return '<span title="Mangler lydfil" style="font-size:10px;font-weight:800;padding:2px 7px;border-radius:999px;background:rgba(251,113,133,.15);color:#fb7185;border:1px solid rgba(251,113,133,.3)">Ingen lyd</span>'; if(noLyric) return '<span title="Mangler tekst" style="font-size:10px;font-weight:800;padding:2px 7px;border-radius:999px;background:rgba(249,115,22,.12);color:#f97316;border:1px solid rgba(249,115,22,.3)">Ingen tekst</span>'; return ''; })()}
           </div>
           <label class="ghost-btn" style="cursor:pointer;font-size:12px;padding:6px 12px">🎵 Bytt lydfil<input type="file" accept="audio/*" hidden onchange="uploadBeatAudio('${b.id}',this.files[0])"></label>
           <label class="ghost-btn" style="cursor:pointer;font-size:12px;padding:6px 12px">🖼️ Coverbilde<input type="file" accept="image/*" hidden onchange="setAlbumBeatCover('${b.id}',this)"></label>
