@@ -529,3 +529,8 @@ audio::-webkit-media-controls-panel { background: rgba(255,255,255,.08); }
 .ll-highlight-editor mark {
   border-radius: 3px; padding: 0 1px; color: inherit;
 }
+
+/* ── Remove misaligned line numbers, keep section line count in header ── */
+.ll-line-numbers { display: none !important; }
+.ll-highlight-editor { padding: 12px 14px !important; }
+.ll-section-body { display: block; }
