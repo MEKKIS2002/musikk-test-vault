@@ -669,7 +669,7 @@ body.producer-mode #pipelineTab .content-panel{display:block!important}
 /* === UX UPGRADE PACK === */
 :root{--radius-xl:24px;--panel-blur:24px;--safe-bottom:92px}
 body{--accent:#df7f22;--accent2:#ffba5e;background:radial-gradient(circle at 18% 8%,rgba(223,127,34,.16),transparent 32%),radial-gradient(circle at 86% 18%,rgba(104,70,255,.12),transparent 34%),#090806}
-.glass,.content-panel,.stats-card,.hero-main{border-radius:var(--radius-xl)!important;backdrop-filter:blur(var(--panel-blur)) saturate(1.2);box-shadow:0 28px 80px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.08)}
+.glass,.content-panel,.stats-card,.hero-main{border-radius:0!important;backdrop-filter:blur(var(--panel-blur)) saturate(1.2);box-shadow:0 28px 80px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.08)}
 .role-badge{position:fixed;top:18px;right:18px;z-index:2100;display:flex;align-items:center;gap:8px;padding:9px 13px;border-radius:999px;background:rgba(20,20,28,.86);border:1px solid rgba(255,255,255,.16);box-shadow:0 12px 32px rgba(0,0,0,.32);font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;backdrop-filter:blur(16px)}
 .role-badge::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--accent2);box-shadow:0 0 16px var(--accent2)}
 .role-badge.producer::before{background:#34d399;box-shadow:0 0 16px #34d399}.role-badge.admin::before{background:#f59e0b;box-shadow:0 0 16px #f59e0b}
