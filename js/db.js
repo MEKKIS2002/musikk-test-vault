@@ -415,8 +415,15 @@ function renderAlbums(){
         </div>
         ${sleeve}
       </div>
-      <div class="album-info"><strong>${esc(a.name)}</strong><span>Album • ${n} beat${n===1?"":"s"}</span></div>
-      <button class="small-btn" style="margin-top:10px;padding:8px 12px" onclick="event.stopPropagation();playAlbumFromStart('${a.id}')">▶ Spill</button>
+      <div class="album-info">
+        <strong>${esc(a.name)}</strong>
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:3px">
+          <span style="font-size:11px;color:rgba(255,255,255,.45)">${n} sang${n===1?'':'er'}</span>
+          ${(()=>{const totalSec=(a.beatIds||[]).reduce((s,id)=>{const b=state.beats.find(x=>x.id===id);return s+(b&&!b.archived?Number(b.duration||0):0);},0);const m=Math.floor(totalSec/60),sec=Math.floor(totalSec%60);return totalSec>0?`<span style="font-size:11px;color:rgba(255,255,255,.3)">•</span><span style="font-size:11px;color:rgba(255,255,255,.35)">${m}:${String(sec).padStart(2,'0')}</span>`:'';})()}
+          ${(()=>{const STATUS_COLORS={'Idé':'rgba(168,85,247,.6)','Skriving':'rgba(96,165,250,.6)','Innspilling':'rgba(249,115,22,.7)','Mixing':'rgba(244,164,67,.7)','Ferdig':'rgba(52,211,153,.7)'};const s=a.status||'Idé';const c=STATUS_COLORS[s]||'rgba(255,255,255,.3)';return`<span style="font-size:10px;font-weight:800;padding:2px 8px;border-radius:999px;background:${c.replace('.6','.15').replace('.7','.15')};color:${c};border:1px solid ${c.replace('.6','.3').replace('.7','.3')}">${s}</span>`;})()}
+        </div>
+      </div>
+      <button class="small-btn" style="margin-top:8px;padding:7px 12px" onclick="event.stopPropagation();playAlbumFromStart('${a.id}')">▶ Spill</button>
     </div>`;
   });
   cards.push(`<div class="album-new-btn" onclick="document.getElementById('newAlbumBtn').click()">
@@ -619,7 +626,7 @@ function renderAlbumBeats(beats,mode,customEl){
   if(!beats||!beats.length){el.innerHTML=`<div class="empty">Ingen beats i dette ${listMode==="mixtape"?"mixtapen":"albumet"} ennå. Klikk "+ Legg til beats".</div>`;return;}
   const canDrag=!isProducerUser()&&(listMode!=="mixtape"||mixtapeSortMode==="custom");
   const hint=canDrag?`<div class="reorder-hint" style="grid-column:1/-1"><span>↕</span><span>Dra sangene for å endre rekkefølge.</span></div>`:(listMode==="mixtape"&&mixtapeSortMode!=="custom"?`<div class="reorder-hint" style="grid-column:1/-1"><span>↕</span><span>Sortert visning. Velg «Egen rekkefølge» for å dra sangene.</span></div>`:"");
-  el.innerHTML=hint+beats.map(b=>{
+  el.innerHTML=hint+beats.map((b,idx)=>{
     const coverHtml=b.cover
       ?`<img class="ab-cover" src="${esc(b.cover)}" alt="${esc(b.name)}">`
       :`<div class="ab-cover-ph">🎵</div>`;
@@ -629,6 +636,7 @@ function renderAlbumBeats(beats,mode,customEl){
           <div class="ab-cover-wrap" onclick="toggleAlbumBeat('${b.id}')">${coverHtml}</div>
           <div class="ab-body">
             <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+              <span style="font-size:11px;color:rgba(255,255,255,.25);font-variant-numeric:tabular-nums;font-weight:700;flex-shrink:0">${String(idx+1).padStart(2,'0')}</span>
               <div class="ab-title" style="min-width:0">${esc(b.name)}</div>
             </div>
             <div class="hint" style="margin-top:6px">${esc(b.source||"Opplastet beat")}${b.uploadedBy?` · <span style="color:var(--mv-amber,#ff8a1f);font-size:11px">👤 ${esc(b.uploadedBy)}</span>`:''}</div>
@@ -653,10 +661,12 @@ function renderAlbumBeats(beats,mode,customEl){
         <div class="ab-body">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
             <div style="display:flex;align-items:center;gap:8px;min-width:0">
+              <span style="font-size:11px;color:rgba(255,255,255,.25);font-variant-numeric:tabular-nums;font-weight:700;flex-shrink:0">${String(idx+1).padStart(2,'0')}</span>
               <div class="ab-title" style="min-width:0">${esc(b.name)}</div>
               ${b.uploadedBy?`<span style="font-size:10px;font-weight:700;letter-spacing:.06em;color:var(--mv-amber,#ff8a1f);opacity:.8;white-space:nowrap">👤 ${esc(b.uploadedBy)}</span>`:''}
             </div>
             <button class="star-btn${b.favorite?" active":""}" data-fav-id="${b.id}" onclick="event.stopPropagation();toggleFav('${b.id}',this)" style="font-size:20px;padding:0;flex-shrink:0">★</button>
+            ${(()=>{ const noAudio=!(b.audio_url||b.url); const noLyric=!(b.lyrics||(b.lyricSections||[]).some(s=>s.text?.trim())); if(noAudio) return '<span title="Mangler lydfil" style="width:7px;height:7px;border-radius:50%;background:#fb7185;flex-shrink:0;display:inline-block;margin-top:2px"></span>'; if(noLyric) return '<span title="Mangler tekst" style="width:7px;height:7px;border-radius:50%;background:#f97316;flex-shrink:0;display:inline-block;margin-top:2px"></span>'; return ''; })()}
           </div>
           <div class="ab-stars" onclick="event.stopPropagation()">${stars}</div>
           ${listMode==="album"?`<div class="progress-wrap" onclick="event.stopPropagation()">
@@ -1033,7 +1043,7 @@ function renderActiveTab(tab){
   const t = tab || document.querySelector('.tab-btn.active')?.dataset?.tab || '';
   if((t==='mixtapes'||t==='')  && _dirtyTabs.has('mixtapes'))  { renderMixtapes();  _dirtyTabs.delete('mixtapes'); }
   if(t==='albums'   && _dirtyTabs.has('albums'))   { renderAlbums();   _dirtyTabs.delete('albums'); }
-  if(t==='pipeline' && _dirtyTabs.has('pipeline')) { (window.renderPipelineV2||renderPipeline)(); _dirtyTabs.delete('pipeline'); }
+  if(t==='pipeline') { (window.renderPipelineV2||renderPipeline)(); _dirtyTabs.delete('pipeline'); } // always re-render pipeline
   if(t==='integrations' && _dirtyTabs.has('integrations')){ renderIntegrations(); _dirtyTabs.delete('integrations'); }
   if(t==='beats') { if(typeof renderBeatsTab==='function') renderBeatsTab(); }
   if(t==='archive') {
