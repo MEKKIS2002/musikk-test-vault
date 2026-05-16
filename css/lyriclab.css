@@ -192,16 +192,16 @@
 .ll-section-body { position: relative; display: flex; }
 
 .ll-line-numbers {
-  /* Must exactly match .ll-textarea: same font-size, line-height, padding-top */
-  padding: 12px 8px 12px 10px; color: rgba(255,255,255,.2);
+  /* Must exactly match .ll-highlight-editor: same font-size, line-height, padding-top */
+  padding: 12px 6px 12px 8px; color: rgba(255,255,255,.2);
   font-size: 14px; line-height: 1.7; font-family: 'Georgia', serif;
   font-variant-numeric: tabular-nums;
-  text-align: right; user-select: none; min-width: 32px;
+  text-align: right; user-select: none; min-width: 28px;
   border-right: 1px solid rgba(255,255,255,.05);
   background: rgba(0,0,0,.1);
   white-space: pre;
-  word-break: normal;
   overflow: hidden;
+  box-sizing: border-box;
 }
 
 .ll-textarea {
@@ -519,6 +519,8 @@ audio::-webkit-media-controls-panel { background: rgba(255,255,255,.08); }
   font-family: 'Georgia', serif; font-size: 14px; line-height: 1.7;
   color: var(--text); caret-color: #f4a443; min-height: 100px;
   white-space: pre-wrap; word-wrap: break-word; overflow-wrap: break-word;
+  box-sizing: border-box;
+  vertical-align: top;
 }
 .ll-highlight-editor:empty::before {
   content: attr(data-placeholder);
