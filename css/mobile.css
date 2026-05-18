@@ -22,8 +22,8 @@
   flex-shrink: 0; background: rgba(13,12,11,.97);
   border-bottom: 1px solid rgba(255,255,255,.07);
 }
-.mv-top-logo { font-size: 13px; font-weight: 900; letter-spacing: .18em; text-transform: uppercase; color: #f4a443; }
-.mv-top-user { font-size: 13px; color: rgba(255,255,255,.4); font-weight: 700; }
+.mv-top-logo { font-size: 14px; font-weight: 900; letter-spacing: .18em; text-transform: uppercase; color: #f4a443; }
+.mv-top-user { font-size: 14px; color: rgba(255,255,255,.4); font-weight: 700; }
 
 /* ── Screens ───────────────────────────────────────────────── */
 .mv-screen { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
@@ -37,7 +37,7 @@
 .mv-nav-btn {
   flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 6px; padding: 14px 4px; background: none; border: none;
-  color: rgba(255,255,255,.32); font-size: 13px; font-weight: 800;
+  color: rgba(255,255,255,.32); font-size: 14px; font-weight: 800;
   letter-spacing: .05em; text-transform: uppercase; cursor: pointer;
   transition: color .15s; -webkit-tap-highlight-color: transparent; min-height: 82px;
 }
@@ -47,13 +47,13 @@
 /* ================================================================
    SCREEN 1 — Sangliste
 ================================================================ */
-.mv-songs-header { padding: 22px 20px 10px; font-size: 30px; font-weight: 900; letter-spacing: -.04em; }
+.mv-songs-header { padding: 22px 20px 10px; font-size: 34px; font-weight: 900; letter-spacing: -.04em; }
 
 .mv-search-wrap { padding: 0 20px 16px; }
 .mv-search {
   width: 100%; box-sizing: border-box; background: rgba(255,255,255,.09);
   border: 1px solid rgba(255,255,255,.13); border-radius: 0;
-  padding: 15px 18px; color: #f4ede4; font-size: 17px; font-family: inherit;
+  padding: 16px 18px; color: #f4ede4; font-size: 19px; font-family: inherit;
   outline: none; -webkit-appearance: none;
 }
 .mv-search::placeholder { color: rgba(255,255,255,.3); }
@@ -74,10 +74,10 @@
 
 .mv-song-info { flex: 1; min-width: 0; }
 .mv-song-name {
-  font-size: 18px; font-weight: 800; white-space: nowrap; overflow: hidden;
+  font-size: 20px; font-weight: 800; white-space: nowrap; overflow: hidden;
   text-overflow: ellipsis; margin-bottom: 6px; letter-spacing: -.01em;
 }
-.mv-song-meta { font-size: 15px; color: rgba(255,255,255,.4); font-weight: 600; }
+.mv-song-meta { font-size: 16px; color: rgba(255,255,255,.4); font-weight: 600; }
 
 .mv-song-play-btn {
   width: 72px; height: 72px; border-radius: 50%;
@@ -126,10 +126,10 @@
 }
 .mv-player-title { flex: 1; min-width: 0; }
 .mv-player-name {
-  font-size: 24px; font-weight: 900; letter-spacing: -.04em;
+  font-size: 28px; font-weight: 900; letter-spacing: -.04em;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 3px;
 }
-.mv-player-sub { font-size: 15px; color: rgba(255,255,255,.5); font-weight: 600; }
+.mv-player-sub { font-size: 17px; color: rgba(255,255,255,.5); font-weight: 600; }
 
 .mv-fav-btn {
   background: none; border: none; font-size: 28px; cursor: pointer; padding: 8px;
@@ -230,12 +230,12 @@
 /* Section card */
 .mv-section-card { border-bottom: 1px solid rgba(255,255,255,.07); }
 .mv-section-head {
-  display: flex; align-items: center; gap: 12px; padding: 16px 20px 12px; cursor: pointer;
-  min-height: 56px; -webkit-tap-highlight-color: transparent;
+  display: flex; align-items: center; gap: 12px; padding: 18px 20px 14px; cursor: pointer;
+  min-height: 64px; -webkit-tap-highlight-color: transparent;
 }
 .mv-section-type-pill {
-  font-size: 11px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase;
-  padding: 7px 14px; flex-shrink: 0; cursor: pointer;
+  font-size: 13px; font-weight: 900; letter-spacing: .06em; text-transform: uppercase;
+  padding: 8px 16px; flex-shrink: 0; cursor: pointer;
 }
 .mv-type-hook   { background: rgba(244,164,67,.2);  color: #f4a443; }
 .mv-type-verse  { background: rgba(99,179,237,.18);  color: #63b3ed; }
@@ -245,35 +245,90 @@
 
 .mv-section-title-input {
   flex: 1; background: none; border: none; color: #f4ede4;
-  font-size: 17px; font-weight: 800; font-family: inherit; outline: none; min-width: 0; padding: 0;
+  font-size: 20px; font-weight: 800; font-family: inherit; outline: none; min-width: 0; padding: 0;
 }
 .mv-section-collapse-btn {
-  background: none; border: none; color: rgba(255,255,255,.5); font-size: 26px;
+  background: none; border: none; color: rgba(255,255,255,.5); font-size: 28px;
   cursor: pointer; flex-shrink: 0; transition: transform .2s;
   -webkit-tap-highlight-color: transparent; line-height: 1;
-  min-width: 48px; min-height: 48px; display: flex; align-items: center; justify-content: center;
+  min-width: 52px; min-height: 52px; display: flex; align-items: center; justify-content: center;
 }
 .mv-section-card.collapsed .mv-section-collapse-btn { transform: rotate(-90deg); }
-.mv-section-body { padding: 0 20px 18px; }
+.mv-section-body { padding: 0 20px 20px; }
 .mv-section-card.collapsed .mv-section-body { display: none; }
 
+/* Fullscreen expand button */
+.mv-section-expand-btn {
+  background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.1);
+  color: rgba(255,255,255,.5); font-size: 16px; cursor: pointer; padding: 8px 12px;
+  margin-bottom: 10px; display: flex; align-items: center; gap: 6px;
+  width: 100%; font-family: inherit; font-weight: 700; -webkit-tap-highlight-color: transparent;
+}
+.mv-section-expand-btn:active { background: rgba(255,255,255,.14); }
+
 .mv-section-textarea {
-  width: 100%; box-sizing: border-box; min-height: 150px;
+  width: 100%; box-sizing: border-box; min-height: 200px;
   background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1);
   color: #f4ede4; font-family: Georgia, 'Times New Roman', serif;
-  font-size: 17px; line-height: 1.9; padding: 16px 18px; resize: none;
+  font-size: 20px; line-height: 2.0; padding: 18px 20px; resize: none;
   outline: none; -webkit-appearance: none; border-radius: 0;
+  overflow: hidden; /* auto-resize: no scrollbar */
 }
 .mv-section-textarea::placeholder { color: rgba(255,255,255,.22); }
 .mv-section-textarea:focus { border-color: rgba(244,164,67,.4); background: rgba(255,255,255,.07); }
 
-.mv-section-footer { display: flex; justify-content: flex-end; padding-top: 8px; }
+.mv-section-footer {
+  display: flex; justify-content: space-between; align-items: center; padding-top: 10px;
+}
 .mv-section-delete-btn {
-  background: none; border: none; color: rgba(251,113,133,.5); font-size: 14px;
-  font-weight: 700; cursor: pointer; padding: 10px 0; min-height: 44px;
+  background: none; border: none; color: rgba(251,113,133,.5); font-size: 15px;
+  font-weight: 700; cursor: pointer; padding: 10px 0; min-height: 48px;
   font-family: inherit; -webkit-tap-highlight-color: transparent;
 }
 .mv-section-delete-btn:active { color: #fb7185; }
+
+/* ── Fullscreen editor overlay ─────────────────────────────── */
+.mv-fullscreen-editor {
+  position: fixed; inset: 0; z-index: 10020;
+  background: #0d0c0b;
+  display: flex; flex-direction: column;
+  padding-top: env(safe-area-inset-top, 0px);
+}
+.mv-fullscreen-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 20px; border-bottom: 1px solid rgba(255,255,255,.08);
+  flex-shrink: 0; background: rgba(13,12,11,.97);
+}
+.mv-fullscreen-title {
+  font-size: 18px; font-weight: 900; flex: 1; min-width: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.mv-fullscreen-close {
+  background: rgba(255,255,255,.09); border: 1px solid rgba(255,255,255,.14);
+  color: #f4ede4; font-size: 15px; font-weight: 800; padding: 10px 18px;
+  cursor: pointer; flex-shrink: 0; font-family: inherit;
+  -webkit-tap-highlight-color: transparent; min-height: 48px;
+}
+.mv-fullscreen-close:active { background: rgba(244,164,67,.2); color: #f4a443; }
+.mv-fullscreen-textarea {
+  flex: 1; width: 100%; box-sizing: border-box;
+  background: transparent; border: none;
+  color: #f4ede4; font-family: Georgia, 'Times New Roman', serif;
+  font-size: 22px; line-height: 2.0; padding: 24px 24px 40px;
+  resize: none; outline: none; -webkit-appearance: none;
+  overflow-y: auto; -webkit-overflow-scrolling: touch;
+}
+.mv-fullscreen-textarea::placeholder { color: rgba(255,255,255,.2); }
+.mv-fullscreen-footer {
+  padding: 12px 20px;
+  padding-bottom: max(12px, env(safe-area-inset-bottom, 12px));
+  background: rgba(13,12,11,.97); border-top: 1px solid rgba(255,255,255,.07);
+  display: flex; align-items: center; justify-content: space-between;
+  flex-shrink: 0;
+}
+.mv-fullscreen-save-status {
+  font-size: 13px; color: rgba(244,164,67,.7); font-weight: 700;
+}
 
 .mv-no-song-msg {
   padding: 60px 28px; text-align: center; color: rgba(255,255,255,.3);
