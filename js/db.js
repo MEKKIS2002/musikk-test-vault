@@ -93,39 +93,51 @@ bottomPlayer.audio.addEventListener("loadedmetadata",function(){
 bottomPlayer.audio.addEventListener("play",updateBottomUI);
 bottomPlayer.audio.addEventListener("pause",updateBottomUI);
 bottomPlayer.audio.addEventListener("error",()=>{const b=bottomPlayer.queue[bottomPlayer.index];if(b)showToast(`Kunne ikke spille "${b.name}"`);bottomNext(true);});
-
-// ── iOS/Safari audio unlock ──────────────────────────────────────────────────
-// Safari requires audio.play() to be called synchronously within a user gesture.
-// We pre-unlock the audio element on first touch so subsequent async plays work.
-let _audioUnlocked = false;
-function _unlockAudio(){
-  if(_audioUnlocked) return;
-  _audioUnlocked = true;
-  // Play a 0-duration silent buffer to unlock the audio element for Safari
-  const a = bottomPlayer.audio;
-  const wasSrc = a.src;
-  if(!wasSrc){
-    a.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAA' +
-            'EAAQARAAIAAgAEABAAQQBJAA==';
-    a.volume = 0;
-    a.play().then(()=>{ a.pause(); a.src=''; a.volume=1; }).catch(()=>{ a.src=''; a.volume=1; });
-  }
-  document.removeEventListener('touchstart', _unlockAudio, true);
-  document.removeEventListener('touchend',   _unlockAudio, true);
-  document.removeEventListener('click',      _unlockAudio, true);
-}
-document.addEventListener('touchstart', _unlockAudio, {once:true, capture:true});
-document.addEventListener('touchend',   _unlockAudio, {once:true, capture:true});
-document.addEventListener('click',      _unlockAudio, {once:true, capture:true});
 function beatsFromIds(ids){return (ids||[]).map(id=>state.beats.find(b=>b.id===id)).filter(b=>b&&!b.archived);}
 function fmtTime(sec){sec=Number(sec||0);if(!isFinite(sec))return "0:00";const m=Math.floor(sec/60);const s=Math.floor(sec%60);return `${m}:${String(s).padStart(2,"0")}`;}
+// Detects iOS/iPadOS (including iPad on desktop-mode)
+function _isIOS(){
+  return /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+    (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
+}
+
 async function getPlayableAudioUrl(beat){
   if(!beat)return null;
-  const blob=await audioDB.load(beat.id);
-  if(blob)return URL.createObjectURL(blob);
+  // IndexedDB blob takes priority — already local, no streaming needed
+  const idbBlob=await audioDB.load(beat.id);
+  if(idbBlob)return URL.createObjectURL(idbBlob);
   const externalUrl=getBeatAudioUrl(beat);
-  if(externalUrl)return externalUrl;
-  return null;
+  if(!externalUrl)return null;
+  // ── iOS/iPadOS fix ────────────────────────────────────────────────────────
+  // Safari streams audio via HTTP range requests. If the server doesn't properly
+  // support Range requests (common with Cloudflare Workers), Safari restarts the
+  // audio after ~1MB and gives "Kunne ikke spille av" errors.
+  // Fix: fetch the entire file as a blob first, then play from an object URL.
+  // The audio element unlock on touchstart already happened, so async fetch is fine.
+  if(_isIOS()){
+    try{
+      // Show loading indicator for large files
+      const loadMsg=document.getElementById('bpTitle');
+      const origText=loadMsg?.textContent;
+      if(loadMsg) loadMsg.textContent='Laster sang…';
+      const resp=await fetch(externalUrl,{cache:'default'});
+      if(loadMsg) loadMsg.textContent=origText||'';
+      if(resp.ok){
+        const blob=await resp.blob();
+        // Cache in IndexedDB so next play is instant (no re-fetch)
+        try{
+          await audioDB.save(beat.id,blob);
+          beat.url=beat.id+':idb'; // sentinel so IDB is used next time
+          if(typeof saveState==='function') saveState();
+        }catch(e){ /* IDB quota exceeded — skip caching, still play from blob */ }
+        return URL.createObjectURL(blob);
+      }
+    }catch(e){
+      console.warn('[iOS audio] Blob-fetch feilet, bruker direktelenke som fallback:',e);
+      // Fall through to direct URL
+    }
+  }
+  return externalUrl;
 }
 function updateCollectionPlayerUI(){updateBottomUI();}
 function updateBottomUI(){
@@ -172,28 +184,30 @@ async function playBottomIndex(i){
   if(i>=bottomPlayer.queue.length){bottomStop(true);showToast("✓ Ferdigspilt");return;}
   bottomPlayer.index=i;bottomPlayer.started=true;
   const beat=bottomPlayer.queue[i];
+  updateBottomUI(); // show title immediately while blob is fetching
   const url=await getPlayableAudioUrl(beat);
   if(!url){showToast(`Hopper over "${beat.name}" – mangler lydfil`);return playBottomIndex(i+1);}
-  if(bottomPlayer.objectUrl)URL.revokeObjectURL(bottomPlayer.objectUrl);
-  bottomPlayer.objectUrl=url.startsWith("blob:")?url:null;
-  const a = bottomPlayer.audio;
+  // Revoke previous blob URL to free memory
+  if(bottomPlayer.objectUrl){URL.revokeObjectURL(bottomPlayer.objectUrl);bottomPlayer.objectUrl=null;}
+  bottomPlayer.objectUrl=url.startsWith('blob:')?url:null;
+  const a=bottomPlayer.audio;
   a.pause();
   a.src=url;
   a.load();
   updateBottomUI();
-  // On iOS/Safari, call play() immediately after load() without awaiting anything
-  // to stay within the user gesture propagation window.
-  const playPromise = a.play();
-  if(playPromise !== undefined){
+  // _unlockAudio() on first touchstart pre-unlocks the element so async play() works on iOS
+  const playPromise=a.play();
+  if(playPromise!==undefined){
     playPromise.catch(e=>{
-      // NotAllowedError = autoplay policy; show a tap-to-play hint
       if(e.name==='NotAllowedError'){
         showToast('Trykk ▶ for å starte avspilling');
-        updateBottomUI();
-      } else {
-        console.error('Audio play failed:',e,url,beat);
-        showToast('Kunne ikke spille av – sjekk lydfil');
+      }else if(e.name==='AbortError'){
+        // src changed while loading — ignore
+      }else{
+        console.error('[Audio] play() feilet:',e,url,beat);
+        showToast(`Kunne ikke spille "${beat.name}" – prøv igjen`);
       }
+      updateBottomUI();
     }).then(()=>updateBottomUI());
   }
 }
