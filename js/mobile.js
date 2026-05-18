@@ -354,9 +354,14 @@
                   onclick="event.stopPropagation();window.mvMobile.toggleSec('${esc(sec.id)}')">▾</button>
         </div>
         <div class="mv-section-body">
+          <button class="mv-section-expand-btn"
+                  onclick="window.mvMobile.openFullscreen('${esc(sec.id)}')">
+            ⤢ Åpne fullskjerm
+          </button>
           <textarea class="mv-section-textarea"
                     placeholder="${esc(TYPE_LABELS[sec.type]||'Tekst')}…"
-                    oninput="window.mvMobile.secText(this,'${esc(sec.id)}')"
+                    oninput="window.mvMobile.secText(this,'${esc(sec.id)}');this.style.height='auto';this.style.height=this.scrollHeight+'px'"
+                    onfocus="this.style.height='auto';this.style.height=this.scrollHeight+'px'"
                     rows="6">${esc(sec.text||'')}</textarea>
           <div class="mv-section-footer">
             <button class="mv-section-delete-btn"
@@ -364,6 +369,14 @@
           </div>
         </div>
       </div>`).join('');
+
+    // Auto-resize all textareas after render
+    requestAnimationFrame(()=>{
+      document.querySelectorAll('.mv-section-textarea').forEach(ta=>{
+        ta.style.height='auto';
+        ta.style.height=ta.scrollHeight+'px';
+      });
+    });
   }
 
   // Type picker sheet
@@ -511,6 +524,51 @@
       secs.push({id:uid(),type:'custom',title:'Ny seksjon',text:'',collapsed:false,done:false,order:secs.length});
       renderSections();scheduleSave();
       setTimeout(()=>document.querySelector('.mv-section-card:last-child')?.scrollIntoView({behavior:'smooth',block:'start'}),80);
+    },
+    openFullscreen(secId){
+      const beat=getCurrentBeat();if(!beat)return;
+      const sec=getSections(beat).find(s=>s.id===secId);if(!sec)return;
+      // Build overlay
+      const overlay=document.createElement('div');
+      overlay.className='mv-fullscreen-editor';
+      overlay.innerHTML=`
+        <div class="mv-fullscreen-header">
+          <div class="mv-fullscreen-title">${esc(sec.title)} — ${esc(beat.name)}</div>
+          <button class="mv-fullscreen-close" id="mvFsClose">✓ Ferdig</button>
+        </div>
+        <textarea class="mv-fullscreen-textarea" id="mvFsTextarea"
+                  placeholder="${esc(TYPE_LABELS[sec.type]||'Tekst')}…"
+                  spellcheck="false" autocorrect="off">${esc(sec.text||'')}</textarea>
+        <div class="mv-fullscreen-footer">
+          <div class="mv-fullscreen-save-status" id="mvFsStatus"></div>
+          <span style="font-size:13px;color:rgba(255,255,255,.3);font-weight:700">${esc(TYPE_LABELS[sec.type]||sec.type)}</span>
+        </div>`;
+      document.getElementById('mvMobileApp').appendChild(overlay);
+
+      const ta=overlay.querySelector('#mvFsTextarea');
+      const status=overlay.querySelector('#mvFsStatus');
+
+      // Focus and place cursor at end
+      setTimeout(()=>{ ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); },80);
+
+      let fsTimer=null, fsMax=null;
+      ta.addEventListener('input',()=>{
+        sec.text=ta.value;
+        beat.lyrics=getSections(beat).map(s=>s.text).join('\n');
+        status.textContent='…';
+        clearTimeout(fsTimer);
+        fsTimer=setTimeout(()=>{ clearTimeout(fsMax);fsMax=null;doSave();status.textContent='✓ Lagret';setTimeout(()=>status.textContent='',2000); },800);
+        if(!fsMax) fsMax=setTimeout(()=>{ fsMax=null;clearTimeout(fsTimer);fsTimer=null;doSave();status.textContent='✓ Lagret';setTimeout(()=>status.textContent='',2000); },5000);
+      });
+
+      overlay.querySelector('#mvFsClose').addEventListener('click',()=>{
+        clearTimeout(fsTimer);clearTimeout(fsMax);
+        sec.text=ta.value;
+        beat.lyrics=getSections(beat).map(s=>s.text).join('\n');
+        doSave();
+        overlay.remove();
+        renderSections();
+      });
     },
     changeType(id){
       const beat=getCurrentBeat();if(!beat)return;
