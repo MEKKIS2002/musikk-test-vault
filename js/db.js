@@ -93,6 +93,30 @@ bottomPlayer.audio.addEventListener("loadedmetadata",function(){
 bottomPlayer.audio.addEventListener("play",updateBottomUI);
 bottomPlayer.audio.addEventListener("pause",updateBottomUI);
 bottomPlayer.audio.addEventListener("error",()=>{const b=bottomPlayer.queue[bottomPlayer.index];if(b)showToast(`Kunne ikke spille "${b.name}"`);bottomNext(true);});
+
+// ── iOS/Safari audio unlock ──────────────────────────────────────────────────
+// Safari requires audio.play() to be called synchronously within a user gesture.
+// We pre-unlock the audio element on first touch so subsequent async plays work.
+let _audioUnlocked = false;
+function _unlockAudio(){
+  if(_audioUnlocked) return;
+  _audioUnlocked = true;
+  // Play a 0-duration silent buffer to unlock the audio element for Safari
+  const a = bottomPlayer.audio;
+  const wasSrc = a.src;
+  if(!wasSrc){
+    a.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAA' +
+            'EAAQARAAIAAgAEABAAQQBJAA==';
+    a.volume = 0;
+    a.play().then(()=>{ a.pause(); a.src=''; a.volume=1; }).catch(()=>{ a.src=''; a.volume=1; });
+  }
+  document.removeEventListener('touchstart', _unlockAudio, true);
+  document.removeEventListener('touchend',   _unlockAudio, true);
+  document.removeEventListener('click',      _unlockAudio, true);
+}
+document.addEventListener('touchstart', _unlockAudio, {once:true, capture:true});
+document.addEventListener('touchend',   _unlockAudio, {once:true, capture:true});
+document.addEventListener('click',      _unlockAudio, {once:true, capture:true});
 function beatsFromIds(ids){return (ids||[]).map(id=>state.beats.find(b=>b.id===id)).filter(b=>b&&!b.archived);}
 function fmtTime(sec){sec=Number(sec||0);if(!isFinite(sec))return "0:00";const m=Math.floor(sec/60);const s=Math.floor(sec%60);return `${m}:${String(s).padStart(2,"0")}`;}
 async function getPlayableAudioUrl(beat){
@@ -152,16 +176,26 @@ async function playBottomIndex(i){
   if(!url){showToast(`Hopper over "${beat.name}" – mangler lydfil`);return playBottomIndex(i+1);}
   if(bottomPlayer.objectUrl)URL.revokeObjectURL(bottomPlayer.objectUrl);
   bottomPlayer.objectUrl=url.startsWith("blob:")?url:null;
-  bottomPlayer.audio.pause();
-  bottomPlayer.audio.src=url;
-  bottomPlayer.audio.load();
+  const a = bottomPlayer.audio;
+  a.pause();
+  a.src=url;
+  a.load();
   updateBottomUI();
-  try{await bottomPlayer.audio.play();}
-  catch(e){
-    console.error('Audio play failed:',e,url,beat);
-    showToast('Kunne ikke spille av. Prøv «Åpne lydfil» eller sjekk audio_url.');
+  // On iOS/Safari, call play() immediately after load() without awaiting anything
+  // to stay within the user gesture propagation window.
+  const playPromise = a.play();
+  if(playPromise !== undefined){
+    playPromise.catch(e=>{
+      // NotAllowedError = autoplay policy; show a tap-to-play hint
+      if(e.name==='NotAllowedError'){
+        showToast('Trykk ▶ for å starte avspilling');
+        updateBottomUI();
+      } else {
+        console.error('Audio play failed:',e,url,beat);
+        showToast('Kunne ikke spille av – sjekk lydfil');
+      }
+    }).then(()=>updateBottomUI());
   }
-  updateBottomUI();
 }
 async function playQueue(queue,context){
   if(!queue.length){showToast("Ingen sanger å spille");return;}
