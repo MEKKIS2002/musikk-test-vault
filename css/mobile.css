@@ -47,13 +47,13 @@
 }
 .mv-nav-btn {
   flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 4px; padding: 12px 4px; background: none; border: none;
-  color: rgba(255,255,255,.35); font-size: 11px; font-weight: 800;
+  gap: 5px; padding: 12px 4px; background: none; border: none;
+  color: rgba(255,255,255,.35); font-size: 12px; font-weight: 800;
   letter-spacing: .06em; text-transform: uppercase; cursor: pointer;
-  transition: color .15s; -webkit-tap-highlight-color: transparent; min-height: 64px;
+  transition: color .15s; -webkit-tap-highlight-color: transparent; min-height: 70px;
 }
 .mv-nav-btn.active { color: #f4a443; }
-.mv-nav-icon { font-size: 24px; line-height: 1; }
+.mv-nav-icon { font-size: 28px; line-height: 1; }
 
 /* ================================================================
    SCREEN 1 — Sangliste
@@ -70,26 +70,26 @@
 .mv-search:focus { border-color: rgba(244,164,67,.5); }
 
 .mv-song-row {
-  display: flex; align-items: center; gap: 14px; padding: 12px 20px;
+  display: flex; align-items: center; gap: 14px; padding: 14px 20px;
   border-bottom: 1px solid rgba(255,255,255,.06); cursor: pointer;
-  transition: background .1s; min-height: 72px; -webkit-tap-highlight-color: transparent;
+  transition: background .1s; min-height: 80px; -webkit-tap-highlight-color: transparent;
 }
 .mv-song-row:active, .mv-song-row.active-song { background: rgba(244,164,67,.07); }
 .mv-song-cover {
-  width: 56px; height: 56px; flex-shrink: 0; background: rgba(255,255,255,.08);
-  display: flex; align-items: center; justify-content: center; font-size: 22px; overflow: hidden;
+  width: 62px; height: 62px; flex-shrink: 0; background: rgba(255,255,255,.08);
+  display: flex; align-items: center; justify-content: center; font-size: 24px; overflow: hidden;
 }
 .mv-song-cover img { width: 100%; height: 100%; object-fit: cover; }
 .mv-song-info { flex: 1; min-width: 0; }
 .mv-song-name {
-  font-size: 16px; font-weight: 800; white-space: nowrap;
-  overflow: hidden; text-overflow: ellipsis; margin-bottom: 4px; letter-spacing: -.01em;
+  font-size: 17px; font-weight: 800; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis; margin-bottom: 5px; letter-spacing: -.01em;
 }
-.mv-song-meta { font-size: 13px; color: rgba(255,255,255,.4); font-weight: 600; }
+.mv-song-meta { font-size: 14px; color: rgba(255,255,255,.4); font-weight: 600; }
 .mv-song-play-btn {
-  width: 48px; height: 48px; border-radius: 50%;
-  border: 1px solid rgba(255,255,255,.15); background: rgba(255,255,255,.07);
-  color: #f4ede4; font-size: 16px; cursor: pointer; flex-shrink: 0;
+  width: 60px; height: 60px; border-radius: 50%;
+  border: 2px solid rgba(255,255,255,.2); background: rgba(255,255,255,.1);
+  color: #f4ede4; font-size: 22px; cursor: pointer; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
   transition: background .12s; -webkit-tap-highlight-color: transparent;
 }
@@ -106,17 +106,17 @@
   flex-shrink: 0;
 }
 .mv-big-cover {
-  width: 120px; height: 120px; background: rgba(255,255,255,.07);
+  width: 150px; height: 150px; background: rgba(255,255,255,.07);
   display: flex; align-items: center; justify-content: center;
-  font-size: 48px; overflow: hidden; flex-shrink: 0;
+  font-size: 56px; overflow: hidden; flex-shrink: 0;
 }
 .mv-big-cover img { width: 100%; height: 100%; object-fit: cover; }
 .mv-player-title { text-align: center; width: 100%; }
 .mv-player-name {
-  font-size: 20px; font-weight: 900; letter-spacing: -.03em; margin-bottom: 4px;
+  font-size: 22px; font-weight: 900; letter-spacing: -.03em; margin-bottom: 4px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.mv-player-sub { font-size: 13px; color: rgba(255,255,255,.4); }
+.mv-player-sub { font-size: 14px; color: rgba(255,255,255,.4); }
 
 /* Progress */
 .mv-progress-wrap { width: 100%; }
@@ -136,17 +136,17 @@
 }
 
 /* Controls */
-.mv-controls { display: flex; align-items: center; justify-content: center; gap: 20px; }
+.mv-controls { display: flex; align-items: center; justify-content: center; gap: 24px; }
 .mv-ctrl-btn {
-  background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.1);
-  color: rgba(255,255,255,.8); font-size: 18px; cursor: pointer;
-  width: 54px; height: 54px; display: flex; align-items: center; justify-content: center;
+  background: rgba(255,255,255,.09); border: 1px solid rgba(255,255,255,.14);
+  color: rgba(255,255,255,.85); font-size: 22px; cursor: pointer;
+  width: 64px; height: 64px; display: flex; align-items: center; justify-content: center;
   -webkit-tap-highlight-color: transparent; transition: background .1s;
 }
-.mv-ctrl-btn:active { background: rgba(255,255,255,.15); color: #f4a443; }
+.mv-ctrl-btn:active { background: rgba(255,255,255,.18); color: #f4a443; }
 .mv-play-btn {
-  width: 72px; height: 72px; background: #f4a443; border: none; border-radius: 50%;
-  color: #0d0c0b; font-size: 28px; cursor: pointer;
+  width: 84px; height: 84px; background: #f4a443; border: none; border-radius: 50%;
+  color: #0d0c0b; font-size: 32px; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   transition: transform .1s, background .1s; -webkit-tap-highlight-color: transparent;
 }
@@ -164,22 +164,23 @@
   text-transform: uppercase; color: rgba(255,255,255,.35);
 }
 .mv-sections-actions { display: flex; align-items: center; gap: 10px; }
-.mv-save-status { font-size: 11px; color: rgba(244,164,67,.7); font-weight: 700; min-width: 54px; text-align: right; }
+.mv-save-status { font-size: 12px; color: rgba(244,164,67,.7); font-weight: 700; min-width: 54px; text-align: right; }
 .mv-add-section-btn {
-  background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.1);
-  color: #f4ede4; font-size: 14px; font-weight: 800; padding: 9px 16px;
+  background: rgba(255,255,255,.09); border: 1px solid rgba(255,255,255,.14);
+  color: #f4ede4; font-size: 15px; font-weight: 800; padding: 11px 18px;
   cursor: pointer; -webkit-tap-highlight-color: transparent; white-space: nowrap;
+  min-height: 44px;
 }
-.mv-add-section-btn:active { background: rgba(255,255,255,.15); }
+.mv-add-section-btn:active { background: rgba(255,255,255,.18); }
 
 .mv-section-card { border-bottom: 1px solid rgba(255,255,255,.06); }
 .mv-section-head {
-  display: flex; align-items: center; gap: 12px; padding: 14px 20px 10px; cursor: pointer;
+  display: flex; align-items: center; gap: 12px; padding: 16px 20px 12px; cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
 .mv-section-type-pill {
-  font-size: 10px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase;
-  padding: 5px 11px; flex-shrink: 0;
+  font-size: 11px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase;
+  padding: 6px 13px; flex-shrink: 0;
 }
 .mv-type-hook   { background: rgba(244,164,67,.18); color: #f4a443; }
 .mv-type-verse  { background: rgba(99,179,237,.15);  color: #63b3ed; }
@@ -189,32 +190,33 @@
 
 .mv-section-title-input {
   flex: 1; background: none; border: none; color: #f4ede4;
-  font-size: 16px; font-weight: 800; font-family: inherit; outline: none; min-width: 0; padding: 0;
+  font-size: 17px; font-weight: 800; font-family: inherit; outline: none; min-width: 0; padding: 0;
 }
 .mv-section-collapse-btn {
-  background: none; border: none; color: rgba(255,255,255,.35); font-size: 20px;
-  cursor: pointer; padding: 4px 6px; flex-shrink: 0; transition: transform .2s;
-  -webkit-tap-highlight-color: transparent; line-height: 1;
+  background: none; border: none; color: rgba(255,255,255,.45); font-size: 24px;
+  cursor: pointer; padding: 6px 8px; flex-shrink: 0; transition: transform .2s;
+  -webkit-tap-highlight-color: transparent; line-height: 1; min-width: 44px; min-height: 44px;
+  display: flex; align-items: center; justify-content: center;
 }
 .mv-section-card.collapsed .mv-section-collapse-btn { transform: rotate(-90deg); }
 .mv-section-body { padding: 0 20px 16px; }
 .mv-section-card.collapsed .mv-section-body { display: none; }
 
 .mv-section-textarea {
-  width: 100%; box-sizing: border-box; min-height: 130px;
+  width: 100%; box-sizing: border-box; min-height: 140px;
   background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08);
   color: #f4ede4; font-family: Georgia, 'Times New Roman', serif;
-  font-size: 16px; line-height: 1.85; padding: 14px 16px; resize: none;
+  font-size: 17px; line-height: 1.9; padding: 16px 18px; resize: none;
   outline: none; -webkit-appearance: none; border-radius: 0;
 }
 .mv-section-textarea::placeholder { color: rgba(255,255,255,.2); }
 .mv-section-textarea:focus { border-color: rgba(244,164,67,.3); background: rgba(255,255,255,.06); }
 
-.mv-section-footer { display: flex; justify-content: flex-end; padding-top: 6px; }
+.mv-section-footer { display: flex; justify-content: flex-end; padding-top: 8px; }
 .mv-section-delete-btn {
-  background: none; border: none; color: rgba(251,113,133,.5); font-size: 13px;
-  font-weight: 700; cursor: pointer; padding: 6px 0; -webkit-tap-highlight-color: transparent;
-  font-family: inherit;
+  background: none; border: none; color: rgba(251,113,133,.5); font-size: 14px;
+  font-weight: 700; cursor: pointer; padding: 10px 0; -webkit-tap-highlight-color: transparent;
+  font-family: inherit; min-height: 44px;
 }
 .mv-section-delete-btn:active { color: #fb7185; }
 
@@ -274,7 +276,7 @@
 .mv-recording-actions { display: flex; gap: 10px; }
 .mv-rec-btn {
   background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.1);
-  color: #f4ede4; font-size: 16px; width: 44px; height: 44px; cursor: pointer;
+  color: #f4ede4; font-size: 18px; width: 52px; height: 52px; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   -webkit-tap-highlight-color: transparent; transition: background .12s;
 }
