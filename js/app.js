@@ -321,13 +321,13 @@ body{background:#0d0b09;color:#f4ede4;font-family:Georgia,serif;min-height:100vh
 .hero{display:flex;align-items:flex-start;gap:40px;margin-bottom:56px}
 
 /* Square sleeve */
-.sleeve-wrap{position:relative;width:244px;height:200px;flex-shrink:0}
+.sleeve-wrap{position:relative;width:220px;height:200px;flex-shrink:0}
 .sleeve{width:200px;height:200px;background:rgba(255,255,255,.06);overflow:hidden;position:relative;z-index:2;box-shadow:0 20px 60px rgba(0,0,0,.7)}
 .sleeve img{width:100%;height:100%;object-fit:cover;display:block}
 .sleeve-ph{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:56px}
 
 /* Vinyl peeking out from behind sleeve */
-.vinyl-wrap{position:absolute;right:-44px;top:12px;z-index:0}
+.vinyl-wrap{position:absolute;right:-20px;top:12px;z-index:0}
 .vinyl-disc{width:180px;height:180px;border-radius:50%;background:radial-gradient(circle,#1a1a1a 0%,#111 40%,#0a0a0a 100%);box-shadow:0 8px 32px rgba(0,0,0,.8);animation:vinylSpin 4s linear infinite;position:relative}
 .vinyl-grooves{position:absolute;inset:8px;border-radius:50%;background:repeating-radial-gradient(circle at center,transparent 0,transparent 4px,rgba(255,255,255,.03) 4px,rgba(255,255,255,.03) 5px)}
 .vinyl-label{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:60px;height:60px;border-radius:50%;background:${stCol};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:#000;font-family:system-ui}
@@ -375,9 +375,9 @@ body{background:#0d0b09;color:#f4ede4;font-family:Georgia,serif;min-height:100vh
 
 /* Controls */
 .controls{display:flex;align-items:center;gap:12px;margin-top:18px;margin-bottom:0}
-.ctrl-btn{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);color:#f4ede4;font-size:13px;font-weight:700;padding:8px 18px;cursor:pointer;font-family:system-ui;letter-spacing:.04em;transition:background .15s}
-.ctrl-btn:hover{background:rgba(255,255,255,.13)}
-.ctrl-btn.active-play{background:${stCol};color:#000;border-color:${stCol}}
+.ctrl-btn{background:none;border:none;color:rgba(255,255,255,.55);font-size:12px;font-weight:700;padding:6px 0;cursor:pointer;font-family:system-ui;letter-spacing:.08em;text-transform:uppercase;transition:color .15s;border-bottom:1px solid transparent}
+.ctrl-btn:hover{color:#f4ede4;border-bottom-color:rgba(255,255,255,.3)}
+.ctrl-btn.active-play{color:${stCol};border-bottom-color:${stCol}}
 .preview-label{font-size:11px;color:rgba(255,255,255,.3);font-family:system-ui;font-weight:700}
 
 .footer{font-size:11px;color:rgba(255,255,255,.18);font-family:system-ui;text-align:center;padding-top:24px;border-top:1px solid rgba(255,255,255,.06);margin-top:36px}
@@ -421,7 +421,7 @@ body{background:#0d0b09;color:#f4ede4;font-family:Georgia,serif;min-height:100vh
 const BEATS = ${beatsJson};
 const VOLUME = 0.30;
 const PREVIEW_SEC = 17;
-const FADE_SEC = 2.5; // crossfade duration
+const FADE_SEC = 1.2; // crossfade duration
 
 let audioA = null; // primary player
 let audioB = null; // crossfade-in player
@@ -499,7 +499,7 @@ async function playPreview(idx){
     audioB = newAudio;
     audioB.play().catch(()=>{});
     audioB.addEventListener('loadedmetadata', ()=>{
-      const start = Math.max(0, (audioB.duration||0) * 0.08);
+      const start = Math.min((audioB.duration||999) - 5, Math.max(5, Math.min(10, (audioB.duration||0) * 0.15)));
       audioB.currentTime = start;
     });
     fadeVolume(oldAudio, VOLUME, 0, FADE_SEC * 1000, ()=>{ oldAudio.pause(); oldAudio.src=''; });
@@ -512,7 +512,7 @@ async function playPreview(idx){
     audioA = newAudio;
     audioA.play().catch(()=>{});
     audioA.addEventListener('loadedmetadata', ()=>{
-      const start = Math.max(0, (audioA.duration||0) * 0.08);
+      const start = Math.min((audioA.duration||999) - 5, Math.max(5, Math.min(10, (audioA.duration||0) * 0.15)));
       audioA.currentTime = start;
     });
     fadeVolume(audioA, 0, VOLUME, 600);
