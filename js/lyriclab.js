@@ -1663,12 +1663,11 @@
 
     try {
       const workerUrl = window.R2_WORKER_URL || 'https://beat-vault.marcus-aas-mekiassen.workers.dev';
-      const prompt = `Du er en kreativ norsk hiphop-tekstforfatter. Her er teksten til sangen "${beat.name}":\n\n${lyrics.slice(0,700)}\n\nBaser deg på viben og stemningen i denne teksten. Skriv 1-2 NYE linjer på norsk med en kul punchline, wordplay eller rim. Ikke kopier noe fra originalen. Svar med BARE linjene, ingen forklaring.`;
 
-      const res = await fetch(`${workerUrl}/rhyme`, {
+      const res = await fetch(`${workerUrl}/inspire`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ word: prompt })
+        body: JSON.stringify({ beatName: beat.name, lyrics: lyrics.slice(0, 800) })
       });
 
       const data = await res.json();
