@@ -213,33 +213,114 @@
   }
 
   // ── Song list ────────────────────────────────────────────────
+  // ── Folder expand state (persists during session) ───────────────
+  const _folderOpen = {}; // collectionId → bool
+
   function renderSongList(){
     const c=document.getElementById('mvSongList'); if(!c) return;
-    const beats=getBeats().filter(b=>!_searchQuery||b.name.toLowerCase().includes(_searchQuery.toLowerCase()));
-    if(!beats.length){
-      c.innerHTML=`<div class="mv-empty"><div class="mv-empty-icon">🎵</div>${_searchQuery?'Ingen treff':'Ingen sanger ennå'}</div>`;
+    const st=getState(); if(!st) return;
+    const bp=window.bottomPlayer;
+    const q=_searchQuery.toLowerCase();
+
+    // ── Search mode: flat list matching beats ──────────────────────
+    if(q){
+      const beats=getBeats().filter(b=>b.name.toLowerCase().includes(q));
+      if(!beats.length){
+        c.innerHTML=`<div class="mv-empty"><div class="mv-empty-icon">🎵</div>Ingen treff</div>`;
+        return;
+      }
+      c.innerHTML=beats.map(b=>beatRowHTML(b,bp)).join('');
       return;
     }
-    const bp=window.bottomPlayer;
-    c.innerHTML=beats.map(b=>{
-      const cur=bp?.queue?.[bp.index]?.id;
-      const playing=cur===b.id&&bp&&!bp.audio.paused;
-      const cover=b.cover?`<img src="${esc(b.cover)}" alt="">`:'🎵';
-      const tags=[b.bpm&&`${b.bpm} BPM`,b.key,b.duration&&fmtTime(b.duration)].filter(Boolean);
-      return `
-        <div class="mv-song-row${_currentBeatId===b.id?' active-song':''}"
-             onclick="window.mvMobile.selectBeat('${esc(b.id)}')">
-          <div class="mv-song-cover">${cover}</div>
-          <div class="mv-song-info">
-            <div class="mv-song-name">${esc(b.name)}</div>
-            ${tags.length?`<div class="mv-song-meta">${tags.map(esc).join(' · ')}</div>`:''}
+
+    // ── Folder mode ────────────────────────────────────────────────
+    const sections=[];
+
+    // Albums
+    (st.albums||[]).filter(a=>!a.archived).forEach(a=>{
+      const beats=(a.beatIds||[]).map(id=>(st.beats||[]).find(b=>b.id===id)).filter(b=>b&&!b.archived);
+      if(!beats.length) return;
+      sections.push({type:'album', col:a, beats});
+    });
+
+    // Mixtapes
+    (st.mixtapes||[]).filter(m=>!m.archived).forEach(m=>{
+      const beats=(m.beatIds||[]).map(id=>(st.beats||[]).find(b=>b.id===id)).filter(b=>b&&!b.archived);
+      if(!beats.length) return;
+      sections.push({type:'mixtape', col:m, beats});
+    });
+
+    // Loose beats — not in any collection
+    const inCollection=new Set([
+      ...(st.albums||[]).flatMap(a=>a.beatIds||[]),
+      ...(st.mixtapes||[]).flatMap(m=>m.beatIds||[])
+    ]);
+    const loose=getBeats().filter(b=>!inCollection.has(b.id));
+    if(loose.length) sections.push({type:'loose', col:null, beats:loose});
+
+    if(!sections.length){
+      c.innerHTML=`<div class="mv-empty"><div class="mv-empty-icon">🎵</div>Ingen sanger ennå</div>`;
+      return;
+    }
+
+    c.innerHTML=sections.map(sec=>{
+      if(sec.type==='loose'){
+        return `<div class="mv-folder-section">
+          <div class="mv-folder-header mv-folder-loose">
+            <span class="mv-folder-icon">🎵</span>
+            <span class="mv-folder-name">Løse sanger</span>
+            <span class="mv-folder-count">${sec.beats.length}</span>
           </div>
-          <button class="mv-song-play-btn${playing?' playing':''}"
-                  onclick="event.stopPropagation();window.mvMobile.tapPlay('${esc(b.id)}')">
-            ${playing?'⏸':'▶'}
-          </button>
+          <div class="mv-folder-beats">
+            ${sec.beats.map(b=>beatRowHTML(b,bp)).join('')}
+          </div>
         </div>`;
+      }
+      const id=sec.col.id;
+      const isOpen=_folderOpen[id]!==false; // default open
+      const icon=sec.type==='album'?'💿':'📼';
+      const cover=sec.col.cover?`<img src="${esc(sec.col.cover)}" alt="">`:'';
+      const curBeatId=bp?.queue?.[bp.index]?.id;
+      const colPlaying=!bp?.audio.paused&&sec.beats.some(b=>b.id===curBeatId);
+      return `<div class="mv-folder-section" id="mvfolder-${esc(id)}">
+        <div class="mv-folder-header${colPlaying?' playing':''}"
+             onclick="window.mvMobile.toggleFolder('${esc(id)}')">
+          <div class="mv-folder-cover">${cover||icon}</div>
+          <div class="mv-folder-info">
+            <div class="mv-folder-name">${esc(sec.col.name)}</div>
+            <div class="mv-folder-meta">${sec.type==='album'?'Album':'Mixtape'} · ${sec.beats.length} sang${sec.beats.length===1?'':'er'}</div>
+          </div>
+          <button class="mv-folder-play-col" title="Spill hele"
+                  onclick="event.stopPropagation();window.mvMobile.playCollection('${sec.type}','${esc(id)}')">
+            ${colPlaying?'⏸':'▶'}
+          </button>
+          <span class="mv-folder-chevron${isOpen?'':' closed'}">▾</span>
+        </div>
+        <div class="mv-folder-beats${isOpen?'':' hidden'}">
+          ${sec.beats.map((b,idx)=>beatRowHTML(b,bp,idx+1)).join('')}
+        </div>
+      </div>`;
     }).join('');
+  }
+
+  function beatRowHTML(b,bp,trackNum){
+    const cur=bp?.queue?.[bp.index]?.id;
+    const playing=cur===b.id&&bp&&!bp.audio.paused;
+    const cover=b.cover?`<img src="${esc(b.cover)}" alt="">`:'🎵';
+    const tags=[b.duration&&fmtTime(b.duration)].filter(Boolean);
+    return `<div class="mv-song-row${_currentBeatId===b.id?' active-song':''}"
+               onclick="window.mvMobile.selectBeat('${esc(b.id)}')">
+        ${trackNum?`<span class="mv-song-num">${trackNum}</span>`:''}
+        <div class="mv-song-cover">${cover}</div>
+        <div class="mv-song-info">
+          <div class="mv-song-name">${esc(b.name)}</div>
+          ${tags.length?`<div class="mv-song-meta">${tags.map(esc).join(' · ')}</div>`:''}
+        </div>
+        <button class="mv-song-play-btn${playing?' playing':''}"
+                onclick="event.stopPropagation();window.mvMobile.tapPlay('${esc(b.id)}')">
+          ${playing?'⏸':'▶'}
+        </button>
+      </div>`;
   }
 
   function selectBeat(id){
@@ -492,6 +573,40 @@
   window.mvMobile = {
     selectBeat,
     tapPlay,
+    toggleFolder(id){
+      _folderOpen[id] = !(_folderOpen[id]!==false);
+      const folder=document.getElementById(`mvfolder-${id}`);
+      if(!folder) return;
+      const beats=folder.querySelector('.mv-folder-beats');
+      const chevron=folder.querySelector('.mv-folder-chevron');
+      const isOpen=_folderOpen[id];
+      beats?.classList.toggle('hidden',!isOpen);
+      chevron?.classList.toggle('closed',!isOpen);
+    },
+    playCollection(type,id){
+      unlockAudio();
+      const st=getState(); if(!st) return;
+      let queue=[];
+      if(type==='album'){
+        const a=(st.albums||[]).find(x=>x.id===id);
+        if(a) queue=(a.beatIds||[]).map(bid=>(st.beats||[]).find(b=>b.id===bid)).filter(b=>b&&!b.archived);
+      } else {
+        const m=(st.mixtapes||[]).find(x=>x.id===id);
+        if(m) queue=(m.beatIds||[]).map(bid=>(st.beats||[]).find(b=>b.id===bid)).filter(b=>b&&!b.archived);
+      }
+      if(!queue.length) return;
+      const bp=window.bottomPlayer;
+      // If this collection is already playing, toggle pause/play
+      const curId=bp?.queue?.[bp.index]?.id;
+      const colPlaying=bp&&!bp.audio.paused&&queue.some(b=>b.id===curId);
+      if(colPlaying){ bp.audio.pause(); setTimeout(()=>renderSongList(),80); return; }
+      if(typeof window.playQueue==='function'){
+        const col=type==='album'?(st.albums||[]).find(x=>x.id===id):(st.mixtapes||[]).find(x=>x.id===id);
+        window.playQueue(queue,{type,id,label:col?.name||type});
+        _currentBeatId=queue[0]?.id||null;
+      }
+      setTimeout(()=>renderSongList(),200);
+    },
     toggleSec(id){
       const beat=getCurrentBeat();if(!beat)return;
       const sec=getSections(beat).find(s=>s.id===id);if(!sec)return;
