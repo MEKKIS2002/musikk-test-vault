@@ -24,14 +24,15 @@
 .album-beat-card:not(.expanded) .ab-top{display:block!important}
 .album-beat-card.expanded .ab-top{display:grid!important;grid-template-columns:minmax(230px,320px) 1fr!important}
 .ab-cover-wrap{
-  aspect-ratio:4/3!important;
+  aspect-ratio:1/1!important;
   background:linear-gradient(135deg,rgba(255,186,94,.22),rgba(124,58,237,.16))!important;
   border-bottom:1px solid rgba(255,255,255,.08)!important;
+  overflow:hidden!important;
 }
 .ab-cover,.ab-cover-ph{
   width:100%!important;
   height:100%!important;
-  aspect-ratio:auto!important;
+  aspect-ratio:1/1!important;
   object-fit:cover!important;
   object-position:center!important;
   display:block!important;
