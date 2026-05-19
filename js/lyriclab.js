@@ -1662,29 +1662,17 @@
     }
 
     try {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
+      const workerUrl = window.R2_WORKER_URL || 'https://beat-vault.marcus-aas-mekiassen.workers.dev';
+      const prompt = `Du er en kreativ norsk hiphop-tekstforfatter. Her er teksten til sangen "${beat.name}":\n\n${lyrics.slice(0,700)}\n\nBaser deg på viben og stemningen i denne teksten. Skriv 1-2 NYE linjer på norsk med en kul punchline, wordplay eller rim. Ikke kopier noe fra originalen. Svar med BARE linjene, ingen forklaring.`;
+
+      const res = await fetch(`${workerUrl}/rhyme`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'claude-haiku-4-5-20251001',
-          max_tokens: 200,
-          system: `Du er en kreativ norsk hiphop-tekstforfatter. Du får teksten til en sang som inspirasjon, og skal generere 1-2 linjer med en kul punchline eller rim. 
-Regler:
-- Skriv PÅ NORSK
-- Maks 2 linjer
-- Ha en kul punchline, wordplay eller rim
-- Fang vibes og stemningen fra teksten, men skriv noe NYTT
-- Ikke kopier linjer fra originalen
-- Ingen forklaring, bare linjene`,
-          messages: [{
-            role: 'user',
-            content: `Tekst fra sangen "${beat.name}":\n\n${lyrics.slice(0, 800)}\n\nGenerer 1-2 nye linjer med punchline/rim inspirert av denne viben.`
-          }]
-        })
+        body: JSON.stringify({ word: prompt })
       });
 
       const data = await res.json();
-      const generated = data?.content?.[0]?.text?.trim() || '';
+      const generated = (data.text || '').trim();
 
       if (!generated) throw new Error('Tom respons');
 
