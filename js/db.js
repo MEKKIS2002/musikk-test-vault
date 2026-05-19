@@ -95,49 +95,13 @@ bottomPlayer.audio.addEventListener("pause",updateBottomUI);
 bottomPlayer.audio.addEventListener("error",()=>{const b=bottomPlayer.queue[bottomPlayer.index];if(b)showToast(`Kunne ikke spille "${b.name}"`);bottomNext(true);});
 function beatsFromIds(ids){return (ids||[]).map(id=>state.beats.find(b=>b.id===id)).filter(b=>b&&!b.archived);}
 function fmtTime(sec){sec=Number(sec||0);if(!isFinite(sec))return "0:00";const m=Math.floor(sec/60);const s=Math.floor(sec%60);return `${m}:${String(s).padStart(2,"0")}`;}
-// Detects iOS/iPadOS (including iPad on desktop-mode)
-function _isIOS(){
-  return /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
-    (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
-}
-
 async function getPlayableAudioUrl(beat){
   if(!beat)return null;
-  // IndexedDB blob takes priority — already local, no streaming needed
-  const idbBlob=await audioDB.load(beat.id);
-  if(idbBlob)return URL.createObjectURL(idbBlob);
+  const blob=await audioDB.load(beat.id);
+  if(blob)return URL.createObjectURL(blob);
   const externalUrl=getBeatAudioUrl(beat);
-  if(!externalUrl)return null;
-  // ── iOS/iPadOS fix ────────────────────────────────────────────────────────
-  // Safari streams audio via HTTP range requests. If the server doesn't properly
-  // support Range requests (common with Cloudflare Workers), Safari restarts the
-  // audio after ~1MB and gives "Kunne ikke spille av" errors.
-  // Fix: fetch the entire file as a blob first, then play from an object URL.
-  // The audio element unlock on touchstart already happened, so async fetch is fine.
-  if(_isIOS()){
-    try{
-      // Show loading indicator for large files
-      const loadMsg=document.getElementById('bpTitle');
-      const origText=loadMsg?.textContent;
-      if(loadMsg) loadMsg.textContent='Laster sang…';
-      const resp=await fetch(externalUrl,{cache:'default'});
-      if(loadMsg) loadMsg.textContent=origText||'';
-      if(resp.ok){
-        const blob=await resp.blob();
-        // Cache in IndexedDB so next play is instant (no re-fetch)
-        try{
-          await audioDB.save(beat.id,blob);
-          beat.url=beat.id+':idb'; // sentinel so IDB is used next time
-          if(typeof saveState==='function') saveState();
-        }catch(e){ /* IDB quota exceeded — skip caching, still play from blob */ }
-        return URL.createObjectURL(blob);
-      }
-    }catch(e){
-      console.warn('[iOS audio] Blob-fetch feilet, bruker direktelenke som fallback:',e);
-      // Fall through to direct URL
-    }
-  }
-  return externalUrl;
+  if(externalUrl)return externalUrl;
+  return null;
 }
 function updateCollectionPlayerUI(){updateBottomUI();}
 function updateBottomUI(){
@@ -184,32 +148,20 @@ async function playBottomIndex(i){
   if(i>=bottomPlayer.queue.length){bottomStop(true);showToast("✓ Ferdigspilt");return;}
   bottomPlayer.index=i;bottomPlayer.started=true;
   const beat=bottomPlayer.queue[i];
-  updateBottomUI(); // show title immediately while blob is fetching
   const url=await getPlayableAudioUrl(beat);
   if(!url){showToast(`Hopper over "${beat.name}" – mangler lydfil`);return playBottomIndex(i+1);}
-  // Revoke previous blob URL to free memory
-  if(bottomPlayer.objectUrl){URL.revokeObjectURL(bottomPlayer.objectUrl);bottomPlayer.objectUrl=null;}
-  bottomPlayer.objectUrl=url.startsWith('blob:')?url:null;
-  const a=bottomPlayer.audio;
-  a.pause();
-  a.src=url;
-  a.load();
+  if(bottomPlayer.objectUrl)URL.revokeObjectURL(bottomPlayer.objectUrl);
+  bottomPlayer.objectUrl=url.startsWith("blob:")?url:null;
+  bottomPlayer.audio.pause();
+  bottomPlayer.audio.src=url;
+  bottomPlayer.audio.load();
   updateBottomUI();
-  // _unlockAudio() on first touchstart pre-unlocks the element so async play() works on iOS
-  const playPromise=a.play();
-  if(playPromise!==undefined){
-    playPromise.catch(e=>{
-      if(e.name==='NotAllowedError'){
-        showToast('Trykk ▶ for å starte avspilling');
-      }else if(e.name==='AbortError'){
-        // src changed while loading — ignore
-      }else{
-        console.error('[Audio] play() feilet:',e,url,beat);
-        showToast(`Kunne ikke spille "${beat.name}" – prøv igjen`);
-      }
-      updateBottomUI();
-    }).then(()=>updateBottomUI());
+  try{await bottomPlayer.audio.play();}
+  catch(e){
+    console.error('Audio play failed:',e,url,beat);
+    showToast('Kunne ikke spille av. Prøv «Åpne lydfil» eller sjekk audio_url.');
   }
+  updateBottomUI();
 }
 async function playQueue(queue,context){
   if(!queue.length){showToast("Ingen sanger å spille");return;}
@@ -600,6 +552,8 @@ function renderAlbumDetail(){
   renderAlbumBeats(beats);
   updateCollectionPlayerUI();
   updateArchiveToolbarButtons?.();
+  // Load pitch comments
+  renderAlbumComments(currentAlbumId);
 }
 
 let collectionDrag={beatId:null,mode:null};
@@ -1605,6 +1559,56 @@ window.renameMixtape = function(id) {
     mt.name = val; saveState(); renderMixtapes();
     if (id === currentMixtapeId) renderMixtapeDetail();
     showToast('✓ Navn oppdatert');
+  });
+};
+
+// ── Pitch-tilbakemeldinger ───────────────────────────────────────────────────
+async function renderAlbumComments(albumId){
+  const el=document.getElementById('albumComments'); if(!el) return;
+  const SB_URL='https://ylvqkfdvijqnecuqznyr.supabase.co';
+  const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlsdnFrZmR2aWpxbmVjdXF6bnlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzMzA4MzIsImV4cCI6MjA5MzkwNjgzMn0.bYPTaxQK8n7I7w5Ri2DVYW5_LbFHg2IXkuhHsLTDDqc';
+
+  el.innerHTML=`<div style="font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.28);margin-bottom:16px">Tilbakemeldinger fra pitch</div><div id="albumCommentsList" style="margin-bottom:20px"><div style="color:var(--muted);font-size:13px">Laster…</div></div>`;
+
+  try {
+    const res=await fetch(`${SB_URL}/rest/v1/pitch_comments?album_id=eq.${encodeURIComponent(albumId)}&order=created_at.desc&select=*`,{
+      headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'}
+    });
+    const comments=res.ok?await res.json():[];
+    const listEl=document.getElementById('albumCommentsList');
+    if(!listEl) return;
+    if(!comments.length){
+      listEl.innerHTML=`<div style="color:var(--muted);font-size:13px;padding:10px 0">Ingen tilbakemeldinger ennå.</div>`;
+    } else {
+      listEl.innerHTML=comments.map(c=>{
+        const d=new Date(c.created_at);
+        const dateStr=d.toLocaleDateString('no-NO',{day:'2-digit',month:'2-digit',year:'numeric'})+' '+d.toLocaleTimeString('no-NO',{hour:'2-digit',minute:'2-digit'});
+        return `<div style="padding:14px 16px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);margin-bottom:10px;position:relative">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+            <span style="font-size:13px;font-weight:800;color:var(--accent)">${esc(c.author||'Anonym')}</span>
+            <span style="font-size:11px;color:rgba(255,255,255,.28);font-family:system-ui">${dateStr}</span>
+            <button onclick="deleteAlbumComment('${c.id}','${albumId}')" title="Slett" style="margin-left:auto;background:none;border:none;cursor:pointer;color:rgba(255,255,255,.25);font-size:14px;padding:0 2px;line-height:1;transition:color .12s" onmouseover="this.style.color='#fb7185'" onmouseout="this.style.color='rgba(255,255,255,.25)'">✕</button>
+          </div>
+          <div style="font-size:14px;line-height:1.65;color:rgba(255,255,255,.75);white-space:pre-wrap">${esc(c.comment||'')}</div>
+        </div>`;
+      }).join('');
+    }
+  } catch(e) {
+    const listEl=document.getElementById('albumCommentsList');
+    if(listEl) listEl.innerHTML=`<div style="color:var(--muted);font-size:13px">Kunne ikke laste tilbakemeldinger.</div>`;
+  }
+}
+
+window.deleteAlbumComment=async function(commentId, albumId){
+  const SB_URL='https://ylvqkfdvijqnecuqznyr.supabase.co';
+  const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlsdnFrZmR2aWpxbmVjdXF6bnlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzMzA4MzIsImV4cCI6MjA5MzkwNjgzMn0.bYPTaxQK8n7I7w5Ri2DVYW5_LbFHg2IXkuhHsLTDDqc';
+  showDeleteConfirm('Slette denne tilbakemeldingen?', async()=>{
+    await fetch(`${SB_URL}/rest/v1/pitch_comments?id=eq.${encodeURIComponent(commentId)}`,{
+      method:'DELETE',
+      headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'return=minimal'}
+    });
+    renderAlbumComments(albumId);
+    showToast('🗑 Tilbakemelding slettet');
   });
 };
 
