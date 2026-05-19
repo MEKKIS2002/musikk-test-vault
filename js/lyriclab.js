@@ -173,7 +173,9 @@
     return `
     <div class="ll-section${sec.collapsed?' collapsed':''}" data-section-id="${esc(sec.id)}" id="llsec-${esc(sec.id)}">
       <div class="ll-section-header" onclick="llToggleSection('${esc(sec.id)}')">
-        <span class="ll-section-type ${typeClass}">${esc(TYPE_LABELS[sec.type]||sec.type)}</span>
+        <span class="ll-section-type ${typeClass}" title="Klikk for å endre type"
+              onclick="event.stopPropagation();llShowTypePicker('${esc(sec.id)}',this)"
+        >${esc(TYPE_LABELS[sec.type]||sec.type)}</span>
         <input class="ll-section-title-input" value="${esc(sec.title)}" onclick="event.stopPropagation()"
           onchange="llRenameSection('${esc(sec.id)}',this.value)">
         <span class="ll-section-line-count">${lineCount} ${lineCount===1?'linje':'linjer'}</span>
@@ -571,8 +573,70 @@
     document.addEventListener('click', e => {
       if (!e.target.closest('.ll-section-menu-btn') && !e.target.closest('.ll-section-menu'))
         document.querySelectorAll('.ll-section-menu.open').forEach(m=>m.classList.remove('open'));
+      // Close type picker on outside click
+      if (!e.target.closest('.ll-type-picker') && !e.target.closest('.ll-section-type'))
+        document.querySelectorAll('.ll-type-picker').forEach(p=>p.remove());
     });
   }
+
+  // ── Type picker (click the pill to change section type) ───────────────────
+  window.llShowTypePicker = function(id, pillEl) {
+    // Close any existing pickers
+    document.querySelectorAll('.ll-type-picker').forEach(p=>p.remove());
+
+    const beat = getBeat(window.currentLyricLabBeatId);
+    const sec  = getSections(beat||{}).find(s=>s.id===id);
+    if(!sec) return;
+
+    const TYPES = { hook:'Hook', verse:'Vers', bridge:'Bro', outro:'Outro', custom:'Custom' };
+    const TYPE_COLORS = {
+      hook:   'rgba(244,164,67,.15)',
+      verse:  'rgba(168,85,247,.15)',
+      bridge: 'rgba(34,211,153,.12)',
+      outro:  'rgba(96,165,250,.12)',
+      custom: 'rgba(255,255,255,.08)'
+    };
+    const picker = document.createElement('div');
+    picker.className = 'll-type-picker';
+    picker.innerHTML = Object.entries(TYPES).map(([type, label]) => `
+      <button class="ll-type-picker-option${sec.type===type?' active':''}"
+              onclick="window.llChangeType('${esc(id)}','${type}')">
+        <span class="ll-section-type ll-type-${type}">${label}</span>
+        ${label}
+        ${sec.type===type ? '<span style="margin-left:auto;color:#f4a443;font-size:14px">✓</span>' : ''}
+      </button>`).join('');
+
+    // Position relative to the section header
+    const header = pillEl.closest('.ll-section-header');
+    if(header) {
+      header.style.position = 'relative';
+      header.appendChild(picker);
+    } else {
+      pillEl.style.position = 'relative';
+      pillEl.appendChild(picker);
+    }
+  };
+
+  window.llChangeType = function(id, newType) {
+    const beat = getBeat(window.currentLyricLabBeatId);
+    const sec  = getSections(beat||{}).find(s=>s.id===id);
+    if(!sec) return;
+    sec.type = newType;
+    if(typeof saveSections === 'function') saveSections(beat);
+    else if(typeof saveState === 'function') saveState();
+    // Close picker
+    document.querySelectorAll('.ll-type-picker').forEach(p=>p.remove());
+    // Update pill in DOM without full re-render
+    const secEl = document.getElementById(`llsec-${id}`);
+    if(secEl){
+      const pill = secEl.querySelector('.ll-section-type');
+      if(pill){
+        const TYPES = { hook:'Hook', verse:'Vers', bridge:'Bro', outro:'Outro', custom:'Custom' };
+        pill.className = `ll-section-type ll-type-${newType}`;
+        pill.textContent = TYPES[newType] || newType;
+      }
+    }
+  };
 
   window.llHighlightInput = function(div, id) {
     const beat = getBeat(window.currentLyricLabBeatId);
