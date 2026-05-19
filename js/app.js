@@ -189,7 +189,7 @@
 
         <div class="album-detail-main">
           <div class="eyebrow">Album</div>
-          <h2 style="display:flex;align-items:center;gap:8px">${esc(album.name)}<button onclick="renameAlbum('${album.id}')" title="Gi nytt navn" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:14px;padding:2px 4px;opacity:.7;transition:opacity .15s" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.7">✏️</button></h2>
+          <h2>${esc(album.name)}</h2>
           <p class="album-detail-sub">
             <span>${beats.length} sang${beats.length===1?'':'er'}</span>
             <span>•</span>
@@ -288,35 +288,239 @@
     const STATUS_COLORS = {'Idé':'#a855f7','Skriving':'#60a5fa','Innspilling':'#f97316','Mixing':'#f4a443','Ferdig':'#34d399'};
     const stCol = STATUS_COLORS[album.status||'Idé'] || '#f4a443';
     const mid = Math.ceil(beats.length/2);
+    const coverUrl = album.cover || '';
+
+    const beatsJson = JSON.stringify(beats.map(b=>({
+      id: b.id,
+      name: b.name,
+      duration: b.duration||0,
+      audio_url: b.audio_url||b.url||''
+    })));
+
     const rows = beats.map((b,i)=>{
       const sideDiv = beats.length>=4&&(i===0||i===mid)
-        ? '<div style="font-size:9px;font-weight:800;letter-spacing:.18em;color:'+stCol+';text-transform:uppercase;font-family:system-ui;padding:12px 0 4px;opacity:.6">'+(i===0?'A-SIDE':'B-SIDE')+'</div>' : '';
+        ? `<div class="side-label">${i===0?'A':'B'}-SIDE</div>` : '';
       const d=Number(b.duration||0), dStr=d>0?Math.floor(d/60)+':'+String(Math.floor(d%60)).padStart(2,'0'):'';
-      return sideDiv+'<div style="display:flex;align-items:center;gap:14px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.05)">'
-        +'<span style="font-size:11px;color:rgba(255,255,255,.25);min-width:24px;font-family:system-ui">'+String(i+1).padStart(2,'0')+'</span>'
-        +'<span style="font-size:15px;font-weight:700;flex:1">'+b.name.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</span>'
-        +'<span style="font-size:11px;color:rgba(255,255,255,.3);font-family:system-ui">'+dStr+'</span></div>';
+      return sideDiv+`<div class="track-row" data-idx="${i}" onclick="playPreview(${i})">
+        <span class="track-num">${String(i+1).padStart(2,'0')}</span>
+        <div class="track-play-icon">▶</div>
+        <span class="track-name">${b.name.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</span>
+        <span class="track-dur">${dStr}</span>
+      </div>`;
     }).join('');
-    const coverHtml = album.cover
-      ? '<img style="width:180px;height:180px;border-radius:16px;object-fit:cover;box-shadow:0 20px 60px rgba(0,0,0,.6)" src="'+album.cover+'" alt="">'
-      : '<div style="width:180px;height:180px;border-radius:16px;background:rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;font-size:48px">🎵</div>';
-    const html = '<!DOCTYPE html><html lang="no"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
-      + '<title>'+album.name+' — Pitch</title>'
-      + '<style>*{box-sizing:border-box;margin:0;padding:0}body{background:#0d0b09;color:#f4ede4;font-family:Georgia,serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:40px 20px}.page{max-width:700px;width:100%}</style>'
-      + '</head><body><div class="page">'
-      + '<div style="display:flex;align-items:flex-start;gap:32px;margin-bottom:48px">'+coverHtml
-      + '<div style="padding-top:8px">'
-      + '<div style="font-size:11px;font-weight:800;letter-spacing:.18em;color:'+stCol+';text-transform:uppercase;font-family:system-ui;margin-bottom:10px">'+(album.status||'Album')+'</div>'
-      + '<h1 style="font-size:40px;font-weight:900;letter-spacing:-.04em;line-height:1.1;margin-bottom:12px">'+album.name+'</h1>'
-      + '<div style="display:flex;gap:16px;font-size:12px;color:rgba(255,255,255,.45);font-family:system-ui;font-weight:700">'
-      + '<span>'+beats.length+' sanger</span>'+(dur?'<span>• '+dur+' total</span>':'')+'<span>• '+new Date().getFullYear()+'</span></div>'
-      + '</div></div>'
-      + '<div style="font-size:10px;font-weight:800;letter-spacing:.18em;color:rgba(255,255,255,.3);text-transform:uppercase;font-family:system-ui;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,.08);margin-bottom:8px">Trackliste</div>'
-      + rows
-      + '<div style="font-size:11px;color:rgba(255,255,255,.2);font-family:system-ui;text-align:center;padding-top:24px;border-top:1px solid rgba(255,255,255,.06);margin-top:32px">Laget med Music Vault</div>'
-      + '</div></body></html>';
-    const blob = new Blob([html], {type:'text/html'});
-    window.open(URL.createObjectURL(blob), '_blank');
+
+    const html = `<!DOCTYPE html><html lang="no"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${album.name} — Pitch</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0d0b09;color:#f4ede4;font-family:Georgia,serif;min-height:100vh;display:flex;align-items:flex-start;justify-content:center;padding:60px 20px}
+.page{max-width:680px;width:100%}
+
+/* ── Hero ── */
+.hero{display:flex;align-items:flex-start;gap:40px;margin-bottom:56px}
+
+/* Square sleeve */
+.sleeve-wrap{position:relative;width:200px;height:200px;flex-shrink:0}
+.sleeve{width:200px;height:200px;background:rgba(255,255,255,.06);overflow:hidden;position:relative;z-index:2;box-shadow:0 20px 60px rgba(0,0,0,.7)}
+.sleeve img{width:100%;height:100%;object-fit:cover;display:block}
+.sleeve-ph{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:56px}
+
+/* Vinyl peeking out from behind sleeve */
+.vinyl-wrap{position:absolute;right:-80px;top:10px;z-index:1}
+.vinyl-disc{width:180px;height:180px;border-radius:50%;background:radial-gradient(circle,#1a1a1a 0%,#111 40%,#0a0a0a 100%);box-shadow:0 8px 32px rgba(0,0,0,.8);animation:vinylSpin 4s linear infinite;position:relative}
+.vinyl-grooves{position:absolute;inset:8px;border-radius:50%;background:repeating-radial-gradient(circle at center,transparent 0,transparent 4px,rgba(255,255,255,.03) 4px,rgba(255,255,255,.03) 5px)}
+.vinyl-label{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:60px;height:60px;border-radius:50%;background:${stCol};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:#000;font-family:system-ui}
+.vinyl-hole{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:8px;height:8px;border-radius:50%;background:#0d0b09}
+@keyframes vinylSpin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+.vinyl-wrap.paused .vinyl-disc{animation-play-state:paused}
+
+/* Hero info */
+.hero-info{padding-top:6px;flex:1}
+.hero-status{font-size:10px;font-weight:800;letter-spacing:.2em;color:${stCol};text-transform:uppercase;font-family:system-ui;margin-bottom:12px}
+.hero-title{font-size:42px;font-weight:900;letter-spacing:-.04em;line-height:1.05;margin-bottom:14px}
+.hero-meta{display:flex;gap:16px;font-size:12px;color:rgba(255,255,255,.4);font-family:system-ui;font-weight:700}
+
+/* ── Tracklist ── */
+.tracklist-label{font-size:10px;font-weight:800;letter-spacing:.18em;color:rgba(255,255,255,.28);text-transform:uppercase;font-family:system-ui;padding-bottom:12px;border-bottom:1px solid rgba(255,255,255,.08);margin-bottom:6px}
+.side-label{font-size:9px;font-weight:800;letter-spacing:.18em;color:${stCol};text-transform:uppercase;font-family:system-ui;padding:14px 0 4px;opacity:.55}
+
+.track-row{display:flex;align-items:center;gap:14px;padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.05);cursor:pointer;transition:background .15s;border-radius:0;position:relative;overflow:hidden}
+.track-row:hover{background:rgba(255,255,255,.04)}
+.track-num{font-size:11px;color:rgba(255,255,255,.22);min-width:22px;font-family:system-ui;font-variant-numeric:tabular-nums}
+.track-play-icon{font-size:11px;color:rgba(255,255,255,.3);width:16px;flex-shrink:0;transition:color .15s}
+.track-name{font-size:15px;font-weight:700;flex:1;transition:all .2s}
+.track-dur{font-size:11px;color:rgba(255,255,255,.28);font-family:system-ui;font-variant-numeric:tabular-nums}
+
+/* ── Active / playing track — shiny text ── */
+.track-row.active{background:rgba(255,255,255,.04)}
+.track-row.active .track-name{
+  background:linear-gradient(90deg,#f4ede4 0%,${stCol} 40%,#fff 55%,${stCol} 70%,#f4ede4 100%);
+  background-size:200% auto;
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+  background-clip:text;
+  animation:shineText 2.5s linear infinite;
+  font-weight:900;
+}
+.track-row.active .track-play-icon{color:${stCol}}
+.track-row.active .track-num{color:${stCol};opacity:.7}
+@keyframes shineText{0%{background-position:0% center}100%{background-position:200% center}}
+
+/* Preview progress bar under active track */
+.track-row.active::after{
+  content:'';position:absolute;bottom:0;left:0;height:2px;
+  background:${stCol};width:var(--progress,0%);transition:width .3s linear;
+}
+
+/* Controls */
+.controls{display:flex;align-items:center;gap:12px;margin-top:18px;margin-bottom:0}
+.ctrl-btn{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);color:#f4ede4;font-size:13px;font-weight:700;padding:8px 18px;cursor:pointer;font-family:system-ui;letter-spacing:.04em;transition:background .15s}
+.ctrl-btn:hover{background:rgba(255,255,255,.13)}
+.ctrl-btn.active-play{background:${stCol};color:#000;border-color:${stCol}}
+.preview-label{font-size:11px;color:rgba(255,255,255,.3);font-family:system-ui;font-weight:700}
+
+.footer{font-size:11px;color:rgba(255,255,255,.18);font-family:system-ui;text-align:center;padding-top:24px;border-top:1px solid rgba(255,255,255,.06);margin-top:36px}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="hero">
+    <div class="sleeve-wrap">
+      <div class="sleeve">${coverUrl?`<img src="${coverUrl}" alt="">`:'<div class="sleeve-ph">🎵</div>'}</div>
+      <div class="vinyl-wrap paused" id="vinylWrap">
+        <div class="vinyl-disc">
+          <div class="vinyl-grooves"></div>
+          <div class="vinyl-label">${album.name.slice(0,3).toUpperCase()}</div>
+          <div class="vinyl-hole"></div>
+        </div>
+      </div>
+    </div>
+    <div class="hero-info">
+      <div class="hero-status">${album.status||'Album'}</div>
+      <h1 class="hero-title">${album.name}</h1>
+      <div class="hero-meta">
+        <span>${beats.length} sanger</span>
+        ${dur?`<span>• ${dur} total</span>`:''}
+        <span>• ${new Date().getFullYear()}</span>
+      </div>
+      <div class="controls" style="margin-top:18px">
+        <button class="ctrl-btn" id="playAllBtn" onclick="togglePlayAll()">▶ Spill preview</button>
+        <button class="ctrl-btn" onclick="stopAll()">⏹</button>
+        <span class="preview-label" id="previewLabel">15 sek per sang</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="tracklist-label">Trackliste</div>
+  <div id="tracklist">${rows}</div>
+  <div class="footer">Laget med Music Vault</div>
+</div>
+
+<script>
+const BEATS = ${beatsJson};
+let audio = null;
+let currentIdx = -1;
+let previewTimer = null;
+let progressInterval = null;
+const PREVIEW_SEC = 17;
+
+function stopAll(silent){
+  clearTimeout(previewTimer);
+  clearInterval(progressInterval);
+  if(audio){ audio.pause(); audio.src=''; audio=null; }
+  document.querySelectorAll('.track-row').forEach(r=>{ r.classList.remove('active'); r.style.removeProperty('--progress'); });
+  document.getElementById('vinylWrap').classList.add('paused');
+  const btn=document.getElementById('playAllBtn');
+  btn.classList.remove('active-play'); btn.textContent='▶ Spill preview';
+  if(!silent) currentIdx=-1;
+}
+
+async function playPreview(idx){
+  stopAll(true);
+  const beat=BEATS[idx]; if(!beat||!beat.audio_url) return nextTrack(idx);
+  currentIdx=idx;
+
+  // Mark active row
+  document.querySelectorAll('.track-row').forEach((r,i)=>{
+    r.classList.toggle('active',i===idx);
+    r.style.removeProperty('--progress');
+  });
+  document.getElementById('vinylWrap').classList.remove('paused');
+  document.getElementById('playAllBtn').classList.add('active-play');
+  document.getElementById('playAllBtn').textContent='⏸ Spiller';
+  document.getElementById('previewLabel').textContent=beat.name;
+
+  // Scroll active row into view
+  document.querySelectorAll('.track-row')[idx]?.scrollIntoView({behavior:'smooth',block:'nearest'});
+
+  audio=new Audio();
+  audio.crossOrigin='anonymous';
+
+  // On iOS we need to play sync — fetch as blob first
+  try {
+    const res = await fetch(beat.audio_url);
+    if(!res.ok) throw new Error('fetch failed');
+    const blob = await res.blob();
+    audio.src = URL.createObjectURL(blob);
+  } catch(e) {
+    audio.src = beat.audio_url;
+  }
+
+  audio.play().catch(()=>{});
+  audio.addEventListener('loadedmetadata',()=>{
+    const startAt = Math.max(0, (audio.duration||0)*0.08);
+    audio.currentTime = startAt;
+  });
+
+  // Progress bar + auto-advance after PREVIEW_SEC
+  const startTime = Date.now();
+  progressInterval = setInterval(()=>{
+    const elapsed=(Date.now()-startTime)/1000;
+    const pct=Math.min(100,(elapsed/PREVIEW_SEC)*100);
+    const row=document.querySelectorAll('.track-row')[idx];
+    if(row) row.style.setProperty('--progress',pct+'%');
+    if(elapsed>=PREVIEW_SEC) nextTrack(idx);
+  },100);
+}
+
+function nextTrack(fromIdx){
+  clearInterval(progressInterval);
+  const next=fromIdx+1;
+  if(next<BEATS.length) playPreview(next);
+  else stopAll();
+}
+
+function togglePlayAll(){
+  if(currentIdx>=0 && audio && !audio.paused){
+    audio.pause();
+    document.getElementById('vinylWrap').classList.add('paused');
+    document.getElementById('playAllBtn').classList.remove('active-play');
+    document.getElementById('playAllBtn').textContent='▶ Fortsett';
+    clearInterval(progressInterval);
+  } else if(currentIdx>=0 && audio && audio.paused){
+    audio.play();
+    document.getElementById('vinylWrap').classList.remove('paused');
+    document.getElementById('playAllBtn').classList.add('active-play');
+    document.getElementById('playAllBtn').textContent='⏸ Spiller';
+    const row=document.querySelectorAll('.track-row')[currentIdx];
+    const startProg=row?parseFloat(row.style.getPropertyValue('--progress')||'0'):0;
+    const startTime=Date.now()-(startProg/100*PREVIEW_SEC*1000);
+    progressInterval=setInterval(()=>{
+      const elapsed=(Date.now()-startTime)/1000;
+      const pct=Math.min(100,(elapsed/PREVIEW_SEC)*100);
+      if(row) row.style.setProperty('--progress',pct+'%');
+      if(elapsed>=PREVIEW_SEC) nextTrack(currentIdx);
+    },100);
+  } else {
+    playPreview(0);
+  }
+}
+</script>
+</body></html>`;
+
+    const blob2 = new Blob([html], {type:'text/html'});
+    window.open(URL.createObjectURL(blob2), '_blank');
     if(typeof showToast==='function') showToast('✓ Pitch-side åpnet i ny fane');
   };
   window.setAlbumCover=function(id,file){if(!file)return;const r=new FileReader();r.onload=e=>{const a=state.albums.find(x=>x.id===id);if(a){a.cover=e.target.result;saveState();renderAlbumDetail();renderAlbums();showToast('✓ Albumbilde oppdatert');}};r.readAsDataURL(file);};
@@ -764,18 +968,6 @@
     renderStats();
     setTimeout(()=>{installArchiveCss();installArchiveTab();installBeatArchiveButtons();installCollectionArchiveButtons();patchAddBeatModals();if(isArchiveTab())renderArchiveView();},0);
   };
-
-  // Double-click on beat title in album/mixtape beat lists to rename
-  document.addEventListener('dblclick', e => {
-    const titleEl = e.target.closest('.ab-title');
-    if (!titleEl) return;
-    const card = titleEl.closest('[data-beat-id]');
-    if (!card) return;
-    const admin = typeof isAdmin === 'function' ? isAdmin() : sessionStorage.getItem('mv_role') === 'admin';
-    if (!admin) return;
-    e.stopPropagation();
-    if (typeof window.renameBeat === 'function') window.renameBeat(card.dataset.beatId);
-  });
 
   installArchiveCss();
   ensureArchiveData();
