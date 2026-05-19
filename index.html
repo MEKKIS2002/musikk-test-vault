@@ -54,7 +54,6 @@ AKTIVE BRUKERE:
   <link rel="stylesheet" href="css/track-cards.css?v=202605161400">
   <link rel="stylesheet" href="css/archive.css?v=202605161400">
   <link rel="stylesheet" href="css/mixtape.css?v=202605161400">
-  <link rel="stylesheet" href="css/mobile.css?v=202506161900">
 </head>
 <body>
 <!-- Viewer mode login shortcut -->
@@ -221,6 +220,8 @@ AKTIVE BRUKERE:
         <div class="drop-hint">🎵 Slipp lydfiler her for å legge til beats</div>
       </div>
       <div id="albumBeatList" class="beat-list"></div>
+      <!-- Pitch-tilbakemeldinger -->
+      <div id="albumComments" style="margin-top:36px;padding-top:28px;border-top:1px solid rgba(255,255,255,.07)"></div>
     </div>
   </div>
 </section>
@@ -605,8 +606,6 @@ AKTIVE BRUKERE:
   <script src="js/changelog.js?v=202605161400"></script>
   <script src="js/beats-tab.js?v=202605161400"></script>
   <script src="js/supabase.js?v=202605161400"></script>
-  <!-- Mobile overlay — must load last, after all state is ready -->
-  <script src="js/mobile.js?v=202506161900"></script>
 
     <!-- LYRIC LAB TAB -->
     <section id="lyriclabTab" class="tab-view hidden">
