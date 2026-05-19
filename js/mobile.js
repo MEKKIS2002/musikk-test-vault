@@ -214,101 +214,125 @@
 
   // ── Song list ────────────────────────────────────────────────
   // ── Folder expand state (persists during session) ───────────────
-  const _folderOpen = {}; // collectionId → bool
+  const _folderOpen = {};
 
   function renderSongList(){
-    const c=document.getElementById('mvSongList'); if(!c) return;
-    const st=getState();
-    const bp=window.bottomPlayer;
-    const q=_searchQuery.toLowerCase();
-    const allBeats=st?(st.beats||[]).filter(b=>!b.archived):[];
+    const c = document.getElementById('mvSongList');
+    if(!c) return;
 
-    // ── Search mode: flat list ──────────────────────────────────────
-    if(q){
-      const hits=allBeats.filter(b=>b.name.toLowerCase().includes(q));
-      c.innerHTML=hits.length
-        ?hits.map(b=>beatRowHTML(b,bp)).join('')
-        :`<div class="mv-empty"><div class="mv-empty-icon">🎵</div>Ingen treff på "${esc(_searchQuery)}"</div>`;
-      return;
-    }
+    try {
+      const st    = getState();
+      const bp    = window.bottomPlayer;
+      const q     = _searchQuery.toLowerCase();
+      const beats = (st && st.beats ? st.beats : []).filter(b => !b.archived);
 
-    // ── No state yet — show loading ────────────────────────────────
-    if(!st||!allBeats.length){
-      c.innerHTML=`<div class="mv-empty"><div class="mv-empty-icon">🎵</div>Ingen sanger ennå</div>`;
-      return;
-    }
-
-    // ── Folder mode ────────────────────────────────────────────────
-    const beatById=new Map(allBeats.map(b=>[b.id,b]));
-    const sections=[];
-
-    // Albums (skip truly archived ones only)
-    (st.albums||[]).filter(a=>a.archived!==true).forEach(a=>{
-      const beats=(a.beatIds||[]).map(id=>beatById.get(id)).filter(Boolean);
-      if(!beats.length) return;
-      sections.push({type:'album', col:a, beats});
-    });
-
-    // Mixtapes
-    (st.mixtapes||[]).filter(m=>m.archived!==true).forEach(m=>{
-      const beats=(m.beatIds||[]).map(id=>beatById.get(id)).filter(Boolean);
-      if(!beats.length) return;
-      sections.push({type:'mixtape', col:m, beats});
-    });
-
-    // Loose beats — not in any collection
-    const inCollection=new Set(sections.flatMap(s=>s.beats.map(b=>b.id)));
-    const loose=allBeats.filter(b=>!inCollection.has(b.id));
-    if(loose.length) sections.push({type:'loose', col:null, beats:loose});
-
-    // Absolute fallback — if no sections built, show flat list
-    if(!sections.length){
-      c.innerHTML=allBeats.length
-        ?allBeats.map(b=>beatRowHTML(b,bp)).join('')
-        :`<div class="mv-empty"><div class="mv-empty-icon">🎵</div>Ingen sanger ennå</div>`;
-      return;
-    }
-
-    c.innerHTML=sections.map(sec=>{
-      if(sec.type==='loose'){
-        return `<div class="mv-folder-section">
-          <div class="mv-folder-header mv-folder-loose">
-            <div class="mv-folder-cover">🎵</div>
-            <div class="mv-folder-info">
-              <div class="mv-folder-name">Andre sanger</div>
-              <div class="mv-folder-meta">${sec.beats.length} sang${sec.beats.length===1?'':'er'} · ikke i samling</div>
-            </div>
-          </div>
-          <div class="mv-folder-beats">
-            ${sec.beats.map(b=>beatRowHTML(b,bp)).join('')}
-          </div>
-        </div>`;
+      // ── Search mode ─────────────────────────────────────────────
+      if(q){
+        const hits = beats.filter(b => b.name.toLowerCase().includes(q));
+        c.innerHTML = hits.length
+          ? hits.map(b => beatRowHTML(b, bp, null)).join('')
+          : `<div class="mv-empty"><div class="mv-empty-icon">🎵</div>Ingen treff</div>`;
+        return;
       }
-      const id=sec.col.id;
-      const isOpen=_folderOpen[id]!==false;
-      const icon=sec.type==='album'?'💿':'📼';
-      const cover=sec.col.cover?`<img src="${esc(sec.col.cover)}" alt="">`:'';
-      const curBeatId=bp?.queue?.[bp.index]?.id;
-      const colPlaying=bp&&!bp.audio.paused&&sec.beats.some(b=>b.id===curBeatId);
-      return `<div class="mv-folder-section" id="mvfolder-${esc(id)}">
-        <div class="mv-folder-header${colPlaying?' playing':''}"
-             onclick="window.mvMobile.toggleFolder('${esc(id)}')">
-          <div class="mv-folder-cover">${cover||icon}</div>
-          <div class="mv-folder-info">
-            <div class="mv-folder-name">${esc(sec.col.name)}</div>
-            <div class="mv-folder-meta">${sec.type==='album'?'Album':'Mixtape'} · ${sec.beats.length} sang${sec.beats.length===1?'':'er'}</div>
-          </div>
-          <button class="mv-folder-play-col" title="Spill hele"
-                  onclick="event.stopPropagation();window.mvMobile.playCollection('${sec.type}','${esc(id)}')">
-            ${colPlaying?'⏸':'▶'}
-          </button>
-          <span class="mv-folder-chevron${isOpen?'':' closed'}">▾</span>
-        </div>
-        <div class="mv-folder-beats${isOpen?'':' hidden'}">
-          ${sec.beats.map((b,idx)=>beatRowHTML(b,bp,idx+1)).join('')}
-        </div>
-      </div>`;
-    }).join('');
+
+      // ── No beats at all ──────────────────────────────────────────
+      if(!beats.length){
+        c.innerHTML = `<div class="mv-empty"><div class="mv-empty-icon">🎵</div>Ingen sanger ennå</div>`;
+        return;
+      }
+
+      // ── Build id→beat lookup ─────────────────────────────────────
+      const byId = {};
+      beats.forEach(b => { byId[b.id] = b; });
+
+      // ── Build sections from albums + mixtapes ────────────────────
+      const html = [];
+      const usedIds = new Set();
+
+      const collections = [
+        ...(st.albums   || []).map(col => ({col, type:'album'})),
+        ...(st.mixtapes || []).map(col => ({col, type:'mixtape'}))
+      ].filter(x => x.col && !x.col.archived);
+
+      collections.forEach(({col, type}) => {
+        const colBeats = (col.beatIds || [])
+          .map(id => byId[id])
+          .filter(Boolean);
+        if(!colBeats.length) return;
+
+        colBeats.forEach(b => usedIds.add(b.id));
+
+        const id     = col.id;
+        const isOpen = _folderOpen[id] !== false;
+        const cover  = col.cover
+          ? `<img src="${esc(col.cover)}" alt="">`
+          : (type === 'album' ? '💿' : '📼');
+        const curId    = bp && bp.queue && bp.queue[bp.index] ? bp.queue[bp.index].id : null;
+        const isPlaying = curId && !bp.audio.paused && colBeats.some(b => b.id === curId);
+
+        const beatsHtml = colBeats.map((b, i) => beatRowHTML(b, bp, i + 1)).join('');
+
+        html.push(`
+          <div class="mv-folder-section" id="mvfolder-${esc(id)}">
+            <div class="mv-folder-header${isPlaying ? ' playing' : ''}"
+                 onclick="window.mvMobile.toggleFolder('${esc(id)}')">
+              <div class="mv-folder-cover">${cover}</div>
+              <div class="mv-folder-info">
+                <div class="mv-folder-name">${esc(col.name)}</div>
+                <div class="mv-folder-meta">${type === 'album' ? 'Album' : 'Mixtape'} · ${colBeats.length} sang${colBeats.length === 1 ? '' : 'er'}</div>
+              </div>
+              <button class="mv-folder-play-col"
+                      onclick="event.stopPropagation();window.mvMobile.playCollection('${type}','${esc(id)}')">
+                ${isPlaying ? '⏸' : '▶'}
+              </button>
+              <span class="mv-folder-chevron${isOpen ? '' : ' closed'}">▾</span>
+            </div>
+            <div class="mv-folder-beats${isOpen ? '' : ' hidden'}">
+              ${beatsHtml}
+            </div>
+          </div>`);
+      });
+
+      // ── Loose beats ──────────────────────────────────────────────
+      const loose = beats.filter(b => !usedIds.has(b.id));
+      if(loose.length){
+        html.push(`
+          <div class="mv-folder-section">
+            <div class="mv-folder-header mv-folder-loose">
+              <div class="mv-folder-cover">🎵</div>
+              <div class="mv-folder-info">
+                <div class="mv-folder-name">Andre sanger</div>
+                <div class="mv-folder-meta">${loose.length} sang${loose.length === 1 ? '' : 'er'}</div>
+              </div>
+            </div>
+            <div class="mv-folder-beats">
+              ${loose.map(b => beatRowHTML(b, bp, null)).join('')}
+            </div>
+          </div>`);
+      }
+
+      // ── No collections found — flat fallback ─────────────────────
+      if(!html.length){
+        c.innerHTML = beats.map(b => beatRowHTML(b, bp, null)).join('');
+        return;
+      }
+
+      c.innerHTML = html.join('');
+
+    } catch(err) {
+      console.error('[mvMobile] renderSongList krasjet:', err);
+      // Emergency flat fallback
+      try {
+        const st = getState();
+        const beats = (st && st.beats ? st.beats : []).filter(b => !b.archived);
+        const bp = window.bottomPlayer;
+        c.innerHTML = beats.length
+          ? beats.map(b => beatRowHTML(b, bp, null)).join('')
+          : `<div class="mv-empty"><div class="mv-empty-icon">🎵</div>Ingen sanger ennå</div>`;
+      } catch(e2) {
+        c.innerHTML = `<div class="mv-empty"><div class="mv-empty-icon">🎵</div>Kunne ikke laste sanger</div>`;
+      }
+    }
   }
 
   function beatRowHTML(b,bp,trackNum){
