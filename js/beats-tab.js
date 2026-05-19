@@ -79,6 +79,7 @@
     menu.className = 'bt-dropdown';
     menu.innerHTML = `
       <button onclick="beatsTab.playBeat('${beatId}')">▶ Spill</button>
+      ${admin ? `<button onclick="downloadBeat('${beatId}')">⬇ Last ned</button>` : ''}
       ${admin ? `<button onclick="renameBeat('${beatId}')">✏️ Gi nytt navn</button>` : ''}
       ${admin ? `<button onclick="beatsTab.toggleFav('${beatId}')">${beat.favorite ? '★ Fjern favoritt' : '☆ Legg til favoritt'}</button>` : ''}
       ${admin ? `<button onclick="beatsTab.archiveBeat('${beatId}')">${isArch ? '↩ Gjenopprett' : '📦 Arkiver sang'}</button>` : ''}
@@ -195,6 +196,7 @@
                 <span class="bl-cover">${coverHtml}</span>
                 <span class="bl-name">
                   <span class="bl-title">${esc(b.name)}</span>
+                  ${b.beatName && b.beatName !== b.name ? `<span style="font-size:10px;color:rgba(255,255,255,.32);font-family:system-ui;font-weight:600;display:block;margin-top:1px">Beatnavn: ${esc(b.beatName)}</span>` : `<span style="font-size:10px;color:rgba(255,255,255,.25);font-family:system-ui;display:block;margin-top:1px">Beatnavn: ${esc(b.name)}</span>`}
                   ${b.rating ? `<span class="bl-rating">${'★'.repeat(Math.round(b.rating/2))}</span>` : ''}
                 </span>
                 <span class="bl-collections">${colChips}</span>
