@@ -321,13 +321,13 @@ body{background:#0d0b09;color:#f4ede4;font-family:Georgia,serif;min-height:100vh
 .hero{display:flex;align-items:flex-start;gap:40px;margin-bottom:56px}
 
 /* Square sleeve */
-.sleeve-wrap{position:relative;width:200px;height:200px;flex-shrink:0}
+.sleeve-wrap{position:relative;width:244px;height:200px;flex-shrink:0}
 .sleeve{width:200px;height:200px;background:rgba(255,255,255,.06);overflow:hidden;position:relative;z-index:2;box-shadow:0 20px 60px rgba(0,0,0,.7)}
 .sleeve img{width:100%;height:100%;object-fit:cover;display:block}
 .sleeve-ph{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:56px}
 
 /* Vinyl peeking out from behind sleeve */
-.vinyl-wrap{position:absolute;right:-80px;top:10px;z-index:1}
+.vinyl-wrap{position:absolute;right:-44px;top:12px;z-index:0}
 .vinyl-disc{width:180px;height:180px;border-radius:50%;background:radial-gradient(circle,#1a1a1a 0%,#111 40%,#0a0a0a 100%);box-shadow:0 8px 32px rgba(0,0,0,.8);animation:vinylSpin 4s linear infinite;position:relative}
 .vinyl-grooves{position:absolute;inset:8px;border-radius:50%;background:repeating-radial-gradient(circle at center,transparent 0,transparent 4px,rgba(255,255,255,.03) 4px,rgba(255,255,255,.03) 5px)}
 .vinyl-label{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:60px;height:60px;border-radius:50%;background:${stCol};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:#000;font-family:system-ui}
@@ -419,99 +419,152 @@ body{background:#0d0b09;color:#f4ede4;font-family:Georgia,serif;min-height:100vh
 
 <script>
 const BEATS = ${beatsJson};
-let audio = null;
-let currentIdx = -1;
-let previewTimer = null;
-let progressInterval = null;
+const VOLUME = 0.30;
 const PREVIEW_SEC = 17;
+const FADE_SEC = 2.5; // crossfade duration
+
+let audioA = null; // primary player
+let audioB = null; // crossfade-in player
+let currentIdx = -1;
+let progressInterval = null;
+let previewStartTime = null;
+
+function createAudio(src){
+  const a = new Audio();
+  a.crossOrigin = 'anonymous';
+  a.volume = 0;
+  a.src = src;
+  return a;
+}
+
+function fadeVolume(a, fromVol, toVol, durationMs, onDone){
+  if(!a) return;
+  const steps = 30;
+  const interval = durationMs / steps;
+  let step = 0;
+  const t = setInterval(()=>{
+    step++;
+    const progress = step / steps;
+    a.volume = Math.max(0, Math.min(1, fromVol + (toVol - fromVol) * progress));
+    if(step >= steps){
+      clearInterval(t);
+      a.volume = toVol;
+      if(onDone) onDone();
+    }
+  }, interval);
+  return t;
+}
 
 function stopAll(silent){
-  clearTimeout(previewTimer);
   clearInterval(progressInterval);
-  if(audio){ audio.pause(); audio.src=''; audio=null; }
+  [audioA, audioB].forEach(a=>{ if(a){ a.pause(); a.src=''; } });
+  audioA = null; audioB = null;
   document.querySelectorAll('.track-row').forEach(r=>{ r.classList.remove('active'); r.style.removeProperty('--progress'); });
   document.getElementById('vinylWrap').classList.add('paused');
   const btn=document.getElementById('playAllBtn');
   btn.classList.remove('active-play'); btn.textContent='▶ Spill preview';
+  document.getElementById('previewLabel').textContent='15 sek per sang';
   if(!silent) currentIdx=-1;
 }
 
 async function playPreview(idx){
-  stopAll(true);
-  const beat=BEATS[idx]; if(!beat||!beat.audio_url) return nextTrack(idx);
-  currentIdx=idx;
+  // Stop old progress tracking
+  clearInterval(progressInterval);
 
-  // Mark active row
+  const beat = BEATS[idx];
+  if(!beat || !beat.audio_url){ nextTrack(idx); return; }
+
+  currentIdx = idx;
   document.querySelectorAll('.track-row').forEach((r,i)=>{
-    r.classList.toggle('active',i===idx);
-    r.style.removeProperty('--progress');
+    if(i !== idx){ r.classList.remove('active'); r.style.removeProperty('--progress'); }
   });
   document.getElementById('vinylWrap').classList.remove('paused');
   document.getElementById('playAllBtn').classList.add('active-play');
   document.getElementById('playAllBtn').textContent='⏸ Spiller';
   document.getElementById('previewLabel').textContent=beat.name;
-
-  // Scroll active row into view
   document.querySelectorAll('.track-row')[idx]?.scrollIntoView({behavior:'smooth',block:'nearest'});
 
-  audio=new Audio();
-  audio.crossOrigin='anonymous';
-
-  // On iOS we need to play sync — fetch as blob first
-  try {
+  // Fetch as blob (iOS-safe, no streaming restart)
+  let src = beat.audio_url;
+  try{
     const res = await fetch(beat.audio_url);
-    if(!res.ok) throw new Error('fetch failed');
-    const blob = await res.blob();
-    audio.src = URL.createObjectURL(blob);
-  } catch(e) {
-    audio.src = beat.audio_url;
+    if(res.ok){ const blob = await res.blob(); src = URL.createObjectURL(blob); }
+  } catch(e){}
+
+  const newAudio = createAudio(src);
+
+  if(audioA && !audioA.paused){
+    // Crossfade: fade A out while fading new audio in
+    const oldAudio = audioA;
+    audioB = newAudio;
+    audioB.play().catch(()=>{});
+    audioB.addEventListener('loadedmetadata', ()=>{
+      const start = Math.max(0, (audioB.duration||0) * 0.08);
+      audioB.currentTime = start;
+    });
+    fadeVolume(oldAudio, VOLUME, 0, FADE_SEC * 1000, ()=>{ oldAudio.pause(); oldAudio.src=''; });
+    fadeVolume(audioB, 0, VOLUME, FADE_SEC * 1000);
+    audioA = audioB;
+    audioB = null;
+  } else {
+    // Clean start
+    if(audioA){ audioA.pause(); audioA.src=''; }
+    audioA = newAudio;
+    audioA.play().catch(()=>{});
+    audioA.addEventListener('loadedmetadata', ()=>{
+      const start = Math.max(0, (audioA.duration||0) * 0.08);
+      audioA.currentTime = start;
+    });
+    fadeVolume(audioA, 0, VOLUME, 600);
   }
 
-  audio.play().catch(()=>{});
-  audio.addEventListener('loadedmetadata',()=>{
-    const startAt = Math.max(0, (audio.duration||0)*0.08);
-    audio.currentTime = startAt;
-  });
+  // Mark row active
+  const row = document.querySelectorAll('.track-row')[idx];
+  if(row) row.classList.add('active');
 
-  // Progress bar + auto-advance after PREVIEW_SEC
-  const startTime = Date.now();
+  previewStartTime = Date.now();
+
   progressInterval = setInterval(()=>{
-    const elapsed=(Date.now()-startTime)/1000;
-    const pct=Math.min(100,(elapsed/PREVIEW_SEC)*100);
-    const row=document.querySelectorAll('.track-row')[idx];
-    if(row) row.style.setProperty('--progress',pct+'%');
-    if(elapsed>=PREVIEW_SEC) nextTrack(idx);
-  },100);
+    const elapsed = (Date.now() - previewStartTime) / 1000;
+    const pct = Math.min(100, (elapsed / PREVIEW_SEC) * 100);
+    const r = document.querySelectorAll('.track-row')[idx];
+    if(r) r.style.setProperty('--progress', pct + '%');
+    // Start crossfade FADE_SEC before end
+    if(elapsed >= PREVIEW_SEC - FADE_SEC && elapsed < PREVIEW_SEC){
+      // Pre-load next — kick off in background (handled by the next playPreview call)
+    }
+    if(elapsed >= PREVIEW_SEC){
+      clearInterval(progressInterval);
+      nextTrack(idx);
+    }
+  }, 80);
 }
 
 function nextTrack(fromIdx){
-  clearInterval(progressInterval);
-  const next=fromIdx+1;
-  if(next<BEATS.length) playPreview(next);
+  const next = fromIdx + 1;
+  if(next < BEATS.length) playPreview(next);
   else stopAll();
 }
 
 function togglePlayAll(){
-  if(currentIdx>=0 && audio && !audio.paused){
-    audio.pause();
+  if(currentIdx >= 0 && audioA && !audioA.paused){
+    audioA.pause();
+    clearInterval(progressInterval);
     document.getElementById('vinylWrap').classList.add('paused');
     document.getElementById('playAllBtn').classList.remove('active-play');
     document.getElementById('playAllBtn').textContent='▶ Fortsett';
-    clearInterval(progressInterval);
-  } else if(currentIdx>=0 && audio && audio.paused){
-    audio.play();
+  } else if(currentIdx >= 0 && audioA && audioA.paused){
+    audioA.play();
     document.getElementById('vinylWrap').classList.remove('paused');
     document.getElementById('playAllBtn').classList.add('active-play');
     document.getElementById('playAllBtn').textContent='⏸ Spiller';
-    const row=document.querySelectorAll('.track-row')[currentIdx];
-    const startProg=row?parseFloat(row.style.getPropertyValue('--progress')||'0'):0;
-    const startTime=Date.now()-(startProg/100*PREVIEW_SEC*1000);
-    progressInterval=setInterval(()=>{
-      const elapsed=(Date.now()-startTime)/1000;
-      const pct=Math.min(100,(elapsed/PREVIEW_SEC)*100);
-      if(row) row.style.setProperty('--progress',pct+'%');
-      if(elapsed>=PREVIEW_SEC) nextTrack(currentIdx);
-    },100);
+    const elapsed = (Date.now() - previewStartTime) / 1000;
+    progressInterval = setInterval(()=>{
+      const e2 = (Date.now() - previewStartTime) / 1000;
+      const r = document.querySelectorAll('.track-row')[currentIdx];
+      if(r) r.style.setProperty('--progress', Math.min(100,(e2/PREVIEW_SEC)*100)+'%');
+      if(e2 >= PREVIEW_SEC){ clearInterval(progressInterval); nextTrack(currentIdx); }
+    }, 80);
   } else {
     playPreview(0);
   }
