@@ -708,7 +708,7 @@ function renderAlbumBeats(beats,mode,customEl){
             <button class="star-btn${b.favorite?" active":""}" data-fav-id="${b.id}" onclick="event.stopPropagation();toggleFav('${b.id}',this)" style="font-size:20px;padding:0;flex-shrink:0">★</button>
             ${(()=>{ const noAudio=!(b.audio_url||b.url); const noLyric=!(b.lyrics||(b.lyricSections||[]).some(s=>s.text?.trim())); if(noAudio) return '<span title="Mangler lydfil" style="width:7px;height:7px;border-radius:50%;background:#fb7185;flex-shrink:0;display:inline-block;margin-top:2px"></span>'; if(noLyric) return '<span title="Mangler tekst" style="width:7px;height:7px;border-radius:50%;background:#f97316;flex-shrink:0;display:inline-block;margin-top:2px"></span>'; return ''; })()}
           </div>
-          <div style="margin-top:3px;display:flex;align-items:center;gap:5px" onclick="event.stopPropagation()">
+          <div class="ab-beatname" onclick="event.stopPropagation()">
             <span style="font-size:10px;color:rgba(255,255,255,.32);font-family:system-ui;font-weight:700;flex-shrink:0">Beatnavn:</span>
             <input value="${esc(b.beatName||b.name)}" placeholder="${esc(b.beatName||b.name)}"
               style="background:none;border:none;border-bottom:1px solid transparent;color:rgba(255,255,255,.42);font-size:11px;font-family:system-ui;outline:none;flex:1;min-width:0;padding:1px 3px;transition:border-color .15s,color .15s"

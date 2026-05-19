@@ -196,7 +196,7 @@
                 <span class="bl-cover">${coverHtml}</span>
                 <span class="bl-name">
                   <span class="bl-title">${esc(b.name)}</span>
-                  <span style="font-size:10px;color:rgba(255,255,255,.32);font-family:system-ui;font-weight:600;display:block;margin-top:1px">Beatnavn: ${esc(b.beatName||b.name)}</span>
+                  <span class="bl-beatname">Beatnavn: ${esc(b.beatName||b.name)}</span>
                   ${b.rating ? `<span class="bl-rating">${'★'.repeat(Math.round(b.rating/2))}</span>` : ''}
                 </span>
                 <span class="bl-collections">${colChips}</span>
@@ -303,10 +303,14 @@
         justify-content: center; font-size: 14px; color: rgba(168,85,247,.6);
       }
 
-      .bl-name { display: flex; align-items: center; gap: 6px; min-width: 0; }
+      .bl-name { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; min-width: 0; justify-content: center; }
       .bl-title {
         font-size: 13px; font-weight: 800; letter-spacing: -.01em;
-        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
+      }
+      .bl-beatname {
+        font-size: 10px; color: rgba(255,255,255,.3); font-family: system-ui;
+        font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
       }
       .bl-fav { color: #f4a443; font-size: 12px; flex-shrink: 0; }
       .bl-rating { font-size: 10px; color: #f4a443; letter-spacing: -1px; flex-shrink: 0; }
