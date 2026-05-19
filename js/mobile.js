@@ -218,48 +218,54 @@
 
   function renderSongList(){
     const c=document.getElementById('mvSongList'); if(!c) return;
-    const st=getState(); if(!st) return;
+    const st=getState();
     const bp=window.bottomPlayer;
     const q=_searchQuery.toLowerCase();
+    const allBeats=st?(st.beats||[]).filter(b=>!b.archived):[];
 
-    // ── Search mode: flat list matching beats ──────────────────────
+    // ── Search mode: flat list ──────────────────────────────────────
     if(q){
-      const beats=getBeats().filter(b=>b.name.toLowerCase().includes(q));
-      if(!beats.length){
-        c.innerHTML=`<div class="mv-empty"><div class="mv-empty-icon">🎵</div>Ingen treff</div>`;
-        return;
-      }
-      c.innerHTML=beats.map(b=>beatRowHTML(b,bp)).join('');
+      const hits=allBeats.filter(b=>b.name.toLowerCase().includes(q));
+      c.innerHTML=hits.length
+        ?hits.map(b=>beatRowHTML(b,bp)).join('')
+        :`<div class="mv-empty"><div class="mv-empty-icon">🎵</div>Ingen treff på "${esc(_searchQuery)}"</div>`;
+      return;
+    }
+
+    // ── No state yet — show loading ────────────────────────────────
+    if(!st||!allBeats.length){
+      c.innerHTML=`<div class="mv-empty"><div class="mv-empty-icon">🎵</div>Ingen sanger ennå</div>`;
       return;
     }
 
     // ── Folder mode ────────────────────────────────────────────────
+    const beatById=new Map(allBeats.map(b=>[b.id,b]));
     const sections=[];
 
-    // Albums
-    (st.albums||[]).filter(a=>!a.archived).forEach(a=>{
-      const beats=(a.beatIds||[]).map(id=>(st.beats||[]).find(b=>b.id===id)).filter(b=>b&&!b.archived);
+    // Albums (skip truly archived ones only)
+    (st.albums||[]).filter(a=>a.archived!==true).forEach(a=>{
+      const beats=(a.beatIds||[]).map(id=>beatById.get(id)).filter(Boolean);
       if(!beats.length) return;
       sections.push({type:'album', col:a, beats});
     });
 
     // Mixtapes
-    (st.mixtapes||[]).filter(m=>!m.archived).forEach(m=>{
-      const beats=(m.beatIds||[]).map(id=>(st.beats||[]).find(b=>b.id===id)).filter(b=>b&&!b.archived);
+    (st.mixtapes||[]).filter(m=>m.archived!==true).forEach(m=>{
+      const beats=(m.beatIds||[]).map(id=>beatById.get(id)).filter(Boolean);
       if(!beats.length) return;
       sections.push({type:'mixtape', col:m, beats});
     });
 
     // Loose beats — not in any collection
-    const inCollection=new Set([
-      ...(st.albums||[]).flatMap(a=>a.beatIds||[]),
-      ...(st.mixtapes||[]).flatMap(m=>m.beatIds||[])
-    ]);
-    const loose=getBeats().filter(b=>!inCollection.has(b.id));
+    const inCollection=new Set(sections.flatMap(s=>s.beats.map(b=>b.id)));
+    const loose=allBeats.filter(b=>!inCollection.has(b.id));
     if(loose.length) sections.push({type:'loose', col:null, beats:loose});
 
+    // Absolute fallback — if no sections built, show flat list
     if(!sections.length){
-      c.innerHTML=`<div class="mv-empty"><div class="mv-empty-icon">🎵</div>Ingen sanger ennå</div>`;
+      c.innerHTML=allBeats.length
+        ?allBeats.map(b=>beatRowHTML(b,bp)).join('')
+        :`<div class="mv-empty"><div class="mv-empty-icon">🎵</div>Ingen sanger ennå</div>`;
       return;
     }
 
@@ -267,9 +273,11 @@
       if(sec.type==='loose'){
         return `<div class="mv-folder-section">
           <div class="mv-folder-header mv-folder-loose">
-            <span class="mv-folder-icon">🎵</span>
-            <span class="mv-folder-name">Løse sanger</span>
-            <span class="mv-folder-count">${sec.beats.length}</span>
+            <div class="mv-folder-cover">🎵</div>
+            <div class="mv-folder-info">
+              <div class="mv-folder-name">Andre sanger</div>
+              <div class="mv-folder-meta">${sec.beats.length} sang${sec.beats.length===1?'':'er'} · ikke i samling</div>
+            </div>
           </div>
           <div class="mv-folder-beats">
             ${sec.beats.map(b=>beatRowHTML(b,bp)).join('')}
@@ -277,11 +285,11 @@
         </div>`;
       }
       const id=sec.col.id;
-      const isOpen=_folderOpen[id]!==false; // default open
+      const isOpen=_folderOpen[id]!==false;
       const icon=sec.type==='album'?'💿':'📼';
       const cover=sec.col.cover?`<img src="${esc(sec.col.cover)}" alt="">`:'';
       const curBeatId=bp?.queue?.[bp.index]?.id;
-      const colPlaying=!bp?.audio.paused&&sec.beats.some(b=>b.id===curBeatId);
+      const colPlaying=bp&&!bp.audio.paused&&sec.beats.some(b=>b.id===curBeatId);
       return `<div class="mv-folder-section" id="mvfolder-${esc(id)}">
         <div class="mv-folder-header${colPlaying?' playing':''}"
              onclick="window.mvMobile.toggleFolder('${esc(id)}')">
@@ -746,8 +754,12 @@
   }
   function init(){
     buildOverlay();bindEvents();showUsername();
-    const poll=()=>{ if(getState())renderSongList(); else setTimeout(poll,250); };
+    const poll=()=>{ if(getState()){ renderSongList(); } else setTimeout(poll,250); };
     poll();
+    // Re-render a few more times to catch Supabase sync completing
+    setTimeout(renderSongList, 1000);
+    setTimeout(renderSongList, 2500);
+    setTimeout(renderSongList, 5000);
     showScreen('songs');
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',()=>setTimeout(init,300));
