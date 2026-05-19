@@ -173,9 +173,7 @@
     return `
     <div class="ll-section${sec.collapsed?' collapsed':''}" data-section-id="${esc(sec.id)}" id="llsec-${esc(sec.id)}">
       <div class="ll-section-header" onclick="llToggleSection('${esc(sec.id)}')">
-        <span class="ll-section-type ${typeClass}" title="Klikk for å endre type"
-              onclick="event.stopPropagation();llShowTypePicker('${esc(sec.id)}',this)"
-        >${esc(TYPE_LABELS[sec.type]||sec.type)}</span>
+        <span class="ll-section-type ${typeClass}">${esc(TYPE_LABELS[sec.type]||sec.type)}</span>
         <input class="ll-section-title-input" value="${esc(sec.title)}" onclick="event.stopPropagation()"
           onchange="llRenameSection('${esc(sec.id)}',this.value)">
         <span class="ll-section-line-count">${lineCount} ${lineCount===1?'linje':'linjer'}</span>
@@ -573,70 +571,8 @@
     document.addEventListener('click', e => {
       if (!e.target.closest('.ll-section-menu-btn') && !e.target.closest('.ll-section-menu'))
         document.querySelectorAll('.ll-section-menu.open').forEach(m=>m.classList.remove('open'));
-      // Close type picker on outside click
-      if (!e.target.closest('.ll-type-picker') && !e.target.closest('.ll-section-type'))
-        document.querySelectorAll('.ll-type-picker').forEach(p=>p.remove());
     });
   }
-
-  // ── Type picker (click the pill to change section type) ───────────────────
-  window.llShowTypePicker = function(id, pillEl) {
-    // Close any existing pickers
-    document.querySelectorAll('.ll-type-picker').forEach(p=>p.remove());
-
-    const beat = getBeat(window.currentLyricLabBeatId);
-    const sec  = getSections(beat||{}).find(s=>s.id===id);
-    if(!sec) return;
-
-    const TYPES = { hook:'Hook', verse:'Vers', bridge:'Bro', outro:'Outro', custom:'Custom' };
-    const TYPE_COLORS = {
-      hook:   'rgba(244,164,67,.15)',
-      verse:  'rgba(168,85,247,.15)',
-      bridge: 'rgba(34,211,153,.12)',
-      outro:  'rgba(96,165,250,.12)',
-      custom: 'rgba(255,255,255,.08)'
-    };
-    const picker = document.createElement('div');
-    picker.className = 'll-type-picker';
-    picker.innerHTML = Object.entries(TYPES).map(([type, label]) => `
-      <button class="ll-type-picker-option${sec.type===type?' active':''}"
-              onclick="window.llChangeType('${esc(id)}','${type}')">
-        <span class="ll-section-type ll-type-${type}">${label}</span>
-        ${label}
-        ${sec.type===type ? '<span style="margin-left:auto;color:#f4a443;font-size:14px">✓</span>' : ''}
-      </button>`).join('');
-
-    // Position relative to the section header
-    const header = pillEl.closest('.ll-section-header');
-    if(header) {
-      header.style.position = 'relative';
-      header.appendChild(picker);
-    } else {
-      pillEl.style.position = 'relative';
-      pillEl.appendChild(picker);
-    }
-  };
-
-  window.llChangeType = function(id, newType) {
-    const beat = getBeat(window.currentLyricLabBeatId);
-    const sec  = getSections(beat||{}).find(s=>s.id===id);
-    if(!sec) return;
-    sec.type = newType;
-    if(typeof saveSections === 'function') saveSections(beat);
-    else if(typeof saveState === 'function') saveState();
-    // Close picker
-    document.querySelectorAll('.ll-type-picker').forEach(p=>p.remove());
-    // Update pill in DOM without full re-render
-    const secEl = document.getElementById(`llsec-${id}`);
-    if(secEl){
-      const pill = secEl.querySelector('.ll-section-type');
-      if(pill){
-        const TYPES = { hook:'Hook', verse:'Vers', bridge:'Bro', outro:'Outro', custom:'Custom' };
-        pill.className = `ll-section-type ll-type-${newType}`;
-        pill.textContent = TYPES[newType] || newType;
-      }
-    }
-  };
 
   window.llHighlightInput = function(div, id) {
     const beat = getBeat(window.currentLyricLabBeatId);
@@ -1681,31 +1617,93 @@
   // ══════════════════════════════════════════════════════════════════════════
   // 4. INSPIRASJON-MODUS
   // ══════════════════════════════════════════════════════════════════════════
-  window.llInspirasjon = function() {
+  window.llInspirasjon = async function() {
     const st = getState();
-    const beats = (st?.beats||[]).filter(b => !b.archived && b.id !== window.currentLyricLabBeatId);
-    const allLines = [];
-    beats.forEach(b => {
-      (b.lyricSections||[]).forEach(s => {
-        s.text.split('\n').filter(l=>l.trim().length>10).forEach(l => allLines.push({line:l.trim(),beat:b.name}));
-      });
-      if(b.lyrics) b.lyrics.split('\n').filter(l=>l.trim().length>10).forEach(l=>allLines.push({line:l.trim(),beat:b.name}));
+    // Pick a random beat that has lyrics (not the one currently open)
+    const beats = (st?.beats||[]).filter(b => {
+      if(b.archived || b.id === window.currentLyricLabBeatId) return false;
+      const hasText = (b.lyricSections||[]).some(s=>s.text?.trim().length>20)
+        || (b.lyrics||'').trim().length>20;
+      return hasText;
     });
 
     const el = document.getElementById('llInspirasjonBox');
     if (!el) return;
 
-    if (allLines.length === 0) {
+    if (beats.length === 0) {
       el.innerHTML = '<p style="font-size:12px;color:rgba(255,255,255,.3);margin:0">Skriv tekst på andre sanger for å få inspirasjon her</p>';
       el.style.display = 'block';
       return;
     }
 
-    const pick = allLines[Math.floor(Math.random() * allLines.length)];
+    // Pick a random beat and gather its text
+    const beat = beats[Math.floor(Math.random() * beats.length)];
+    const sections = (beat.lyricSections||[]).filter(s=>s.text?.trim());
+    const lyrics = sections.length
+      ? sections.map(s=>`[${s.title||s.type}]\n${s.text}`).join('\n\n')
+      : (beat.lyrics||'').trim();
+
+    // Show loading state
     el.style.display = 'block';
-    el.innerHTML = `<div style="font-size:10px;font-weight:800;letter-spacing:.08em;color:rgba(255,255,255,.25);text-transform:uppercase;margin-bottom:6px">Inspirasjon fra "${esc(pick.beat)}"</div>
-      <div style="font-size:14px;font-family:Georgia,serif;color:rgba(255,255,255,.7);font-style:italic;line-height:1.6">"${esc(pick.line)}"</div>
-      <button onclick="llInspirasjon()" style="margin-top:8px;background:none;border:none;color:rgba(255,255,255,.3);font-size:11px;cursor:pointer;font-family:inherit;padding:0;font-weight:700">↻ Ny linje</button>`;
+    el.innerHTML = `
+      <div style="font-size:10px;font-weight:800;letter-spacing:.08em;color:rgba(255,255,255,.25);text-transform:uppercase;margin-bottom:8px">
+        Genererer fra "${esc(beat.name)}"…
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;color:rgba(255,255,255,.3);font-size:13px">
+        <span style="animation:llSpin 1s linear infinite;display:inline-block">⟳</span>
+        Spør Claude om inspirasjon…
+      </div>`;
+
+    // Inject spin keyframe once
+    if(!document.getElementById('ll-spin-style')){
+      const s=document.createElement('style');s.id='ll-spin-style';
+      s.textContent='@keyframes llSpin{from{transform:rotate(0)}to{transform:rotate(360deg)}}';
+      document.head.appendChild(s);
+    }
+
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 200,
+          system: `Du er en kreativ norsk hiphop-tekstforfatter. Du får teksten til en sang som inspirasjon, og skal generere 1-2 linjer med en kul punchline eller rim. 
+Regler:
+- Skriv PÅ NORSK
+- Maks 2 linjer
+- Ha en kul punchline, wordplay eller rim
+- Fang vibes og stemningen fra teksten, men skriv noe NYTT
+- Ikke kopier linjer fra originalen
+- Ingen forklaring, bare linjene`,
+          messages: [{
+            role: 'user',
+            content: `Tekst fra sangen "${beat.name}":\n\n${lyrics.slice(0, 800)}\n\nGenerer 1-2 nye linjer med punchline/rim inspirert av denne viben.`
+          }]
+        })
+      });
+
+      const data = await res.json();
+      const generated = data?.content?.[0]?.text?.trim() || '';
+
+      if (!generated) throw new Error('Tom respons');
+
+      el.innerHTML = `
+        <div style="font-size:10px;font-weight:800;letter-spacing:.08em;color:rgba(255,255,255,.25);text-transform:uppercase;margin-bottom:8px">
+          Inspirert av "${esc(beat.name)}"
+        </div>
+        <div style="font-size:15px;font-family:Georgia,serif;color:rgba(255,255,255,.82);font-style:italic;line-height:1.7;white-space:pre-wrap">${esc(generated)}</div>
+        <div style="display:flex;gap:10px;margin-top:10px;align-items:center">
+          <button onclick="llInspirasjon()" style="background:none;border:none;color:rgba(255,255,255,.35);font-size:11px;cursor:pointer;font-family:inherit;padding:0;font-weight:800;transition:color .15s" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='rgba(255,255,255,.35)'">↻ Ny inspirasjon</button>
+          <button onclick="navigator.clipboard.writeText(this.closest('[id]').querySelector('div:nth-child(2)').innerText).then(()=>{this.textContent='✓ Kopiert';setTimeout(()=>this.textContent='Kopier',1500)})" style="background:none;border:none;color:rgba(255,255,255,.25);font-size:11px;cursor:pointer;font-family:inherit;padding:0;font-weight:800;transition:color .15s" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='rgba(255,255,255,.25)'">Kopier</button>
+        </div>`;
+
+    } catch(err) {
+      console.error('[llInspirasjon] Feil:', err);
+      el.innerHTML = `
+        <div style="font-size:12px;color:rgba(255,113,113,.6);margin-bottom:6px">Kunne ikke generere inspirasjon — prøv igjen</div>
+        <button onclick="llInspirasjon()" style="background:none;border:none;color:rgba(255,255,255,.3);font-size:11px;cursor:pointer;font-family:inherit;padding:0;font-weight:800">↻ Prøv igjen</button>`;
+    }
   };
 
 
