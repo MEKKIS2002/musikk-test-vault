@@ -415,6 +415,25 @@ body{background:#0d0b09;color:#f4ede4;font-family:Georgia,serif;min-height:100vh
   <div class="tracklist-label">Trackliste</div>
   <div id="tracklist">${rows}</div>
   <div class="footer">Laget med Music Vault</div>
+
+  <!-- Tilbakemeldinger -->
+  <div style="margin-top:48px;padding-top:32px;border-top:1px solid rgba(255,255,255,.08)">
+    <div style="font-size:10px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.28);margin-bottom:20px;font-family:system-ui">Gi tilbakemelding</div>
+    <div id="commentStatus" style="font-size:13px;font-family:system-ui;margin-bottom:14px;min-height:18px"></div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <input id="cmtAuthor" placeholder="Navn (valgfritt)"
+        style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#f4ede4;font-family:Georgia,serif;font-size:14px;padding:11px 14px;outline:none;width:100%"
+        onfocus="this.style.borderColor='rgba(244,164,67,.4)'" onblur="this.style.borderColor='rgba(255,255,255,.1)'">
+      <textarea id="cmtText" placeholder="Hva synes du om albumet?" rows="4"
+        style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#f4ede4;font-family:Georgia,serif;font-size:14px;padding:11px 14px;outline:none;width:100%;resize:vertical;line-height:1.65"
+        onfocus="this.style.borderColor='rgba(244,164,67,.4)'" onblur="this.style.borderColor='rgba(255,255,255,.1)'"></textarea>
+      <button onclick="submitComment()"
+        style="align-self:flex-start;background:none;border:1px solid rgba(244,164,67,.45);color:#f4a443;font-family:system-ui;font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;padding:10px 24px;cursor:pointer;transition:all .15s"
+        onmouseover="this.style.background='rgba(244,164,67,.1)'" onmouseout="this.style.background='none'">
+        Send inn →
+      </button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -567,6 +586,35 @@ function togglePlayAll(){
     }, 80);
   } else {
     playPreview(0);
+  }
+}
+
+const SB_URL='https://ylvqkfdvijqnecuqznyr.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlsdnFrZmR2aWpxbmVjdXF6bnlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzMzA4MzIsImV4cCI6MjA5MzkwNjgzMn0.bYPTaxQK8n7I7w5Ri2DVYW5_LbFHg2IXkuhHsLTDDqc';
+const ALBUM_ID='${albumId}';
+
+async function submitComment(){
+  const author=(document.getElementById('cmtAuthor').value||'').trim();
+  const comment=(document.getElementById('cmtText').value||'').trim();
+  const status=document.getElementById('commentStatus');
+  if(!comment){ status.style.color='#fb7185'; status.textContent='Skriv en tilbakemelding først.'; return; }
+  status.style.color='rgba(255,255,255,.4)'; status.textContent='Sender…';
+  try{
+    const res=await fetch(SB_URL+'/rest/v1/pitch_comments',{
+      method:'POST',
+      headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
+      body:JSON.stringify({album_id:ALBUM_ID, author:author||'Anonym', comment})
+    });
+    if(res.ok||res.status===201){
+      status.style.color='#34d399'; status.textContent='✓ Tilbakemelding sendt! Takk.';
+      document.getElementById('cmtText').value='';
+      document.getElementById('cmtAuthor').value='';
+    } else {
+      const err=await res.text();
+      status.style.color='#fb7185'; status.textContent='Feil: '+res.status+' '+err.slice(0,80);
+    }
+  } catch(e){
+    status.style.color='#fb7185'; status.textContent='Nettverksfeil – prøv igjen.';
   }
 }
 </script>
