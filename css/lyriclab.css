@@ -174,12 +174,35 @@
 .ll-section-type {
   font-size: 10px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase;
   padding: 3px 9px; border-radius: 999px;
+  cursor: pointer; transition: opacity .12s, transform .1s;
+  user-select: none; flex-shrink: 0;
 }
+.ll-section-type:hover { opacity: .75; transform: scale(.96); }
+.ll-section-type:active { transform: scale(.92); }
+
 .ll-type-hook    { background: rgba(244,164,67,.15); color: #f4a443; }
 .ll-type-verse   { background: rgba(168,85,247,.15); color: #c084fc; }
 .ll-type-bridge  { background: rgba(34,211,153,.12); color: #34d399; }
 .ll-type-outro   { background: rgba(96,165,250,.12); color: #60a5fa; }
 .ll-type-custom  { background: rgba(255,255,255,.08); color: #aaa; }
+
+/* ── Type picker dropdown ───────────────────────────────────── */
+.ll-type-picker {
+  position: absolute; left: 8px; top: calc(100% + 6px); z-index: 10000;
+  background: #1a1825; border: 1px solid rgba(255,255,255,.14);
+  border-radius: 12px; padding: 6px; min-width: 160px;
+  box-shadow: 0 12px 40px rgba(0,0,0,.5);
+  animation: llMenuIn .12s ease;
+}
+.ll-type-picker-option {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  padding: 8px 12px; background: none; border: none; cursor: pointer;
+  font-family: inherit; font-size: 13px; font-weight: 700; color: var(--text);
+  border-radius: 8px; text-align: left; transition: background .1s;
+}
+.ll-type-picker-option:hover { background: rgba(255,255,255,.07); }
+.ll-type-picker-option.active { background: rgba(244,164,67,.1); color: #f4a443; }
+.ll-type-picker-option .ll-section-type { font-size: 9px; padding: 2px 8px; }
 
 .ll-section-title-input {
   background: none; border: none; outline: none; color: var(--text);
@@ -205,10 +228,16 @@
 }
 
 .ll-textarea {
-  flex: 1; background: none; border: none; outline: none; resize: none;
+  flex: 1; background: none; border: none; outline: none; resize: vertical;
   color: var(--text); font-size: 14px; font-family: 'Georgia', serif;
   line-height: 1.7; padding: 12px 14px; min-height: 120px;
   caret-color: #f4a443;
+  /* Custom resize handle color */
+  cursor: text;
+}
+.ll-textarea::-webkit-resizer {
+  background: rgba(244,164,67,.3);
+  border-radius: 0 0 4px 0;
 }
 .ll-textarea::placeholder { color: rgba(255,255,255,.2); font-style: italic; }
 .ll-section.collapsed .ll-section-body { display: none; }
