@@ -207,6 +207,7 @@ async function uploadBeatAudio(beatId,file){
 // When creating beats from file upload, also store in IDB
 async function createBeatFromFileIDB(file){
   const b={id:uid(),name:file.name.replace(/\.[^/.]+$/,""),url:"",source:"local",favorite:false,lyrics:"",rating:0,cover:"",done:0,createdAt:Date.now()};
+  b.beatName=b.name; // beatName defaults to filename, stays when title is renamed
   await audioDB.save(b.id,file);
   b.url=b.id+":idb";
   return b;
@@ -262,7 +263,7 @@ function defaultState(){
 function migrate(s){
   const base=defaultState();
   const n={...base,...s};
-  n.beats=(n.beats||[]).map(b=>({...b,lyrics:b.lyrics||"",favorite:!!b.favorite,rating:Number(b.rating||0),cover:b.cover||"",done:Number(b.done||0)}));
+  n.beats=(n.beats||[]).map(b=>({...b,lyrics:b.lyrics||"",favorite:!!b.favorite,rating:Number(b.rating||0),cover:b.cover||"",done:Number(b.done||0),beatName:b.beatName||b.name||""}));
   n.demos=(n.demos||[]).map(d=>({...d,stage:d.stage||"Idé",mix:Number(d.mix??0),rating:Number(d.rating||1),done:Number(d.done||0),lyricsNotes:d.lyricsNotes||""}));
   n.albums=n.albums||[];n.mixtapes=(n.mixtapes||[]).map(m=>({...m,cover:m.cover||null,color:m.color||null,beatIds:m.beatIds||[]}));n.versions=n.versions||[];n.settings={...base.settings,...(n.settings||{})};
   return n;
@@ -366,6 +367,35 @@ function saveBeatLyrics(id){
   if(b&&(ed||ta)){b.lyrics=ed?ed.innerHTML:ta.value;saveState();showToast("✓ Tekst lagret");}
 }
 function copyBeatLyrics(id){const b=state.beats.find(x=>x.id===id);if(b)navigator.clipboard.writeText(stripHTML(b.lyrics||"")).then(()=>showToast("✓ Tekst kopiert"));}
+function saveBeatName(id, val){
+  const b=state.beats.find(x=>x.id===id); if(!b) return;
+  const newName=(val||'').trim();
+  if(!newName || newName===b.beatName) return;
+  b.beatName=newName;
+  saveState();
+  showToast('✓ Beatnavn oppdatert');
+}
+
+async function downloadBeat(id){
+  const b=state.beats.find(x=>x.id===id); if(!b) return;
+  const fileName=(b.beatName||b.name||'beat').replace(/[^\w\sæøåÆØÅ\-\.]/g,'').trim();
+  const blob=await audioDB.load(id);
+  if(blob){
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    const ext=blob.type?.split('/')[1]?.split(';')[0]||'mp3';
+    a.href=url; a.download=`${fileName}.${ext}`; a.click();
+    setTimeout(()=>URL.revokeObjectURL(url),5000);
+    return;
+  }
+  const extUrl=getBeatAudioUrl(b);
+  if(extUrl){
+    const a=document.createElement('a'); a.href=extUrl; a.download=fileName; a.target='_blank'; a.click();
+    return;
+  }
+  showToast('Ingen lydfil å laste ned');
+}
+
 function toggleFav(id,btn){
   const b=state.beats.find(x=>x.id===id);if(!b)return;
   b.favorite=!b.favorite;saveState();
@@ -552,8 +582,6 @@ function renderAlbumDetail(){
   renderAlbumBeats(beats);
   updateCollectionPlayerUI();
   updateArchiveToolbarButtons?.();
-  // Load pitch comments
-  renderAlbumComments(currentAlbumId);
 }
 
 let collectionDrag={beatId:null,mode:null};
@@ -680,6 +708,15 @@ function renderAlbumBeats(beats,mode,customEl){
             <button class="star-btn${b.favorite?" active":""}" data-fav-id="${b.id}" onclick="event.stopPropagation();toggleFav('${b.id}',this)" style="font-size:20px;padding:0;flex-shrink:0">★</button>
             ${(()=>{ const noAudio=!(b.audio_url||b.url); const noLyric=!(b.lyrics||(b.lyricSections||[]).some(s=>s.text?.trim())); if(noAudio) return '<span title="Mangler lydfil" style="width:7px;height:7px;border-radius:50%;background:#fb7185;flex-shrink:0;display:inline-block;margin-top:2px"></span>'; if(noLyric) return '<span title="Mangler tekst" style="width:7px;height:7px;border-radius:50%;background:#f97316;flex-shrink:0;display:inline-block;margin-top:2px"></span>'; return ''; })()}
           </div>
+          <div style="margin-top:3px;display:flex;align-items:center;gap:5px" onclick="event.stopPropagation()">
+            <span style="font-size:10px;color:rgba(255,255,255,.32);font-family:system-ui;font-weight:700;flex-shrink:0">Beatnavn:</span>
+            <input value="${esc(b.beatName||b.name)}" placeholder="${esc(b.beatName||b.name)}"
+              style="background:none;border:none;border-bottom:1px solid transparent;color:rgba(255,255,255,.42);font-size:11px;font-family:system-ui;outline:none;flex:1;min-width:0;padding:1px 3px;transition:border-color .15s,color .15s"
+              onfocus="this.style.borderBottomColor='rgba(244,164,67,.4)';this.style.color='var(--text)'"
+              onblur="this.style.borderBottomColor='transparent';this.style.color='rgba(255,255,255,.42)';saveBeatName('${b.id}',this.value)"
+              onkeydown="if(event.key==='Enter')this.blur();if(event.key==='Escape'){this.value='${(b.beatName||b.name).replace(/'/g,"\\'")}';this.blur()}"
+            >
+          </div>
           <div class="ab-stars" onclick="event.stopPropagation()">${stars}</div>
           ${listMode==="album"?`<div class="progress-wrap" onclick="event.stopPropagation()">
             <div class="progress-label"><span>Ferdig</span><strong id="abidone-${b.id}">${b.done||0}%</strong></div>
@@ -692,6 +729,7 @@ function renderAlbumBeats(beats,mode,customEl){
         <div class="ab-expand-top-bar">
           <div id="au-wrap-${b.id}" style="display:flex;align-items:center;gap:8px;width:100%">
             <button class="primary-btn" style="font-size:12px;padding:7px 14px" onclick="playSingleBeat('${b.id}')">▶ Spill</button>
+            <button class="ghost-btn" style="font-size:12px;padding:6px 10px" title="Last ned" onclick="downloadBeat('${b.id}')">⬇</button>
             <button class="star-btn${b.favorite?" active":""}" data-fav-id="${b.id}" onclick="event.stopPropagation();toggleFav('${b.id}',this)" title="Favoritt" style="font-size:20px;background:none;border:none;cursor:pointer;padding:0;color:${b.favorite?'#f4a443':'rgba(255,255,255,.25)'}">★</button>
             <div style="margin-left:auto">${(()=>{ const noAudio=!(b.audio_url||b.url); const noLyric=!(b.lyrics||(b.lyricSections||[]).some(s=>s.text?.trim())); if(noAudio) return '<span title="Mangler lydfil" style="font-size:10px;font-weight:800;padding:2px 7px;border-radius:999px;background:rgba(251,113,133,.15);color:#fb7185;border:1px solid rgba(251,113,133,.3)">Ingen lyd</span>'; if(noLyric) return '<span title="Mangler tekst" style="font-size:10px;font-weight:800;padding:2px 7px;border-radius:999px;background:rgba(249,115,22,.12);color:#f97316;border:1px solid rgba(249,115,22,.3)">Ingen tekst</span>'; return ''; })()}</div>
           </div>
@@ -1174,7 +1212,7 @@ document.getElementById("beatFiles").addEventListener("change",async e=>{
 document.getElementById("addBeatUrlBtn").addEventListener("click",()=>{
   const name=document.getElementById("beatNameInput").value.trim(),url=document.getElementById("beatUrlInput").value.trim();
   if(!name||!url){alert("Navn og URL kreves.");return;}
-  state.beats.unshift({id:uid(),name,url:convertDrive(url),source:url.includes("drive.google")?"Google Drive":"URL",favorite:false,lyrics:"",rating:0,cover:"",done:0,createdAt:Date.now()});
+  state.beats.unshift({id:uid(),name,url:convertDrive(url),beatName:name,source:url.includes("drive.google")?"Google Drive":"URL",favorite:false,lyrics:"",rating:0,cover:"",done:0,createdAt:Date.now()});
   document.getElementById("beatNameInput").value="";document.getElementById("beatUrlInput").value="";
   saveState();renderAll();showToast("✓ Beat lagt til");
 });
@@ -1540,7 +1578,10 @@ function showRenameModal(label, currentName, onSave) {
 window.renameBeat = function(id) {
   const b = state.beats.find(x => x.id === id); if (!b) return;
   showRenameModal('sang', b.name, val => {
-    b.name = val; saveState();
+    b.name = val;
+    // beatName is intentionally NOT updated here — it stays as the original beat file name
+    if(!b.beatName) b.beatName = val; // only set if it was never set before
+    saveState();
     if (typeof window.beatsTab?.renderBeatsTab === 'function') window.beatsTab.renderBeatsTab();
     renderAll(); showToast('✓ Navn oppdatert');
   });
@@ -1559,56 +1600,6 @@ window.renameMixtape = function(id) {
     mt.name = val; saveState(); renderMixtapes();
     if (id === currentMixtapeId) renderMixtapeDetail();
     showToast('✓ Navn oppdatert');
-  });
-};
-
-// ── Pitch-tilbakemeldinger ───────────────────────────────────────────────────
-async function renderAlbumComments(albumId){
-  const el=document.getElementById('albumComments'); if(!el) return;
-  const SB_URL='https://ylvqkfdvijqnecuqznyr.supabase.co';
-  const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlsdnFrZmR2aWpxbmVjdXF6bnlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzMzA4MzIsImV4cCI6MjA5MzkwNjgzMn0.bYPTaxQK8n7I7w5Ri2DVYW5_LbFHg2IXkuhHsLTDDqc';
-
-  el.innerHTML=`<div style="font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.28);margin-bottom:16px">Tilbakemeldinger fra pitch</div><div id="albumCommentsList" style="margin-bottom:20px"><div style="color:var(--muted);font-size:13px">Laster…</div></div>`;
-
-  try {
-    const res=await fetch(`${SB_URL}/rest/v1/pitch_comments?album_id=eq.${encodeURIComponent(albumId)}&order=created_at.desc&select=*`,{
-      headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'}
-    });
-    const comments=res.ok?await res.json():[];
-    const listEl=document.getElementById('albumCommentsList');
-    if(!listEl) return;
-    if(!comments.length){
-      listEl.innerHTML=`<div style="color:var(--muted);font-size:13px;padding:10px 0">Ingen tilbakemeldinger ennå.</div>`;
-    } else {
-      listEl.innerHTML=comments.map(c=>{
-        const d=new Date(c.created_at);
-        const dateStr=d.toLocaleDateString('no-NO',{day:'2-digit',month:'2-digit',year:'numeric'})+' '+d.toLocaleTimeString('no-NO',{hour:'2-digit',minute:'2-digit'});
-        return `<div style="padding:14px 16px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);margin-bottom:10px;position:relative">
-          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-            <span style="font-size:13px;font-weight:800;color:var(--accent)">${esc(c.author||'Anonym')}</span>
-            <span style="font-size:11px;color:rgba(255,255,255,.28);font-family:system-ui">${dateStr}</span>
-            <button onclick="deleteAlbumComment('${c.id}','${albumId}')" title="Slett" style="margin-left:auto;background:none;border:none;cursor:pointer;color:rgba(255,255,255,.25);font-size:14px;padding:0 2px;line-height:1;transition:color .12s" onmouseover="this.style.color='#fb7185'" onmouseout="this.style.color='rgba(255,255,255,.25)'">✕</button>
-          </div>
-          <div style="font-size:14px;line-height:1.65;color:rgba(255,255,255,.75);white-space:pre-wrap">${esc(c.comment||'')}</div>
-        </div>`;
-      }).join('');
-    }
-  } catch(e) {
-    const listEl=document.getElementById('albumCommentsList');
-    if(listEl) listEl.innerHTML=`<div style="color:var(--muted);font-size:13px">Kunne ikke laste tilbakemeldinger.</div>`;
-  }
-}
-
-window.deleteAlbumComment=async function(commentId, albumId){
-  const SB_URL='https://ylvqkfdvijqnecuqznyr.supabase.co';
-  const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlsdnFrZmR2aWpxbmVjdXF6bnlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzMzA4MzIsImV4cCI6MjA5MzkwNjgzMn0.bYPTaxQK8n7I7w5Ri2DVYW5_LbFHg2IXkuhHsLTDDqc';
-  showDeleteConfirm('Slette denne tilbakemeldingen?', async()=>{
-    await fetch(`${SB_URL}/rest/v1/pitch_comments?id=eq.${encodeURIComponent(commentId)}`,{
-      method:'DELETE',
-      headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'return=minimal'}
-    });
-    renderAlbumComments(albumId);
-    showToast('🗑 Tilbakemelding slettet');
   });
 };
 
