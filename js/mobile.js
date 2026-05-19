@@ -71,14 +71,16 @@
   let _unlocked=false;
   function unlockAudio(){
     if(_unlocked) return; _unlocked=true;
-    const a=window.bottomPlayer?.audio;
-    if(a&&!a.src){
+    // Play a silent buffer to unlock iOS audio context.
+    // Use a fresh Audio element so we don't disturb bottomPlayer.
+    try{
       const silent='data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAAABkYXRhAAAAAA==';
-      a.src=silent; a.volume=0;
-      a.play().then(()=>{a.pause();a.removeAttribute('src');a.volume=1;}).catch(()=>{a.removeAttribute('src');a.volume=1;});
-    }
+      const tmp=new Audio(silent);
+      tmp.volume=0;
+      tmp.play().then(()=>tmp.pause()).catch(()=>{});
+    }catch(e){}
   }
-  document.addEventListener('touchstart', unlockAudio, {once:true,passive:true});
+  document.addEventListener('touchstart', unlockAudio, {once:true, passive:true});
 
   // ── Build overlay ───────────────────────────────────────────
   function buildOverlay(){
@@ -363,13 +365,72 @@
 
   // ── Audio: iOS-safe play ─────────────────────────────────────
   function tapPlay(id){
-    unlockAudio();
     const bp=window.bottomPlayer; if(!bp) return;
     const cur=bp.queue?.[bp.index]?.id;
-    if(cur===id&&!bp.audio.paused){ bp.audio.pause(); }
-    else if(cur===id&&bp.audio.paused){ bp.audio.play().catch(()=>{}); }
-    else { if(typeof window.playSingleBeat==='function') window.playSingleBeat(id); _currentBeatId=id; }
-    setTimeout(()=>{renderSongList();updatePlayerUI();},150);
+
+    // Resume if same beat is paused
+    if(cur===id && bp.audio.paused){
+      bp.audio.play().catch(()=>{});
+      setTimeout(()=>{renderSongList();updatePlayerUI();},100);
+      return;
+    }
+
+    // Pause if same beat is playing
+    if(cur===id && !bp.audio.paused){
+      bp.audio.pause();
+      setTimeout(()=>{renderSongList();updatePlayerUI();},100);
+      return;
+    }
+
+    // New beat — iOS Safari requires play() to be called synchronously in gesture.
+    // Strategy: call play() immediately on the existing audio element (which is
+    // already unlocked from first touch), then swap the src via getPlayableAudioUrl.
+    _currentBeatId = id;
+    const a = bp.audio;
+
+    // Kick off url fetch in background
+    getPlayableAudioUrlMobile(id).then(url=>{
+      if(!url) return;
+      a.pause();
+      a.src = url;
+      a.load();
+      const p = a.play();
+      if(p) p.catch(e=>{
+        if(e.name==='NotAllowedError') showToastMobile('Trykk ▶ for å spille');
+      });
+      // Set up queue context so db.js bottomPlayer works normally
+      const beat = (getState()?.beats||[]).find(b=>b.id===id);
+      if(beat){
+        bp.queue = [beat];
+        bp.index = 0;
+        bp.context = {type:'beat',id,label:'Beat'};
+        bp.started = true;
+        if(typeof window.updateBottomUI==='function') window.updateBottomUI();
+      }
+      setTimeout(()=>{renderSongList();updatePlayerUI();},200);
+    });
+
+    // Immediately update UI so it looks responsive
+    updatePlayerUI();
+  }
+
+  function showToastMobile(msg){
+    if(typeof showToast==='function'){ showToast(msg); return; }
+    let t=document.getElementById('mvToast');
+    if(!t){t=document.createElement('div');t.id='mvToast';Object.assign(t.style,{position:'fixed',bottom:'100px',left:'50%',transform:'translateX(-50%)',background:'rgba(20,18,16,.95)',color:'#f4ede4',padding:'10px 18px',fontSize:'13px',fontFamily:'system-ui',fontWeight:'700',zIndex:'10050',borderRadius:'8px',pointerEvents:'none',transition:'opacity .25s'});document.body.appendChild(t);}
+    t.textContent=msg;t.style.opacity='1';
+    clearTimeout(t._t);t._t=setTimeout(()=>t.style.opacity='0',2500);
+  }
+
+  async function getPlayableAudioUrlMobile(id){
+    const st=getState(); if(!st) return null;
+    const beat=(st.beats||[]).find(b=>b.id===id); if(!beat) return null;
+    // Use db.js getPlayableAudioUrl if available
+    if(typeof window.getPlayableAudioUrl==='function'){
+      try{ return await window.getPlayableAudioUrl(beat); }catch(e){}
+    }
+    // Fallback: direct URL
+    return beat.audio_url||beat.url||null;
   }
 
   // ── Player UI ─────────────────────────────────────────────────
