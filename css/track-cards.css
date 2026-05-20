@@ -1097,3 +1097,158 @@
   flex-shrink: 0 !important;
   margin: 0 4px !important;
 }
+
+/* ================================================================
+   ABI-LIST-ROW — ny, ren listevisning (bygget fra bunnen av)
+   Ingen konflikter med eksisterende CSS — helt nye klasser
+================================================================ */
+.abi-list-row {
+  border-bottom: 1px solid rgba(255,255,255,.06);
+  background: transparent;
+  transition: background .12s;
+}
+.abi-list-row:hover > .abi-row-inner { background: rgba(255,255,255,.04); }
+.abi-list-row.expanded > .abi-row-inner { background: rgba(255,255,255,.06); }
+
+.abi-row-inner {
+  display: flex;
+  align-items: center;
+  height: 66px;
+  padding: 0 12px 0 0;
+  gap: 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Bilde — kvadratisk, fyller rammen */
+.abi-row-cover {
+  width: 66px;
+  height: 66px;
+  flex-shrink: 0;
+  overflow: hidden;
+  margin-right: 14px;
+  background: rgba(255,255,255,.06);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.abi-row-cover img,
+.abi-row-cover .ab-cover {
+  width: 66px !important;
+  height: 66px !important;
+  object-fit: cover !important;
+  object-position: center !important;
+  display: block !important;
+}
+.abi-row-cover .ab-cover-ph {
+  width: 66px !important;
+  height: 66px !important;
+  background: linear-gradient(135deg, rgba(244,164,67,.18), rgba(124,58,237,.12));
+  display: block !important;
+}
+
+/* Nummer */
+.abi-row-num {
+  font-size: 12px;
+  color: rgba(255,255,255,.25);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  font-family: system-ui;
+  flex-shrink: 0;
+  width: 28px;
+  margin-right: 12px;
+  text-align: right;
+}
+
+/* Info: tittel + uploader */
+.abi-row-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+}
+.abi-row-title {
+  font-size: 14px;
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text, #f4ede4);
+  letter-spacing: -.01em;
+}
+.abi-row-by {
+  font-size: 11px;
+  color: rgba(255,255,255,.4);
+  font-family: system-ui;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Varighet */
+.abi-row-dur {
+  font-size: 12px;
+  color: rgba(255,255,255,.3);
+  font-family: system-ui;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+  margin: 0 12px 0 8px;
+}
+
+/* Status-dot */
+.abi-row-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-right: 8px;
+}
+
+/* Spilleknapp */
+.abi-row-play {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255,255,255,.1);
+  color: #f4ede4;
+  font-size: 13px;
+  cursor: pointer;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 8px;
+  transition: background .12s;
+  -webkit-tap-highlight-color: transparent;
+}
+.abi-row-play:hover,
+.abi-row-play:active { background: rgba(244,164,67,.3); color: #f4a443; }
+
+/* Favorittknapp */
+.abi-row-fav {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: none;
+  color: rgba(255,255,255,.25);
+  font-size: 18px;
+  cursor: pointer;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 6px;
+  transition: color .12s;
+  -webkit-tap-highlight-color: transparent;
+}
+.abi-row-fav.active { color: #f4a443; }
+.abi-row-fav:hover { color: #f4a443; }
+
+/* Expand-panel */
+.abi-list-row .ab-expand { display: none; }
+.abi-list-row.expanded .ab-expand { display: block; }
