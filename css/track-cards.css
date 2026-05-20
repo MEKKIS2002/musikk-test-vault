@@ -24,17 +24,30 @@
 .album-beat-card:not(.expanded) .ab-top{display:block!important}
 .album-beat-card.expanded .ab-top{display:grid!important;grid-template-columns:minmax(230px,320px) 1fr!important}
 .ab-cover-wrap{
-  aspect-ratio:4/3!important;
+  aspect-ratio:1/1!important;
   background:linear-gradient(135deg,rgba(255,186,94,.22),rgba(124,58,237,.16))!important;
   border-bottom:1px solid rgba(255,255,255,.08)!important;
+  overflow:hidden!important;
+  position:relative!important;
 }
 .ab-cover,.ab-cover-ph{
   width:100%!important;
   height:100%!important;
-  aspect-ratio:auto!important;
+  aspect-ratio:1/1!important;
   object-fit:cover!important;
   object-position:center!important;
   display:block!important;
+}
+/* Title always visible on collapsed cards */
+.album-beat-card:not(.expanded) .ab-title{
+  display:block!important;
+  visibility:visible!important;
+  opacity:1!important;
+  font-size:13px!important;
+  font-weight:800!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
 }
 .album-beat-card.expanded .ab-cover,.album-beat-card.expanded .ab-cover-ph{height:100%!important;min-height:230px!important}
 .ab-cover-wrap::after{
@@ -266,7 +279,7 @@
 .album-beat-listmode{gap:0!important;padding:0!important;display:flex!important;flex-direction:column!important;}
 /* Spotify-style compact rows */
 .album-beat-listmode .album-beat-card:not(.expanded){
-  min-height:44px!important;max-height:44px!important;overflow:hidden!important;
+  min-height:64px!important;max-height:64px!important;overflow:hidden!important;
   border-bottom:1px solid rgba(255,255,255,.05)!important;border-radius:0!important;
   background:transparent!important;border:none!important;box-shadow:none!important;
   transition:background .12s!important;
@@ -274,16 +287,29 @@
 .album-beat-listmode .album-beat-card:not(.expanded):hover{background:rgba(255,255,255,.06)!important;border-radius:6px!important;}
 .album-beat-listmode .album-beat-card:not(.expanded) .ab-top{
   display:grid!important;
-  grid-template-columns:44px minmax(0,1fr) auto!important;
-  align-items:center!important;height:44px!important;padding:0 8px 0 4px!important;gap:0!important;
+  grid-template-columns:64px minmax(0,1fr) auto!important;
+  align-items:center!important;height:64px!important;padding:0 12px 0 0!important;gap:0!important;
 }
 .album-beat-listmode .album-beat-card:not(.expanded) .ab-cover-wrap,
-.album-beat-listmode .album-beat-card:not(.expanded) .ab-cover-ph{width:36px!important;height:36px!important;min-height:36px!important;min-width:36px!important;border-radius:4px!important;flex-shrink:0!important;}
-.album-beat-listmode .album-beat-card:not(.expanded) .ab-cover{width:36px!important;height:36px!important;min-height:36px!important;min-width:36px!important;border-radius:4px!important;object-fit:cover!important;aspect-ratio:1/1!important;flex-shrink:0!important;display:block!important;}
-.album-beat-listmode .album-beat-card:not(.expanded) .ab-cover-wrap{margin:0 10px 0 4px!important;}
-.album-beat-listmode .album-beat-card:not(.expanded) .ab-body{padding:0!important;display:flex!important;align-items:center!important;justify-content:space-between!important;min-height:0!important;gap:8px!important;overflow:hidden!important;}
+.album-beat-listmode .album-beat-card:not(.expanded) .ab-cover-ph{
+  width:64px!important;height:64px!important;min-height:64px!important;min-width:64px!important;
+  border-radius:0!important;flex-shrink:0!important;aspect-ratio:1/1!important;overflow:hidden!important;
+}
+.album-beat-listmode .album-beat-card:not(.expanded) .ab-cover{
+  width:64px!important;height:64px!important;min-height:64px!important;min-width:64px!important;
+  border-radius:0!important;object-fit:cover!important;object-position:center!important;
+  aspect-ratio:1/1!important;flex-shrink:0!important;display:block!important;
+}
+.album-beat-listmode .album-beat-card:not(.expanded) .ab-cover-wrap{margin:0 14px 0 0!important;}
+.album-beat-listmode .album-beat-card:not(.expanded) .ab-body{
+  padding:0!important;display:flex!important;align-items:center!important;
+  justify-content:space-between!important;min-height:0!important;gap:8px!important;overflow:hidden!important;
+}
 .album-beat-listmode .album-beat-card:not(.expanded) .ab-body::before{display:none!important;}
-.album-beat-listmode .album-beat-card:not(.expanded) .ab-title{font-size:13px!important;font-weight:700!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;line-height:1!important;}
+.album-beat-listmode .album-beat-card:not(.expanded) .ab-title{
+  font-size:14px!important;font-weight:700!important;white-space:nowrap!important;
+  overflow:hidden!important;text-overflow:ellipsis!important;line-height:1!important;
+}
 .album-beat-listmode .album-beat-card:not(.expanded) .ab-stars{display:none!important;}
 .album-beat-listmode .album-beat-card:not(.expanded) .progress-wrap{display:none!important;}
 .album-beat-listmode .album-beat-card:not(.expanded) .beat-chip-row{display:none!important;}
@@ -898,28 +924,4 @@
 }
 .album-beat-listmode .album-beat-card:not(.expanded) .star-btn.active {
   color:#f4a443 !important;
-}
-
-/* ── Beatnavn field ─────────────────────────────────────────── */
-.ab-beatname {
-  margin-top: 3px;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-
-/* Hide in list mode — too compact */
-.album-beat-listmode .album-beat-card:not(.expanded) .ab-beatname {
-  display: none !important;
-}
-
-/* Hide in grid/card mode (collapsed) — only show when expanded */
-.album-beat-grid:not(.album-beat-listmode) .album-beat-card:not(.expanded) .ab-beatname,
-.album-beat-studio .album-beat-card:not(.expanded) .ab-beatname {
-  display: none !important;
-}
-
-/* Show when expanded */
-.album-beat-card.expanded .ab-beatname {
-  display: flex !important;
 }
