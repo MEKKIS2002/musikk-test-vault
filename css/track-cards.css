@@ -965,3 +965,135 @@
 .album-beat-listmode .album-beat-card:not(.expanded) .star-btn.active {
   color:#f4a443 !important;
 }
+
+/* ================================================================
+   LISTMODE FINAL OVERRIDE — legges sist for å vinne alle konflikter
+   Kun nummer + tittel + play + star. Absolutt ingenting annet.
+================================================================ */
+.album-beat-listmode .album-beat-card:not(.expanded) {
+  height: 64px !important;
+  min-height: 64px !important;
+  max-height: 64px !important;
+  overflow: hidden !important;
+  border-bottom: 1px solid rgba(255,255,255,.06) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  border-left: none !important;
+  border-right: none !important;
+  border-top: none !important;
+}
+.album-beat-listmode .album-beat-card:not(.expanded):hover {
+  background: rgba(255,255,255,.04) !important;
+}
+
+/* ab-top: horisontal rad */
+.album-beat-listmode .album-beat-card:not(.expanded) .ab-top {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  height: 64px !important;
+  padding: 0 12px 0 0 !important;
+  gap: 0 !important;
+  overflow: hidden !important;
+}
+
+/* Bilde: kvadratisk, fyller rammen */
+.album-beat-listmode .album-beat-card:not(.expanded) .ab-cover-wrap {
+  width: 64px !important;
+  height: 64px !important;
+  min-width: 64px !important;
+  min-height: 64px !important;
+  max-width: 64px !important;
+  max-height: 64px !important;
+  flex-shrink: 0 !important;
+  overflow: hidden !important;
+  aspect-ratio: 1/1 !important;
+  border-radius: 0 !important;
+  border: none !important;
+  margin: 0 14px 0 0 !important;
+  position: relative !important;
+}
+.album-beat-listmode .album-beat-card:not(.expanded) .ab-cover,
+.album-beat-listmode .album-beat-card:not(.expanded) .ab-cover-ph {
+  width: 64px !important;
+  height: 64px !important;
+  min-width: 64px !important;
+  min-height: 64px !important;
+  object-fit: cover !important;
+  object-position: center !important;
+  display: block !important;
+  border-radius: 0 !important;
+  aspect-ratio: 1/1 !important;
+}
+
+/* ab-body: flex row med tittel til venstre, actions til høyre */
+.album-beat-listmode .album-beat-card:not(.expanded) .ab-body {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  flex: 1 !important;
+  min-width: 0 !important;
+  padding: 0 !important;
+  gap: 0 !important;
+  overflow: hidden !important;
+}
+
+/* Tittel: synlig, trunkert */
+.album-beat-listmode .album-beat-card:not(.expanded) .ab-title {
+  flex: 1 !important;
+  min-width: 0 !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  color: var(--text, #f4ede4) !important;
+}
+
+/* Skjul ALT annet i listmodus — ingen chips, ingen hints, ingen stjerner i body */
+.album-beat-listmode .album-beat-card:not(.expanded) .beat-chip-row,
+.album-beat-listmode .album-beat-card:not(.expanded) .hint,
+.album-beat-listmode .album-beat-card:not(.expanded) .ab-stars,
+.album-beat-listmode .album-beat-card:not(.expanded) .progress-wrap,
+.album-beat-listmode .album-beat-card:not(.expanded) .ab-beatname,
+.album-beat-listmode .album-beat-card:not(.expanded) .ab-body > div:not(:first-child):not(.track-card-actions) {
+  display: none !important;
+}
+
+/* Ikke vis ::before pseudo-element fra ab-body (TAKE/DEMO) */
+.album-beat-listmode .album-beat-card:not(.expanded) .ab-body::before,
+.album-beat-listmode .album-beat-card:not(.expanded) .ab-cover-wrap::before,
+.album-beat-listmode .album-beat-card:not(.expanded) .ab-cover-wrap::after {
+  display: none !important;
+  content: none !important;
+}
+
+/* track-card-actions: play + star på høyre side */
+.album-beat-listmode .album-beat-card:not(.expanded) .track-card-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  flex-shrink: 0 !important;
+  margin-left: auto !important;
+}
+.album-beat-listmode .album-beat-card:not(.expanded) .track-card-actions .quick-play-btn,
+.album-beat-listmode .album-beat-card:not(.expanded) .track-card-actions .star-btn {
+  width: 34px !important;
+  height: 34px !important;
+  border-radius: 50% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+/* Status dot: vis men kompakt */
+.album-beat-listmode .album-beat-card:not(.expanded) .ab-status-dot {
+  width: 7px !important;
+  height: 7px !important;
+  border-radius: 50% !important;
+  flex-shrink: 0 !important;
+  margin: 0 4px !important;
+}
