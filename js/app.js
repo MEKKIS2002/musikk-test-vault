@@ -371,6 +371,8 @@ function stopAll(silent){
 
 async function playTrack(idx){
   clearInterval(progressInterval);
+  // Always stop and destroy existing audio first
+  if(audio){ audio.pause(); audio.src=''; audio=null; }
   const beat=BEATS[idx]; if(!beat||!beat.audio_url) return;
   currentIdx=idx;
   document.querySelectorAll('.track-row').forEach((r,i)=>{
