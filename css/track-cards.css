@@ -1275,3 +1275,46 @@
   display: block !important;
   border-top: 1px solid rgba(255,255,255,.07) !important;
 }
+
+/* ── Fix: cover-bilde alltid kvadratisk i listevisning ─────── */
+.abi-row-inner {
+  align-items: stretch !important;
+}
+.abi-row-cover {
+  display: flex !important;
+  align-items: center !important;
+  width: 66px !important;
+  min-width: 66px !important;
+  max-width: 66px !important;
+  height: 66px !important;
+  min-height: 66px !important;
+  max-height: 66px !important;
+  overflow: hidden !important;
+  flex-shrink: 0 !important;
+}
+.abi-row-cover img,
+.abi-row-cover .ab-cover {
+  width: 66px !important;
+  height: 66px !important;
+  min-width: 66px !important;
+  min-height: 66px !important;
+  object-fit: cover !important;
+  object-position: center !important;
+  display: block !important;
+  flex-shrink: 0 !important;
+}
+.abi-row-cover .ab-cover-ph {
+  width: 66px !important;
+  height: 66px !important;
+  min-height: 66px !important;
+  display: block !important;
+}
+/* Midtstill innhold (num, info, knapper) vertikalt */
+.abi-row-num,
+.abi-row-info,
+.abi-row-dur,
+.abi-row-dot,
+.abi-row-play,
+.abi-row-fav {
+  align-self: center !important;
+}
