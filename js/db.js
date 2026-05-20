@@ -271,6 +271,13 @@ function loadState(){try{const r=localStorage.getItem(SK);const s=r?JSON.parse(r
 function saveState(){try{localStorage.setItem(SK,JSON.stringify(state));}catch(e){console.warn('saveState failed:',e);}markDirty();renderStats();if(typeof window.mvSupabaseSync?.schedulePush==='function')window.mvSupabaseSync.schedulePush();}
 function isAdmin(){return sessionStorage.getItem('mv_role')==='admin';}
 
+// Strict viewer guard — blocks ALL write operations for non-admins
+function requireAdmin(action){
+  if(window.isAdminMode && isAdmin()) return true;
+  showToast(`⚠ Kun admin kan ${action||'gjøre dette'}`);
+  return false;
+}
+
 function setupSel(el,opts){el.innerHTML=opts;}
 function setupRating(el){el.innerHTML=Array.from({length:10},(_,i)=>`<option value="${i+1}">${i+1} stjerne${i===0?"":"r"}`).join("");}
 function setupStage(el){el.innerHTML=STAGES.map(s=>`<option value="${s}">${s}`).join("");}
@@ -375,7 +382,7 @@ function toggleFav(id,btn){
   showToast(b.favorite?"★ Lagt til som favoritt":"☆ Fjernet fra favoritter");
 }
 async function deleteBeat(id){
-  if(!window.isAdminMode){showToast("⚠ Kun admin kan slette sanger");return;}
+  if(!requireAdmin('slette sanger')) return;
   if(!confirm("Slette denne sangen permanent? Den fjernes fra R2 og Supabase."))return;
   const beat = state.beats.find(b=>b.id===id);
   state.beats=state.beats.filter(b=>b.id!==id);
@@ -890,7 +897,7 @@ document.getElementById("confirmAddBeatsBtn").addEventListener("click",()=>{
 });
 
 document.getElementById("deleteAlbumBtn").addEventListener("click",()=>{
-  if(isProducerUser()){showToast("Produsentmodus: sletting er låst");return;}
+  if(!requireAdmin('slette album')) return;
   const a=state.albums.find(x=>x.id===currentAlbumId);if(!a)return;
   showDeleteConfirm(`Slette albumet "${a.name}"?`,()=>{
     state.albums=state.albums.filter(x=>x.id!==currentAlbumId);
@@ -1395,6 +1402,7 @@ async function uploadBeatToR2(beat, file) {
     return;
   }
   try {
+    // Compress large WAV/FLAC/AIFF files before upload
     if (window.audioCompress?.shouldCompress(file)) {
       file = await window.audioCompress.compress(file);
     }
@@ -1405,19 +1413,14 @@ async function uploadBeatToR2(beat, file) {
     beat.audio_url = url;
     beat.r2_key = beat.id;
     saveState();
-    showToast('⬆ R2 OK — synkroniserer til sky...');
-    // Push immediately and await — don't fire-and-forget
-    const pushFn = window.mvSupabaseSync?.pushToSupabase || window.pushToSupabase;
-    if (typeof pushFn === 'function') {
-      const ok = await pushFn({manual:false});
-      if(ok) showToast('✓ Opplastet og lagret til sky');
-      else { showToast('⚠ Lastet opp til R2, men sky-synk feilet — prøv igjen'); }
-    } else {
-      showToast('✓ Lastet opp til R2');
+    // Sync to Supabase automatically after R2 upload
+    if (typeof window.pushToSupabase === 'function') {
+      window.pushToSupabase();
     }
+    showToast('✓ Lastet opp til R2 og synkronisert');
   } catch (e) {
     console.error('[R2] Opplasting feilet:', e);
-    showToast('⚠ R2 opplasting feilet: ' + (e.message||e));
+    showToast('⚠ R2 feilet — lydfil lagret lokalt');
   }
 }
 async function handleMixtapeDrop(e){
@@ -1435,7 +1438,7 @@ async function handleAlbumDrop(e){
   renderAlbumDetail();showToast(`✓ ${files.length} beat${files.length===1?"":"s"} lagt til`);
 }
 document.getElementById("mixtapeUploadInput").addEventListener("change",async e=>{
-  if(!window.isAdminMode){showToast("⚠ Kun admin kan laste opp lydfiler");e.target.value="";return;}
+  if(!requireAdmin('laste opp lydfiler')){e.target.value="";return;}
   const files=[...e.target.files].filter(f=>f.type.startsWith("audio")||/\.(mp3|wav|flac|m4a|ogg|aac)$/i.test(f.name));
   for(const f of files){const b=await createBeatFromFile(f);addBeatToMixtape(b);uploadBeatToR2(b,f);}
   renderMixtapeDetail();showToast(`✓ ${files.length} beat${files.length===1?"":"s"} lagt til`);
@@ -1452,7 +1455,7 @@ document.getElementById("mixtapeCoverInput").addEventListener("change",e=>{
   e.target.value="";
 });
 document.getElementById("albumUploadInput").addEventListener("change",async e=>{
-  if(!window.isAdminMode){showToast("⚠ Kun admin kan laste opp lydfiler");e.target.value="";return;}
+  if(!requireAdmin('laste opp lydfiler')){e.target.value="";return;}
   const files=[...e.target.files].filter(f=>f.type.startsWith("audio")||/\.(mp3|wav|flac|m4a|ogg|aac)$/i.test(f.name));
   for(const f of files){const b=await createBeatFromFile(f);addBeatToAlbum(b);uploadBeatToR2(b,f);}
   renderAlbumDetail();showToast(`✓ ${files.length} beat${files.length===1?"":"s"} lagt til`);
@@ -1490,7 +1493,7 @@ document.getElementById("confirmAddBeatsToMixtapeBtn").addEventListener("click",
   saveState();renderMixtapeDetail();closeModal("addBeatsToMixtapeModal");showToast(`✓ ${checked.length} beat${checked.length===1?"":"s"} lagt til`);
 });
 document.getElementById("deleteMixtapeBtn").addEventListener("click",()=>{
-  if(isProducerUser()){showToast("Produsentmodus: sletting er låst");return;}
+  if(!requireAdmin('slette mixtape')) return;
   const mt=state.mixtapes.find(x=>x.id===currentMixtapeId);if(!mt)return;
   showDeleteConfirm(`Slette mixtapen "${mt.name}"?`,()=>{
     state.mixtapes=state.mixtapes.filter(x=>x.id!==currentMixtapeId);
@@ -1540,6 +1543,7 @@ function showRenameModal(label, currentName, onSave) {
 }
 
 window.renameBeat = function(id) {
+  if(!requireAdmin('gi nytt navn')) return;
   const b = state.beats.find(x => x.id === id); if (!b) return;
   showRenameModal('sang', b.name, val => {
     b.name = val; saveState();
@@ -1548,6 +1552,7 @@ window.renameBeat = function(id) {
   });
 };
 window.renameAlbum = function(id) {
+  if(!requireAdmin('gi nytt navn')) return;
   const a = state.albums.find(x => x.id === id); if (!a) return;
   showRenameModal('album', a.name, val => {
     a.name = val; saveState(); renderAlbums();
@@ -1556,6 +1561,7 @@ window.renameAlbum = function(id) {
   });
 };
 window.renameMixtape = function(id) {
+  if(!requireAdmin('gi nytt navn')) return;
   const mt = state.mixtapes.find(x => x.id === id); if (!mt) return;
   showRenameModal('mixtape', mt.name, val => {
     mt.name = val; saveState(); renderMixtapes();
