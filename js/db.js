@@ -701,10 +701,20 @@ function renderAlbumBeats(beats,mode,customEl){
       </div>
       <div class="ab-expand">
         <div class="ab-expand-top-bar">
-          <div id="au-wrap-${b.id}" style="display:flex;align-items:center;gap:8px;width:100%">
+          <div id="au-wrap-${b.id}" style="display:flex;align-items:center;gap:8px;width:100%;flex-wrap:wrap">
             <button class="primary-btn" style="font-size:12px;padding:7px 14px" onclick="playSingleBeat('${b.id}')">▶ Spill</button>
+            <button class="ghost-btn" style="font-size:12px;padding:6px 10px" title="Last ned" onclick="downloadBeat('${b.id}')">⬇</button>
             <button class="star-btn${b.favorite?" active":""}" data-fav-id="${b.id}" onclick="event.stopPropagation();toggleFav('${b.id}',this)" title="Favoritt" style="font-size:20px;background:none;border:none;cursor:pointer;padding:0;color:${b.favorite?'#f4a443':'rgba(255,255,255,.25)'}">★</button>
             <div style="margin-left:auto">${(()=>{ const noAudio=!(b.audio_url||b.url); const noLyric=!(b.lyrics||(b.lyricSections||[]).some(s=>s.text?.trim())); if(noAudio) return '<span title="Mangler lydfil" style="font-size:10px;font-weight:800;padding:2px 7px;border-radius:999px;background:rgba(251,113,133,.15);color:#fb7185;border:1px solid rgba(251,113,133,.3)">Ingen lyd</span>'; if(noLyric) return '<span title="Mangler tekst" style="font-size:10px;font-weight:800;padding:2px 7px;border-radius:999px;background:rgba(249,115,22,.12);color:#f97316;border:1px solid rgba(249,115,22,.3)">Ingen tekst</span>'; return ''; })()}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;padding:6px 0" onclick="event.stopPropagation()">
+            <span style="font-size:10px;color:rgba(255,255,255,.35);font-family:system-ui;font-weight:700;flex-shrink:0">Beatnavn:</span>
+            <input value="${esc(b.beatName||b.name)}" placeholder="${esc(b.beatName||b.name)}"
+              style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.7);font-size:12px;font-family:system-ui;outline:none;flex:1;min-width:0;padding:4px 8px;transition:border-color .15s,color .15s"
+              onfocus="this.style.borderColor='rgba(244,164,67,.4)';this.style.color='var(--text)'"
+              onblur="this.style.borderColor='rgba(255,255,255,.1)';this.style.color='rgba(255,255,255,.7)';saveBeatName('${b.id}',this.value)"
+              onkeydown="if(event.key==='Enter')this.blur();if(event.key==='Escape'){this.value='${(b.beatName||b.name).replace(/'/g,"\\'")}';this.blur()}"
+            >
           </div>
           <label class="ghost-btn" style="cursor:pointer;font-size:12px;padding:6px 12px">🎵 Bytt lydfil<input type="file" accept="audio/*" hidden onchange="uploadBeatAudio('${b.id}',this.files[0])"></label>
           <label class="ghost-btn" style="cursor:pointer;font-size:12px;padding:6px 12px">🖼️ Coverbilde<input type="file" accept="image/*" hidden onchange="setAlbumBeatCover('${b.id}',this)"></label>
@@ -1056,6 +1066,7 @@ function renderMixtapeDetail(){
       </div>
       <div class="mixtape-detail-actions">
         <button class="primary-btn" id="playMixtapeBtn" onclick="playMixtapeFromStart('${mt.id}')">▶ Spill fra start</button>
+        <button class="ghost-btn" onclick="mixtapeShareMode('${mt.id}')" title="Del mixtape">🔗 Del</button>
         <button class="small-btn danger hidden" id="stopMixtapeBtn" onclick="stopCollectionPlayback()">⏹ Stopp</button>
       </div>
     </div>

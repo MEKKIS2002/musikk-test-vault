@@ -278,7 +278,136 @@
     }
   };
 
-  // ── Pitch mode (one-pager) ────────────────────────────────────────────────
+  // ── Mixtape share (full songs, no preview limit) ──────────────────────────
+  window.mixtapeShareMode = function(mixtapeId) {
+    const mt = state.mixtapes?.find(m=>m.id===mixtapeId);
+    if (!mt) return;
+    const beats = beatsFromIds(mt.beatIds);
+    const beatsJson = JSON.stringify(beats.map(b=>({
+      id:b.id, name:b.name,
+      duration:b.duration||0,
+      audio_url:b.audio_url||b.url||''
+    })));
+    const coverUrl = mt.cover||'';
+    const CASS_COLORS=['#b95f33','#cf7b3e','#d79647','#f2a442'];
+    function hashStr(str){let h=0;for(let i=0;i<String(str||'').length;i++)h=(Math.imul(31,h)+String(str||'').charCodeAt(i))|0;return Math.abs(h);}
+    const accentColor = mt.color || CASS_COLORS[hashStr(mt.id||mt.name)%CASS_COLORS.length];
+
+    const rows = beats.map((b,i)=>{
+      const d=Number(b.duration||0);
+      const dStr=d>0?Math.floor(d/60)+':'+String(Math.floor(d%60)).padStart(2,'0'):'';
+      return `<div class="track-row" data-idx="${i}" onclick="playTrack(${i})">
+        <span class="track-num">${String(i+1).padStart(2,'0')}</span>
+        <div class="track-play-icon">▶</div>
+        <span class="track-name">${b.name.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</span>
+        <span class="track-dur">${dStr}</span>
+      </div>`;
+    }).join('');
+
+    const html = `<!DOCTYPE html><html lang="no"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${mt.name}</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0d0b09;color:#f4ede4;font-family:Georgia,serif;min-height:100vh;display:flex;align-items:flex-start;justify-content:center;padding:48px 20px}
+.page{max-width:640px;width:100%}
+.hero{display:flex;align-items:flex-start;gap:28px;margin-bottom:40px}
+.cover{width:160px;height:160px;flex-shrink:0;background:rgba(255,255,255,.06);overflow:hidden;box-shadow:0 16px 48px rgba(0,0,0,.6)}
+.cover img{width:100%;height:100%;object-fit:cover;display:block}
+.cover-ph{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:52px;background:${accentColor}22}
+.hero-info{padding-top:4px;flex:1}
+.eyebrow{font-size:10px;font-weight:800;letter-spacing:.18em;color:${accentColor};text-transform:uppercase;font-family:system-ui;margin-bottom:10px}
+h1{font-size:36px;font-weight:900;letter-spacing:-.04em;line-height:1.08;margin-bottom:10px}
+.meta{font-size:12px;color:rgba(255,255,255,.4);font-family:system-ui;font-weight:700;display:flex;gap:12px}
+.controls{margin-top:16px;display:flex;align-items:center;gap:14px}
+.play-all-btn{background:${accentColor};border:none;color:#000;font-family:system-ui;font-size:12px;font-weight:900;padding:9px 22px;cursor:pointer;letter-spacing:.06em;text-transform:uppercase;transition:opacity .15s}
+.play-all-btn:hover{opacity:.85}
+.stop-btn{background:none;border:none;color:rgba(255,255,255,.4);font-family:system-ui;font-size:12px;font-weight:700;cursor:pointer;padding:0}
+.stop-btn:hover{color:#f4ede4}
+.now-playing{font-size:11px;color:${accentColor};font-family:system-ui;font-weight:700}
+.tracklist-label{font-size:10px;font-weight:800;letter-spacing:.18em;color:rgba(255,255,255,.28);text-transform:uppercase;font-family:system-ui;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,.08);margin-bottom:6px}
+.track-row{display:flex;align-items:center;gap:12px;padding:10px 10px;border-bottom:1px solid rgba(255,255,255,.05);cursor:pointer;transition:background .15s;position:relative;overflow:hidden}
+.track-row:hover{background:rgba(255,255,255,.04)}
+.track-num{font-size:11px;color:rgba(255,255,255,.22);min-width:22px;font-family:system-ui;font-variant-numeric:tabular-nums}
+.track-play-icon{font-size:11px;color:rgba(255,255,255,.3);width:14px;flex-shrink:0;transition:color .15s}
+.track-name{font-size:15px;font-weight:700;flex:1;transition:all .2s}
+.track-dur{font-size:11px;color:rgba(255,255,255,.28);font-family:system-ui;font-variant-numeric:tabular-nums}
+.track-row.active .track-name{background:linear-gradient(90deg,#f4ede4 0%,${accentColor} 40%,#fff 55%,${accentColor} 70%,#f4ede4 100%);background-size:200% auto;-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;animation:shine 2.5s linear infinite;font-weight:900}
+.track-row.active .track-play-icon{color:${accentColor}}
+.track-row.active::after{content:'';position:absolute;bottom:0;left:0;height:2px;background:${accentColor};width:var(--progress,0%);transition:width .3s linear}
+@keyframes shine{0%{background-position:0% center}100%{background-position:200% center}}
+.footer{font-size:11px;color:rgba(255,255,255,.18);font-family:system-ui;text-align:center;padding-top:24px;border-top:1px solid rgba(255,255,255,.06);margin-top:28px}
+</style></head><body>
+<div class="page">
+  <div class="hero">
+    <div class="cover">${coverUrl?`<img src="${coverUrl}" alt="">`:'<div class="cover-ph">📼</div>'}</div>
+    <div class="hero-info">
+      <div class="eyebrow">Mixtape</div>
+      <h1>${mt.name}</h1>
+      <div class="meta"><span>${beats.length} sanger</span></div>
+      <div class="controls">
+        <button class="play-all-btn" id="playAllBtn" onclick="togglePlayAll()">▶ Spill</button>
+        <button class="stop-btn" onclick="stopAll()">⏹ Stopp</button>
+        <span class="now-playing" id="nowPlaying"></span>
+      </div>
+    </div>
+  </div>
+  <div class="tracklist-label">Sanger</div>
+  <div id="tracklist">${rows}</div>
+  <div class="footer">Laget med Music Vault</div>
+</div>
+<script>
+const BEATS=${beatsJson};
+let audio=null, currentIdx=-1, progressInterval=null, previewStart=null;
+
+function stopAll(silent){
+  clearInterval(progressInterval);
+  if(audio){audio.pause();audio.src='';audio=null;}
+  document.querySelectorAll('.track-row').forEach(r=>{r.classList.remove('active');r.style.removeProperty('--progress');});
+  document.getElementById('playAllBtn').textContent='▶ Spill';
+  document.getElementById('nowPlaying').textContent='';
+  if(!silent) currentIdx=-1;
+}
+
+async function playTrack(idx){
+  clearInterval(progressInterval);
+  const beat=BEATS[idx]; if(!beat||!beat.audio_url) return;
+  currentIdx=idx;
+  document.querySelectorAll('.track-row').forEach((r,i)=>{
+    r.classList.toggle('active',i===idx); r.style.removeProperty('--progress');
+  });
+  document.querySelectorAll('.track-row')[idx]?.scrollIntoView({behavior:'smooth',block:'nearest'});
+  document.getElementById('playAllBtn').textContent='⏸ Spiller';
+  document.getElementById('nowPlaying').textContent=beat.name;
+
+  audio=new Audio();
+  audio.crossOrigin='anonymous';
+  try{const res=await fetch(beat.audio_url);if(res.ok){const blob=await res.blob();audio.src=URL.createObjectURL(blob);}}
+  catch(e){audio.src=beat.audio_url;}
+
+  audio.addEventListener('ended',()=>{ if(currentIdx+1<BEATS.length) playTrack(currentIdx+1); else stopAll(); });
+  audio.play().catch(()=>{});
+  previewStart=Date.now();
+  progressInterval=setInterval(()=>{
+    if(!audio||audio.paused) return;
+    const dur=isFinite(audio.duration)?audio.duration:0;
+    const pct=dur?Math.min(100,(audio.currentTime/dur)*100):0;
+    const r=document.querySelectorAll('.track-row')[idx];
+    if(r) r.style.setProperty('--progress',pct+'%');
+  },200);
+}
+
+function togglePlayAll(){
+  if(currentIdx>=0&&audio&&!audio.paused){audio.pause();document.getElementById('playAllBtn').textContent='▶ Fortsett';clearInterval(progressInterval);}
+  else if(currentIdx>=0&&audio&&audio.paused){audio.play();document.getElementById('playAllBtn').textContent='⏸ Spiller';}
+  else playTrack(0);
+}
+</script></body></html>`;
+
+    const blob2=new Blob([html],{type:'text/html'});
+    window.open(URL.createObjectURL(blob2),'_blank');
+    if(typeof showToast==='function') showToast('✓ Mixtape-link åpnet i ny fane');
+  };
   window.albumPitchMode = function(albumId) {
     const album = state.albums?.find(a=>a.id===albumId);
     if (!album) return;
@@ -1006,7 +1135,8 @@ async function submitComment(){
         card.querySelector('.archive-song-btn').textContent=archiveLabel('beat',b);
         return;
       }
-      const target=card.querySelector('.ab-expand-actions')||card.querySelector('.ab-expand-right')||card.querySelector('.ab-body');
+      // Only inject in expanded area, NOT in collapsed card body
+      const target=card.querySelector('.ab-expand-actions')||card.querySelector('.ab-expand-right');
       if(target){
         target.insertAdjacentHTML('beforeend',`<button class="ghost-btn archive-song-btn" onclick="event.stopPropagation();toggleArchiveItem('beat','${id}')">${archiveLabel('beat',b)}</button>`);
       }
