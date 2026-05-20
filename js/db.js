@@ -656,7 +656,51 @@ function renderAlbumBeats(beats,mode,customEl){
   el.innerHTML=hint+beats.map((b,idx)=>{
     const coverHtml=b.cover
       ?`<img class="ab-cover" src="${esc(b.cover)}" alt="${esc(b.name)}">`
-      :`<div class="ab-cover-ph">🎵</div>`;
+      :`<div class="ab-cover-ph"></div>`;
+
+    // ── Ren listevisning (ny HTML, ingen innblanding fra enhanceCards) ──
+    const currentView=localStorage.getItem('musicVaultTrackViewMode')||'list';
+    if(currentView==='list'){
+      const noAudio=!(b.audio_url||b.url);
+      const noLyric=!(b.lyrics||(b.lyricSections||[]).some(s=>s.text?.trim()));
+      const durStr=b.duration?`${Math.floor(b.duration/60)}:${String(Math.floor(b.duration%60)).padStart(2,'0')}`:'';
+      const dragAttrsL=canDrag?`draggable="true" ondragstart="startCollectionDrag(event,'${b.id}','${listMode}')" ondragend="endCollectionDrag()" ondragover="dragBeatOver(event,'${b.id}')" ondragleave="dragBeatLeave(event,'${b.id}')" ondrop="dropCollectionBeat(event,'${b.id}','${listMode}')"`:"";
+      return `<div class="album-beat-card abi-list-row" id="abi-${b.id}" data-beat-id="${b.id}" ${dragAttrsL}>
+        <div class="abi-row-inner" onclick="toggleAlbumBeat('${b.id}')">
+          <div class="abi-row-cover">${coverHtml}</div>
+          <span class="abi-row-num">${String(idx+1).padStart(2,'0')}</span>
+          <div class="abi-row-info">
+            <div class="abi-row-title">${esc(b.name)}</div>
+            ${b.uploadedBy?`<span class="abi-row-by">👤 ${esc(b.uploadedBy)}</span>`:''}
+          </div>
+          ${durStr?`<span class="abi-row-dur">${durStr}</span>`:''}
+          ${noAudio?`<span class="abi-row-dot" title="Mangler lydfil" style="background:#fb7185"></span>`:noLyric?`<span class="abi-row-dot" title="Mangler tekst" style="background:#f97316"></span>`:''}
+          <button class="abi-row-play" onclick="event.stopPropagation();playSingleBeat('${b.id}')" title="Spill">▶</button>
+          <button class="abi-row-fav star-btn${b.favorite?" active":""}" data-fav-id="${b.id}" onclick="event.stopPropagation();toggleFav('${b.id}',this)" title="Favoritt">★</button>
+        </div>
+        <div class="ab-expand">
+          <div class="ab-expand-top-bar">
+            <div id="au-wrap-${b.id}" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <button class="primary-btn" style="font-size:12px;padding:7px 14px" onclick="playSingleBeat('${b.id}')">▶ Spill</button>
+              <button class="ghost-btn" style="font-size:12px;padding:6px 10px" onclick="downloadBeat('${b.id}')">⬇ Last ned</button>
+              <button class="star-btn${b.favorite?" active":""}" data-fav-id="${b.id}" onclick="event.stopPropagation();toggleFav('${b.id}',this)" style="font-size:20px;background:none;border:none;cursor:pointer;padding:0;color:${b.favorite?'#f4a443':'rgba(255,255,255,.25)'}">★</button>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;padding:4px 0" onclick="event.stopPropagation()">
+              <span style="font-size:10px;color:rgba(255,255,255,.35);font-family:system-ui;font-weight:700">Beatnavn:</span>
+              <input value="${esc(b.beatName||b.name)}" style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.7);font-size:12px;font-family:system-ui;outline:none;flex:1;min-width:0;padding:3px 8px"
+                onfocus="this.style.borderColor='rgba(244,164,67,.4)';this.style.color='var(--text)'"
+                onblur="this.style.borderColor='rgba(255,255,255,.1)';this.style.color='rgba(255,255,255,.7)';saveBeatName('${b.id}',this.value)"
+                onkeydown="if(event.key==='Enter')this.blur()">
+            </div>
+            <label class="ghost-btn" style="cursor:pointer;font-size:12px;padding:6px 12px">🎵 Bytt lydfil<input type="file" accept="audio/*" hidden onchange="uploadBeatAudio('${b.id}',this.files[0])"></label>
+            <label class="ghost-btn" style="cursor:pointer;font-size:12px;padding:6px 12px">🖼 Cover<input type="file" accept="image/*" hidden onchange="setAlbumBeatCover('${b.id}',this)"></label>
+            <button class="small-btn danger" onclick="removeFromCollection('${b.id}','${listMode}')">Fjern</button>
+          </div>
+          ${listMode==="album"?`<div style="display:flex;align-items:center;gap:8px;padding:8px 14px" onclick="event.stopPropagation()"><span style="font-size:11px;color:rgba(255,255,255,.4)">Ferdig:</span><strong style="font-size:11px;color:var(--accent)" id="abidone-${b.id}">${b.done||0}%</strong><input type="range" min="0" max="100" value="${b.done||0}" style="flex:1;accent-color:var(--accent);cursor:pointer" oninput="setAlbumBeatDone('${b.id}',this.value)"></div>`:''}
+          <div class="ab-lyric-editor">${lyricsEditorMarkup(b.id,"Skriv tekst, hooks, vers, ideer...")}</div>
+        </div>
+      </div>`;
+    }
     if(isProducerUser()&&listMode==="mixtape"){
       return`<div${songBorderAttrs(b.id,listMode)} id="abi-${b.id}" data-beat-id="${b.id}">
         <div class="ab-top">

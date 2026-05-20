@@ -112,7 +112,7 @@ document.documentElement.classList.add('mv-mixed-ui');
 
   function enhanceCards(el, mode){
     if(!el) return;
-    el.querySelectorAll('.album-beat-card').forEach(card => {
+    el.querySelectorAll('.album-beat-card:not(.abi-list-row)').forEach(card => {
       const b = getBeat(card.dataset.beatId);
       if(!b) return;
       // Cover
