@@ -1252,3 +1252,26 @@
 /* Expand-panel */
 .abi-list-row .ab-expand { display: none; }
 .abi-list-row.expanded .ab-expand { display: block; }
+
+/* ── Forhindre at expanded-regler ødelegger abi-list-row ───── */
+.abi-list-row.expanded .abi-row-inner {
+  display: flex !important;
+  height: 66px !important;
+  background: rgba(255,255,255,.06) !important;
+}
+.abi-list-row.expanded .abi-row-cover,
+.abi-list-row.expanded .abi-row-cover img,
+.abi-list-row.expanded .abi-row-cover .ab-cover,
+.abi-list-row.expanded .abi-row-cover .ab-cover-ph {
+  width: 66px !important;
+  height: 66px !important;
+  min-height: 66px !important;
+  max-height: 66px !important;
+  object-fit: cover !important;
+}
+.abi-list-row.expanded .ab-top { display: none !important; }
+.abi-list-row .ab-expand { display: none !important; }
+.abi-list-row.expanded .ab-expand {
+  display: block !important;
+  border-top: 1px solid rgba(255,255,255,.07) !important;
+}
