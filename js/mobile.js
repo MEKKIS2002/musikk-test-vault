@@ -6,8 +6,14 @@
   'use strict';
 
   function isMobile(){
-    return window.innerWidth <= 820 ||
-      /Mobi|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    // User-agent is the most reliable signal — viewport width is unreliable
+    // without the viewport meta tag (which might not be set on desktop-first sites)
+    const ua = navigator.userAgent || '';
+    const isPhone = /iPhone|Android.*Mobile|BlackBerry|IEMobile|Opera Mini/i.test(ua);
+    const isTablet = /iPad|Android(?!.*Mobile)/i.test(ua);
+    // Also check for small viewport as fallback (works after viewport meta is set)
+    const isNarrow = window.innerWidth <= 820;
+    return isPhone || isTablet || isNarrow;
   }
   if(!isMobile()) return;
 
