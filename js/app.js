@@ -301,6 +301,7 @@
         <div class="track-play-icon">▶</div>
         <span class="track-name">${b.name.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</span>
         <span class="track-dur">${dStr}</span>
+        <button class="like-btn" id="like-${b.id}" onclick="event.stopPropagation();toggleLike('${b.id}')" title="Lik denne sangen">♡ <span class="like-count" id="lc-${b.id}">…</span></button>
       </div>`;
     }).join('');
 
@@ -337,6 +338,8 @@ h1{font-size:36px;font-weight:900;letter-spacing:-.04em;line-height:1.08;margin-
 .track-row.active::after{content:'';position:absolute;bottom:0;left:0;height:2px;background:${accentColor};width:var(--progress,0%);transition:width .3s linear}
 @keyframes shine{0%{background-position:0% center}100%{background-position:200% center}}
 .footer{font-size:11px;color:rgba(255,255,255,.18);font-family:system-ui;text-align:center;padding-top:24px;border-top:1px solid rgba(255,255,255,.06);margin-top:28px}
+.like-btn{background:none;border:1px solid rgba(255,255,255,.12);color:rgba(255,255,255,.35);font-family:system-ui;font-size:12px;font-weight:700;padding:3px 10px;cursor:pointer;border-radius:999px;white-space:nowrap;flex-shrink:0;transition:all .15s;margin-left:8px;}
+.like-btn:hover,.like-btn.liked{background:rgba(251,113,133,.14);border-color:rgba(251,113,133,.45);color:#fb7185;}
 </style></head><body>
 <div class="page">
   <div class="hero">
@@ -404,6 +407,55 @@ function togglePlayAll(){
   else if(currentIdx>=0&&audio&&audio.paused){audio.play();document.getElementById('playAllBtn').textContent='⏸ Spiller';}
   else playTrack(0);
 }
+
+// ── Like system ──────────────────────────────────────────────
+const SB_URL='https://ylvqkfdvijqnecuqznyr.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlsdnFrZmR2aWpxbmVjdXF6bnlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzMzA4MzIsImV4cCI6MjA5MzkwNjgzMn0.bYPTaxQK8n7I7w5Ri2DVYW5_LbFHg2IXkuhHsLTDDqc';
+const SB_H={'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'};
+const MT_ID='${mixtapeId}';
+const liked=JSON.parse(sessionStorage.getItem('mv_liked_'+MT_ID)||'{}');
+function getSession(){let s=sessionStorage.getItem('mv_sid');if(!s){s=Math.random().toString(36).slice(2);sessionStorage.setItem('mv_sid',s);}return s;}
+
+async function loadLikeCounts(){
+  try{
+    const res=await fetch(SB_URL+'/rest/v1/mixtape_likes?mixtape_id=eq.'+MT_ID+'&select=beat_id',{headers:SB_H});
+    if(!res.ok)return;
+    const rows=await res.json();
+    const counts={};
+    rows.forEach(r=>{counts[r.beat_id]=(counts[r.beat_id]||0)+1;});
+    BEATS.forEach(b=>{
+      const el=document.getElementById('lc-'+b.id);
+      const btn=document.getElementById('like-'+b.id);
+      const n=counts[b.id]||0;
+      if(el) el.textContent=n>0?n+'♡':'♡';
+      if(btn&&liked[b.id]) btn.classList.add('liked');
+    });
+  }catch(e){console.warn('Likes load failed:',e);}
+}
+
+async function toggleLike(beatId){
+  const btn=document.getElementById('like-'+beatId);
+  const el=document.getElementById('lc-'+beatId);
+  const cur=parseInt(el?.textContent)||0;
+  if(liked[beatId]){
+    try{
+      await fetch(SB_URL+'/rest/v1/mixtape_likes?mixtape_id=eq.'+MT_ID+'&beat_id=eq.'+beatId+'&session_id=eq.'+getSession(),{method:'DELETE',headers:{...SB_H,'Prefer':'return=minimal'}});
+      delete liked[beatId];
+      sessionStorage.setItem('mv_liked_'+MT_ID,JSON.stringify(liked));
+      if(btn) btn.classList.remove('liked');
+      if(el) el.textContent=Math.max(0,cur-1)>0?Math.max(0,cur-1)+'♡':'♡';
+    }catch(e){}
+  }else{
+    try{
+      await fetch(SB_URL+'/rest/v1/mixtape_likes',{method:'POST',headers:{...SB_H,'Prefer':'return=minimal'},body:JSON.stringify({mixtape_id:MT_ID,beat_id:beatId,session_id:getSession(),created_at:new Date().toISOString()})});
+      liked[beatId]=true;
+      sessionStorage.setItem('mv_liked_'+MT_ID,JSON.stringify(liked));
+      if(btn) btn.classList.add('liked');
+      if(el) el.textContent=(cur+1)+'♡';
+    }catch(e){}
+  }
+}
+loadLikeCounts();
 </script></body></html>`;
 
     const blob2=new Blob([html],{type:'text/html'});
