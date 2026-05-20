@@ -330,33 +330,7 @@ textarea{resize:vertical;line-height:1.55}
 .bp-center{display:grid;gap:8px;justify-items:center;flex:2;min-width:260px}.bp-controls{display:flex;align-items:center;gap:12px}.bp-btn{border:0;background:transparent;color:var(--text);font-size:18px;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;cursor:pointer}.bp-btn:hover{background:rgba(255,255,255,.1)}.bp-play{background:#fff;color:#07070b;font-size:17px;width:42px;height:42px}.bp-play:hover{background:#fff;filter:brightness(.92)}
 .bp-progress{display:flex;align-items:center;gap:10px;width:min(640px,100%)}.bp-time{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;min-width:42px;text-align:center}.bp-seek{width:100%;padding:0;border:0;background:transparent;accent-color:#fff;cursor:pointer}
 .bp-actions{display:flex;align-items:center;gap:8px;justify-content:flex-end;flex:1;min-width:180px}.bp-vol{width:110px;padding:0;border:0;background:transparent;accent-color:#fff}.bp-close{font-size:16px;color:var(--muted)}
-@media(max-width:780px){
-  .bottom-player{
-    grid-template-columns:1fr;
-    display:none;
-    align-items:stretch;
-  }
-  .bottom-player.show{
-    display:flex !important;
-    flex-direction:column;
-    gap:0;
-    padding:10px 14px 12px;
-  }
-  /* Mobile player: track + play button on one row, progress below */
-  .bp-track{ max-width:none; flex:1; min-width:0; }
-  .bp-center{ min-width:0; width:100%; }
-  .bp-progress{ width:100%; }
-  /* Show prev/next on mobile, hide volume */
-  .bp-actions{ display:flex; }
-  .bp-volume-wrap{ display:none !important; }
-  /* Bigger tap targets */
-  .bp-btn{ min-width:44px; min-height:44px; font-size:18px; }
-  .bpPlayBtn{ min-width:48px; min-height:48px; font-size:20px; }
-  /* Beat list rows — bigger tap zone */
-  .bl-row{ min-height:56px; }
-  .bl-play{ min-width:44px; min-height:44px; font-size:18px; }
-  .bl-menu{ min-width:44px; min-height:44px; }
-}
+@media(max-width:780px){.bottom-player{grid-template-columns:1fr;display:none;align-items:stretch}.bottom-player.show{display:grid}.bp-actions{display:none}.bp-track{max-width:none}.bp-center{min-width:0}.bp-progress{width:100%}}
 
 /* VERSIONS */
 .version-list{display:grid;gap:12px}
@@ -948,39 +922,115 @@ body.admin-mode .admin-only-btn { display: inline-flex !important; }
 
 /* ── Vinyl spin animation ─────────────────────────────────────── */
 
-/* ── Mobile UX improvements ──────────────────────────────────── */
-@media(max-width:600px){
-  /* Tabs: scrollable, bigger tap targets */
-  .tabs{ overflow-x:auto; -webkit-overflow-scrolling:touch; white-space:nowrap; gap:4px; padding:8px; }
-  .tab-btn{ min-height:40px; padding:6px 14px; font-size:13px; flex-shrink:0; }
+/* ================================================================
+   VIEWER MODE — Kun avspilling, ingen admin-funksjoner
+   Aktiveres av body.viewer-mode (satt av lock.js)
+================================================================ */
 
-  /* Hero: stacked, tighter */
-  .hero{ grid-template-columns:1fr !important; gap:0; }
-  .hero-main{ min-height:240px !important; padding:24px 20px !important; }
-  .stats-card{ height:auto !important; min-height:unset !important; padding:20px !important; }
-  .stat-grid{ grid-template-columns:1fr 1fr; }
+/* Skjul alle skriving/redigering/sletting/opplasting */
+body.viewer-mode .tab-btn[data-tab="beats"],
+body.viewer-mode .tab-btn[data-tab="albumer"],
+body.viewer-mode .tab-btn[data-tab="pipeline"],
+body.viewer-mode .tab-btn[data-tab="arkivert"],
+body.viewer-mode .tab-btn[data-tab="lyriclab"],
+body.viewer-mode .tab-btn[data-tab="integrasjoner"] { display: none !important; }
 
-  /* Beat list: better touch targets */
-  .bl-row{ padding:10px 8px; min-height:60px; }
-  .bl-cover{ width:44px; height:44px; flex-shrink:0; }
-  .bl-name{ font-size:14px; }
-  .bl-sub{ font-size:11px; }
-  .bl-play{ width:44px; height:44px; font-size:18px; }
-  .bl-menu{ width:44px; height:44px; font-size:20px; }
-  .star-btn{ font-size:24px; }
+/* Skjul alle upload/drop-soner */
+body.viewer-mode .drop-zone,
+body.viewer-mode #mixtapeDrop,
+body.viewer-mode #albumDrop,
+body.viewer-mode #beatFiles,
+body.viewer-mode .upload-btn,
+body.viewer-mode [id$="UploadInput"],
+body.viewer-mode [id$="CoverInput"] { display: none !important; }
 
-  /* Beat card expand — bigger actions */
-  .ab-top{ padding:10px; }
-  .ab-cover-wrap{ width:52px; height:52px; }
-  .ab-title{ font-size:14px; }
+/* Skjul alle destruktive og admin-knapper */
+body.viewer-mode .danger,
+body.viewer-mode [onclick*="deleteBeat"],
+body.viewer-mode [onclick*="deleteAlbum"],
+body.viewer-mode [onclick*="deleteMixtape"],
+body.viewer-mode [onclick*="archiveBeat"],
+body.viewer-mode [onclick*="renameBeat"],
+body.viewer-mode [onclick*="renameAlbum"],
+body.viewer-mode [onclick*="renameMixtape"],
+body.viewer-mode [onclick*="saveBeatName"],
+body.viewer-mode [onclick*="removeFromCollection"],
+body.viewer-mode [onclick*="addBeatsTo"],
+body.viewer-mode [onclick*="newAlbum"],
+body.viewer-mode [onclick*="newMixtape"],
+body.viewer-mode [onclick*="openNewMixtape"],
+body.viewer-mode [onclick*="albumPitchMode"],
+body.viewer-mode [onclick*="uploadBeat"],
+body.viewer-mode [onclick*="downloadBeat"],
+body.viewer-mode .bl-menu,
+body.viewer-mode .star-btn,
+body.viewer-mode #newAlbumBtn,
+body.viewer-mode #newMixtapeBtn,
+body.viewer-mode #addBeatsToAlbumBtn,
+body.viewer-mode #addBeatsToMixtapeBtn,
+body.viewer-mode #deleteAlbumBtn,
+body.viewer-mode #deleteMixtapeBtn,
+body.viewer-mode #mixtapeUploadInput,
+body.viewer-mode #albumUploadInput,
+body.viewer-mode #mixtapeCoverInput,
+body.viewer-mode #albumCoverInput,
+body.viewer-mode .mixtape-sort-wrap,
+body.viewer-mode #mixtapeSortSelect { display: none !important; }
 
-  /* Modals: full width */
-  .modal-card{ width:100vw !important; margin:0 !important; border-radius:0 !important; max-height:96vh; }
+/* Skjul tekstfelt og lyric-editor */
+body.viewer-mode .ll-section,
+body.viewer-mode .ll-inline-editor,
+body.viewer-mode .ab-lyric-editor,
+body.viewer-mode .ab-expand,
+body.viewer-mode .beat-expand,
+body.viewer-mode .ab-beatname,
+body.viewer-mode .ab-stars,
+body.viewer-mode .progress-wrap,
+body.viewer-mode [id^="llmount-"],
+body.viewer-mode [id^="llins-"] { display: none !important; }
 
-  /* Dropdown menus: full width, bigger tap targets */
-  .bl-dropdown{ width:calc(100vw - 20px); left:10px !important; right:10px !important; }
-  .bl-dropdown button{ min-height:48px; font-size:14px; padding:12px 16px; }
+/* Skjul fremdrift og rating */
+body.viewer-mode .ab-stars,
+body.viewer-mode .progress-wrap,
+body.viewer-mode input[type="range"],
+body.viewer-mode .pl-beat-slider-wrap { display: none !important; }
 
-  /* Bottom player pinned, full width */
-  .bottom-player{ left:0 !important; right:0 !important; bottom:0 !important; border-radius:0 !important; }
+/* Skjul Integrasjoner-panel */
+body.viewer-mode #integrationsTab { display: none !important; }
+
+/* Skjul admin-panel og synk */
+body.viewer-mode #supabaseDataSyncPanel,
+body.viewer-mode #supabaseAdminPanel,
+body.viewer-mode .admin-panel,
+body.viewer-mode #adminLoginBox,
+body.viewer-mode #adminLogoutBox { display: none !important; }
+
+/* Gjør titler og beat-navn ikke-klikkbare/redigerbare */
+body.viewer-mode .ab-title,
+body.viewer-mode .bl-title,
+body.viewer-mode .cass-png-name { pointer-events: none !important; cursor: default !important; }
+
+/* Skjul rename-ikon på album/mixtape-titler */
+body.viewer-mode h2 button[onclick*="rename"] { display: none !important; }
+
+/* Skjul expand-knapp på album-beats (ingen tekst å se) */
+body.viewer-mode .ab-cover-wrap { pointer-events: none !important; }
+
+/* Skjul Pipeline-tab-innhold unntatt visning */
+body.viewer-mode .pl-notes-btn,
+body.viewer-mode .pl-notes-box,
+body.viewer-mode .pl-status-select,
+body.viewer-mode .pl-action-btn { display: none !important; }
+
+/* Skjul changelog og backup-knapper */
+body.viewer-mode #exportBtn,
+body.viewer-mode #importInput,
+body.viewer-mode label[for="importInput"],
+body.viewer-mode .changelog-btn { display: none !important; }
+
+/* Tydelig "Bare lyttemodus"-badge */
+body.viewer-mode #roleBadge::after {
+  content: ' · Lyttemodus';
+  color: rgba(255,255,255,.4);
+  font-size: 11px;
 }
