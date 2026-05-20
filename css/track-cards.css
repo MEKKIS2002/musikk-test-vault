@@ -217,14 +217,24 @@
 }
 /* Card layout — cover left, content right (grid and studio modes) */
 .album-beat-grid .album-beat-card:not(.expanded) .ab-top,
-.album-beat-studio .album-beat-card:not(.expanded) .ab-top,
+.album-beat-studio .album-beat-card:not(.expanded) .ab-top{
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:stretch!important;
+}
 .album-beat-card.expanded .ab-top{
   display:grid!important;
-  grid-template-columns:minmax(120px,220px) minmax(0,1fr)!important;
+  grid-template-columns:minmax(230px,320px) 1fr!important;
   align-items:stretch!important;
 }
 .album-beat-grid .album-beat-card:not(.expanded) .ab-cover-wrap,
-.album-beat-studio .album-beat-card:not(.expanded) .ab-cover-wrap,
+.album-beat-studio .album-beat-card:not(.expanded) .ab-cover-wrap{
+  aspect-ratio:1/1!important;
+  width:100%!important;
+  border-bottom:1px solid rgba(255,255,255,.08)!important;
+  border-right:0!important;
+  cursor:pointer!important;
+}
 .album-beat-card.expanded .ab-cover-wrap{
   aspect-ratio:1/1!important;
   border-bottom:0!important;
@@ -236,7 +246,16 @@
   content:none!important;
   display:none!important;
 }
-.album-beat-card:not(.expanded) .ab-body,
+/* Card collapsed body: compact below cover */
+.album-beat-grid .album-beat-card:not(.expanded) .ab-body,
+.album-beat-studio .album-beat-card:not(.expanded) .ab-body{
+  padding:10px 12px!important;
+  display:flex!important;
+  flex-direction:column!important;
+  justify-content:center!important;
+  gap:6px!important;
+  min-width:0!important;
+}
 .album-beat-card.expanded .ab-body{
   padding:18px 20px!important;
   display:flex!important;
@@ -247,8 +266,12 @@
 }
 .ab-title{
   cursor:pointer!important;
-  width:max-content!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
   max-width:100%!important;
+  width:100%!important;
+  display:block!important;
 }
 .ab-title:hover{text-decoration:underline!important;text-underline-offset:3px!important;}
 .album-beat-card:not(.expanded) .ab-body>.ab-stars,
@@ -277,8 +300,25 @@
 .acp-minimal-list .acp-list-kind,.acp-minimal-list .acp-list-progress,.acp-minimal-list .acp-list-date{display:none!important;}
 
 .album-beat-listmode{gap:0!important;padding:0!important;display:flex!important;flex-direction:column!important;}
-/* Spotify-style compact rows */
-.album-beat-listmode .album-beat-card:not(.expanded){
+/* ── List mode overrides ──────────────────────────────────── */
+.album-beat-listmode .album-beat-card:not(.expanded) .ab-top{
+  display:flex!important;
+  flex-direction:row!important;
+  align-items:center!important;
+  height:64px!important;padding:0!important;gap:0!important;
+}
+.album-beat-listmode .album-beat-card:not(.expanded) .ab-cover-wrap{
+  width:64px!important;height:64px!important;min-width:64px!important;min-height:64px!important;
+  flex-shrink:0!important;overflow:hidden!important;
+  aspect-ratio:1/1!important;border-right:0!important;border-bottom:0!important;
+  margin-right:14px!important;
+}
+.album-beat-listmode .album-beat-card:not(.expanded) .ab-cover,
+.album-beat-listmode .album-beat-card:not(.expanded) .ab-cover-ph{
+  width:64px!important;height:64px!important;
+  object-fit:cover!important;object-position:center!important;
+  aspect-ratio:1/1!important;display:block!important;border-radius:0!important;
+}
   min-height:64px!important;max-height:64px!important;overflow:hidden!important;
   border-bottom:1px solid rgba(255,255,255,.05)!important;border-radius:0!important;
   background:transparent!important;border:none!important;box-shadow:none!important;
