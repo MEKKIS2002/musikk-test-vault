@@ -92,13 +92,7 @@ bottomPlayer.audio.addEventListener("loadedmetadata",function(){
 });
 bottomPlayer.audio.addEventListener("play",updateBottomUI);
 bottomPlayer.audio.addEventListener("pause",updateBottomUI);
-bottomPlayer.audio.addEventListener("error",()=>{
-  // If mobile.js has set a.onerror for blob-fallback, let it handle the error
-  if(bottomPlayer.audio.onerror) return;
-  const b=bottomPlayer.queue[bottomPlayer.index];
-  if(b) showToast(`Kunne ikke spille "${b.name}"`);
-  bottomNext(true);
-});
+bottomPlayer.audio.addEventListener("error",()=>{const b=bottomPlayer.queue[bottomPlayer.index];if(b)showToast(`Kunne ikke spille "${b.name}"`);bottomNext(true);});
 function beatsFromIds(ids){return (ids||[]).map(id=>state.beats.find(b=>b.id===id)).filter(b=>b&&!b.archived);}
 function fmtTime(sec){sec=Number(sec||0);if(!isFinite(sec))return "0:00";const m=Math.floor(sec/60);const s=Math.floor(sec%60);return `${m}:${String(s).padStart(2,"0")}`;}
 async function getPlayableAudioUrl(beat){
@@ -213,6 +207,7 @@ async function uploadBeatAudio(beatId,file){
 // When creating beats from file upload, also store in IDB
 async function createBeatFromFileIDB(file){
   const b={id:uid(),name:file.name.replace(/\.[^/.]+$/,""),url:"",source:"local",favorite:false,lyrics:"",rating:0,cover:"",done:0,createdAt:Date.now()};
+  b.beatName=b.name;
   await audioDB.save(b.id,file);
   b.url=b.id+":idb";
   return b;
@@ -268,7 +263,7 @@ function defaultState(){
 function migrate(s){
   const base=defaultState();
   const n={...base,...s};
-  n.beats=(n.beats||[]).map(b=>({...b,lyrics:b.lyrics||"",favorite:!!b.favorite,rating:Number(b.rating||0),cover:b.cover||"",done:Number(b.done||0)}));
+  n.beats=(n.beats||[]).map(b=>({...b,lyrics:b.lyrics||"",favorite:!!b.favorite,rating:Number(b.rating||0),cover:b.cover||"",done:Number(b.done||0),beatName:b.beatName||b.name||""}));
   n.demos=(n.demos||[]).map(d=>({...d,stage:d.stage||"Idé",mix:Number(d.mix??0),rating:Number(d.rating||1),done:Number(d.done||0),lyricsNotes:d.lyricsNotes||""}));
   n.albums=n.albums||[];n.mixtapes=(n.mixtapes||[]).map(m=>({...m,cover:m.cover||null,color:m.color||null,beatIds:m.beatIds||[]}));n.versions=n.versions||[];n.settings={...base.settings,...(n.settings||{})};
   return n;
@@ -276,13 +271,7 @@ function migrate(s){
 function loadState(){try{const r=localStorage.getItem(SK);const s=r?JSON.parse(r):null;return s?migrate(s):defaultState();}catch{return defaultState();}}
 function saveState(){try{localStorage.setItem(SK,JSON.stringify(state));}catch(e){console.warn('saveState failed:',e);}markDirty();renderStats();if(typeof window.mvSupabaseSync?.schedulePush==='function')window.mvSupabaseSync.schedulePush();}
 function isAdmin(){return sessionStorage.getItem('mv_role')==='admin';}
-
-// Strict viewer guard — blocks ALL write operations for non-admins
-function requireAdmin(action){
-  if(window.isAdminMode && isAdmin()) return true;
-  showToast(`⚠ Kun admin kan ${action||'gjøre dette'}`);
-  return false;
-}
+function requireAdmin(action){if(window.isAdminMode&&isAdmin())return true;showToast(`⚠ Kun admin kan ${action||'gjøre dette'}`);return false;}
 
 function setupSel(el,opts){el.innerHTML=opts;}
 function setupRating(el){el.innerHTML=Array.from({length:10},(_,i)=>`<option value="${i+1}">${i+1} stjerne${i===0?"":"r"}`).join("");}
@@ -379,6 +368,20 @@ function saveBeatLyrics(id){
   if(b&&(ed||ta)){b.lyrics=ed?ed.innerHTML:ta.value;saveState();showToast("✓ Tekst lagret");}
 }
 function copyBeatLyrics(id){const b=state.beats.find(x=>x.id===id);if(b)navigator.clipboard.writeText(stripHTML(b.lyrics||"")).then(()=>showToast("✓ Tekst kopiert"));}
+function saveBeatName(id,val){
+  if(!requireAdmin('endre beatnavn'))return;
+  const b=state.beats.find(x=>x.id===id);if(!b)return;
+  const n=(val||'').trim();if(!n||n===b.beatName)return;
+  b.beatName=n;saveState();showToast('✓ Beatnavn oppdatert');
+}
+async function downloadBeat(id){
+  const b=state.beats.find(x=>x.id===id);if(!b)return;
+  const fileName=(b.beatName||b.name||'beat').replace(/[^\w\sæøåÆØÅ\-\.]/g,'').trim();
+  const blob=await audioDB.load(id);
+  if(blob){const url=URL.createObjectURL(blob);const a=document.createElement('a');const ext=blob.type?.split('/')[1]?.split(';')[0]||'mp3';a.href=url;a.download=`${fileName}.${ext}`;a.click();setTimeout(()=>URL.revokeObjectURL(url),5000);return;}
+  const extUrl=getBeatAudioUrl(b);if(extUrl){const a=document.createElement('a');a.href=extUrl;a.download=fileName;a.target='_blank';a.click();return;}
+  showToast('Ingen lydfil å laste ned');
+}
 function toggleFav(id,btn){
   const b=state.beats.find(x=>x.id===id);if(!b)return;
   b.favorite=!b.favorite;saveState();
@@ -388,7 +391,7 @@ function toggleFav(id,btn){
   showToast(b.favorite?"★ Lagt til som favoritt":"☆ Fjernet fra favoritter");
 }
 async function deleteBeat(id){
-  if(!requireAdmin('slette sanger')) return;
+  if(!requireAdmin('slette sanger'))return;
   if(!confirm("Slette denne sangen permanent? Den fjernes fra R2 og Supabase."))return;
   const beat = state.beats.find(b=>b.id===id);
   state.beats=state.beats.filter(b=>b.id!==id);
@@ -565,6 +568,7 @@ function renderAlbumDetail(){
   renderAlbumBeats(beats);
   updateCollectionPlayerUI();
   updateArchiveToolbarButtons?.();
+  renderAlbumComments(currentAlbumId);
 }
 
 let collectionDrag={beatId:null,mode:null};
@@ -676,64 +680,51 @@ function renderAlbumBeats(beats,mode,customEl){
     }
     const stars=Array.from({length:10},(_,i)=>`<button class="${i<(b.rating||0)?"on":""}" onclick="setAlbumBeatRating('${b.id}',${i+1})">★</button>`).join("");
     const dragAttrs=canDrag?`draggable="true" ondragstart="startCollectionDrag(event,'${b.id}','${listMode}')" ondragend="endCollectionDrag()" ondragover="dragBeatOver(event,'${b.id}')" ondragleave="dragBeatLeave(event,'${b.id}')" ondrop="dropCollectionBeat(event,'${b.id}','${listMode}')"`:"";
-    const noAudio=!(b.audio_url||b.url);
-    const noLyric=!(b.lyrics||(b.lyricSections||[]).some(s=>s.text?.trim()));
-    const statusDot = noAudio
-      ? '<span title="Mangler lydfil" style="width:7px;height:7px;border-radius:50%;background:#fb7185;display:inline-block;flex-shrink:0"></span>'
-      : noLyric ? '<span title="Mangler tekst" style="width:7px;height:7px;border-radius:50%;background:#f97316;display:inline-block;flex-shrink:0"></span>' : '';
-    const durStr=b.duration?`<span style="font-size:11px;color:rgba(255,255,255,.3);font-family:system-ui;margin-left:6px">${Math.floor(b.duration/60)}:${String(Math.floor(b.duration%60)).padStart(2,'0')}</span>`:'';
     return`<div${songBorderAttrs(b.id,listMode)} id="abi-${b.id}" data-beat-id="${b.id}" ${dragAttrs}>
-
-      <!-- ── Collapsed row ── -->
-      <div class="ab-top" style="display:flex;align-items:center;gap:0">
-        <div class="ab-cover-wrap" onclick="toggleAlbumBeat('${b.id}')" style="cursor:pointer">${coverHtml}</div>
-        <div class="ab-body" style="display:flex;flex-direction:column;justify-content:center;gap:4px;flex:1;min-width:0">
-          <div style="display:flex;align-items:center;gap:8px;min-width:0">
-            <span style="font-size:11px;color:rgba(255,255,255,.22);font-variant-numeric:tabular-nums;font-weight:700;flex-shrink:0">${String(idx+1).padStart(2,'0')}</span>
-            <div class="ab-title" style="min-width:0;flex:1">${esc(b.name)}</div>
-            ${durStr}
-            ${statusDot}
-            <button class="star-btn${b.favorite?" active":""}" data-fav-id="${b.id}" onclick="event.stopPropagation();toggleFav('${b.id}',this)" style="font-size:17px;padding:0 2px;flex-shrink:0;background:none;border:none;cursor:pointer">★</button>
+      <div class="ab-top">
+        <div class="ab-cover-wrap" onclick="toggleAlbumBeat('${b.id}')">
+          ${coverHtml}
+        </div>
+        <div class="ab-body">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+            <div style="display:flex;align-items:center;gap:8px;min-width:0">
+              <span style="font-size:11px;color:rgba(255,255,255,.25);font-variant-numeric:tabular-nums;font-weight:700;flex-shrink:0">${String(idx+1).padStart(2,'0')}</span>
+              <div class="ab-title" style="min-width:0">${esc(b.name)}</div>
+              ${b.uploadedBy?`<span style="font-size:10px;font-weight:700;letter-spacing:.06em;color:var(--mv-amber,#ff8a1f);opacity:.8;white-space:nowrap">👤 ${esc(b.uploadedBy)}</span>`:''}
+            </div>
+            <button class="star-btn${b.favorite?" active":""}" data-fav-id="${b.id}" onclick="event.stopPropagation();toggleFav('${b.id}',this)" style="font-size:20px;padding:0;flex-shrink:0">★</button>
+            ${(()=>{ const noAudio=!(b.audio_url||b.url); const noLyric=!(b.lyrics||(b.lyricSections||[]).some(s=>s.text?.trim())); if(noAudio) return '<span title="Mangler lydfil" style="width:7px;height:7px;border-radius:50%;background:#fb7185;flex-shrink:0;display:inline-block;margin-top:2px"></span>'; if(noLyric) return '<span title="Mangler tekst" style="width:7px;height:7px;border-radius:50%;background:#f97316;flex-shrink:0;display:inline-block;margin-top:2px"></span>'; return ''; })()}
           </div>
-          <div style="display:flex;align-items:center;gap:8px">
-            <div class="ab-stars" onclick="event.stopPropagation()" style="font-size:11px">${stars}</div>
-            ${b.uploadedBy?`<span style="font-size:10px;font-weight:700;color:var(--mv-amber,#ff8a1f);opacity:.7">👤 ${esc(b.uploadedBy)}</span>`:''}
-            ${listMode==="album"?`<span style="font-size:11px;color:rgba(255,255,255,.3);font-family:system-ui" id="abidone-${b.id}">${b.done||0}%</span>`:''}
-          </div>
+          <div class="ab-stars" onclick="event.stopPropagation()">${stars}</div>
+          ${listMode==="album"?`<div class="progress-wrap" onclick="event.stopPropagation()">
+            <div class="progress-label"><span>Ferdig</span><strong id="abidone-${b.id}">${b.done||0}%</strong></div>
+            <div class="progress-bar"><div id="abibar-${b.id}" style="width:${b.done||0}%"></div></div>
+            <input type="range" min="0" max="100" value="${b.done||0}" style="padding:0;border:none;background:transparent;accent-color:var(--accent);cursor:pointer;width:100%;margin-top:4px" oninput="setAlbumBeatDone('${b.id}',this.value)">
+          </div>`:""}
         </div>
       </div>
-
-      <!-- ── Expanded panel ── -->
-      <div class="ab-expand" style="border-top:1px solid rgba(255,255,255,.06)">
-
-        <!-- Row 1: primary actions -->
-        <div style="display:flex;align-items:center;gap:8px;padding:10px 14px 8px;flex-wrap:wrap">
-          <button class="primary-btn" style="font-size:12px;padding:6px 14px" onclick="playSingleBeat('${b.id}')">▶ Spill</button>
-          <button class="ghost-btn" style="font-size:12px;padding:5px 10px" title="Last ned" onclick="downloadBeat('${b.id}')">⬇ Last ned</button>
-          <label class="ghost-btn" style="cursor:pointer;font-size:12px;padding:5px 10px">🎵 Bytt lydfil<input type="file" accept="audio/*" hidden onchange="uploadBeatAudio('${b.id}',this.files[0])"></label>
-          <label class="ghost-btn" style="cursor:pointer;font-size:12px;padding:5px 10px">🖼 Cover<input type="file" accept="image/*" hidden onchange="setAlbumBeatCover('${b.id}',this)"></label>
-          <button class="small-btn danger" style="font-size:11px;padding:5px 10px;margin-left:auto" onclick="removeFromCollection('${b.id}','${listMode}')">Fjern</button>
-        </div>
-
-        <!-- Row 2: beatname + progress (album only) -->
-        <div style="display:flex;align-items:center;gap:12px;padding:4px 14px 8px;flex-wrap:wrap" onclick="event.stopPropagation()">
-          <div style="display:flex;align-items:center;gap:5px;flex:1;min-width:180px">
-            <span style="font-size:10px;color:rgba(255,255,255,.32);font-family:system-ui;font-weight:700;white-space:nowrap">Beatnavn:</span>
+      <div class="ab-expand">
+        <div class="ab-expand-top-bar">
+          <div id="au-wrap-${b.id}" style="display:flex;align-items:center;gap:8px;width:100%;flex-wrap:wrap">
+            <button class="primary-btn" style="font-size:12px;padding:7px 14px" onclick="playSingleBeat('${b.id}')">▶ Spill</button>
+            <button class="ghost-btn" style="font-size:12px;padding:6px 10px" onclick="downloadBeat('${b.id}')">⬇ Last ned</button>
+            <button class="star-btn${b.favorite?" active":""}" data-fav-id="${b.id}" onclick="event.stopPropagation();toggleFav('${b.id}',this)" title="Favoritt" style="font-size:20px;background:none;border:none;cursor:pointer;padding:0;color:${b.favorite?'#f4a443':'rgba(255,255,255,.25)'}">★</button>
+            <div style="margin-left:auto">${(()=>{ const noAudio=!(b.audio_url||b.url); const noLyric=!(b.lyrics||(b.lyricSections||[]).some(s=>s.text?.trim())); if(noAudio) return '<span title="Mangler lydfil" style="font-size:10px;font-weight:800;padding:2px 7px;border-radius:999px;background:rgba(251,113,133,.15);color:#fb7185;border:1px solid rgba(251,113,133,.3)">Ingen lyd</span>'; if(noLyric) return '<span title="Mangler tekst" style="font-size:10px;font-weight:800;padding:2px 7px;border-radius:999px;background:rgba(249,115,22,.12);color:#f97316;border:1px solid rgba(249,115,22,.3)">Ingen tekst</span>'; return ''; })()}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;padding:4px 0" onclick="event.stopPropagation()">
+            <span style="font-size:10px;color:rgba(255,255,255,.32);font-family:system-ui;font-weight:700;flex-shrink:0">Beatnavn:</span>
             <input value="${esc(b.beatName||b.name)}" placeholder="${esc(b.beatName||b.name)}"
-              style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.7);font-size:12px;font-family:system-ui;outline:none;flex:1;min-width:0;padding:3px 7px;transition:border-color .15s,color .15s"
+              style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.7);font-size:12px;font-family:system-ui;outline:none;flex:1;min-width:0;padding:3px 8px;transition:border-color .15s,color .15s"
               onfocus="this.style.borderColor='rgba(244,164,67,.4)';this.style.color='var(--text)'"
               onblur="this.style.borderColor='rgba(255,255,255,.1)';this.style.color='rgba(255,255,255,.7)';saveBeatName('${b.id}',this.value)"
               onkeydown="if(event.key==='Enter')this.blur();if(event.key==='Escape'){this.value='${(b.beatName||b.name).replace(/'/g,"\\'")}';this.blur()}"
             >
           </div>
-          ${listMode==="album"?`<div style="display:flex;align-items:center;gap:6px;flex:1;min-width:160px">
-            <span style="font-size:10px;color:rgba(255,255,255,.32);font-family:system-ui;font-weight:700;white-space:nowrap">Ferdig: <strong id="abidone-${b.id}" style="color:var(--accent)">${b.done||0}%</strong></span>
-            <input type="range" min="0" max="100" value="${b.done||0}" style="flex:1;padding:0;border:none;background:transparent;accent-color:var(--accent);cursor:pointer" oninput="setAlbumBeatDone('${b.id}',this.value)">
-          </div>`:''}
+          <label class="ghost-btn" style="cursor:pointer;font-size:12px;padding:6px 12px">🎵 Bytt lydfil<input type="file" accept="audio/*" hidden onchange="uploadBeatAudio('${b.id}',this.files[0])"></label>
+          <label class="ghost-btn" style="cursor:pointer;font-size:12px;padding:6px 12px">🖼️ Coverbilde<input type="file" accept="image/*" hidden onchange="setAlbumBeatCover('${b.id}',this)"></label>
+          <button class="small-btn danger" onclick="removeFromCollection('${b.id}','${listMode}')">Fjern fra ${listMode==="mixtape"?"mixtape":"album"}</button>
         </div>
-
-        <!-- Row 3: lyrics editor -->
-        <div class="ab-lyric-editor" style="border-top:1px solid rgba(255,255,255,.05)">
+        <div class="ab-lyric-editor">
           ${lyricsEditorMarkup(b.id,"Skriv tekst, hooks, vers, ideer...")}
         </div>
       </div>
@@ -926,7 +917,7 @@ document.getElementById("confirmAddBeatsBtn").addEventListener("click",()=>{
 });
 
 document.getElementById("deleteAlbumBtn").addEventListener("click",()=>{
-  if(!requireAdmin('slette album')) return;
+  if(isProducerUser()){showToast("Produsentmodus: sletting er låst");return;}
   const a=state.albums.find(x=>x.id===currentAlbumId);if(!a)return;
   showDeleteConfirm(`Slette albumet "${a.name}"?`,()=>{
     state.albums=state.albums.filter(x=>x.id!==currentAlbumId);
@@ -1053,14 +1044,8 @@ function getSortedMixtapeBeats(mt){
   if(mode==="rating")return beats.slice().sort((a,b)=>(b.rating||0)-(a.rating||0)||(b.favorite?1:0)-(a.favorite?1:0)||String(a.name||"").localeCompare(String(b.name||"")));
   if(mode==="newest")return beats.slice().sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)||String(a.name||"").localeCompare(String(b.name||"")));
   if(mode==="name")return beats.slice().sort((a,b)=>String(a.name||"").localeCompare(String(b.name||""),"nb",{sensitivity:"base"}));
-  if(mode==="duration")return beats.slice().sort((a,b)=>(b.duration||0)-(a.duration||0)||String(a.name||"").localeCompare(String(b.name||"")));
-  if(mode==="lyrics"){
-    const lyricLen=b=>{
-      const secs=(b.lyricSections||[]).map(s=>s.text||'').join('');
-      return secs.length || (b.lyrics||'').length;
-    };
-    return beats.slice().sort((a,b)=>lyricLen(b)-lyricLen(a)||String(a.name||"").localeCompare(String(b.name||"")));
-  }
+  if(mode==="duration")return beats.slice().sort((a,b)=>(b.duration||0)-(a.duration||0));
+  if(mode==="lyrics"){const len=b=>(b.lyricSections||[]).map(s=>s.text||'').join('').length||(b.lyrics||'').length;return beats.slice().sort((a,b)=>len(b)-len(a));}
   return beats;
 }
 
@@ -1087,7 +1072,7 @@ function renderMixtapeDetail(){
       </div>
       <div class="mixtape-detail-actions">
         <button class="primary-btn" id="playMixtapeBtn" onclick="playMixtapeFromStart('${mt.id}')">▶ Spill fra start</button>
-        <button class="ghost-btn" onclick="mixtapeShareMode('${mt.id}')" title="Del mixtape">🔗 Del</button>
+        <button class="ghost-btn" onclick="mixtapeShareMode('${mt.id}')">🔗 Del</button>
         <button class="small-btn danger hidden" id="stopMixtapeBtn" onclick="stopCollectionPlayback()">⏹ Stopp</button>
       </div>
     </div>
@@ -1434,32 +1419,18 @@ function addBeatToAlbum(beat){
 
 // ── R2 upload helper (called after beat is added to state) ──
 async function uploadBeatToR2(beat, file) {
-  console.log('[R2] uploadBeatToR2 kalt. beat.id:', beat?.id, '| r2Storage ready:', window.r2Storage?.ready());
-  if (!window.r2Storage || !window.r2Storage.ready()) {
-    console.warn('[R2] r2Storage ikke klar — R2_WORKER_URL satt?', window.R2_WORKER_URL);
-    return;
-  }
+  if (!window.r2Storage || !window.r2Storage.ready()) return;
   try {
-    // Compress large WAV/FLAC/AIFF files before upload
-    if (window.audioCompress?.shouldCompress(file)) {
-      file = await window.audioCompress.compress(file);
-    }
+    if (window.audioCompress?.shouldCompress(file)) file = await window.audioCompress.compress(file);
     const sizeMB = (file.size / (1024*1024)).toFixed(1);
     showToast(`⬆ Laster opp ${sizeMB}MB til R2...`);
     const url = await window.r2Storage.upload(beat.id, file, !!beat.archived);
-    console.log('[R2] Opplasting OK. URL:', url);
-    beat.audio_url = url;
-    beat.r2_key = beat.id;
-    saveState();
-    // Sync to Supabase automatically after R2 upload
-    if (typeof window.pushToSupabase === 'function') {
-      window.pushToSupabase();
-    }
-    showToast('✓ Lastet opp til R2 og synkronisert');
-  } catch (e) {
-    console.error('[R2] Opplasting feilet:', e);
-    showToast('⚠ R2 feilet — lydfil lagret lokalt');
-  }
+    beat.audio_url = url; beat.r2_key = beat.id; saveState();
+    showToast('⬆ R2 OK — synkroniserer...');
+    const pushFn = window.mvSupabaseSync?.pushToSupabase || window.pushToSupabase;
+    if(typeof pushFn==='function'){const ok=await pushFn({manual:false});showToast(ok?'✓ Opplastet og lagret':'⚠ R2 OK, men synk feilet');}
+    else showToast('✓ Lastet opp til R2');
+  } catch (e) { showToast('⚠ R2 feilet: '+(e.message||e)); }
 }
 async function handleMixtapeDrop(e){
   e.preventDefault();document.getElementById("mixtapeDrop").classList.remove("drag-over");
@@ -1531,7 +1502,7 @@ document.getElementById("confirmAddBeatsToMixtapeBtn").addEventListener("click",
   saveState();renderMixtapeDetail();closeModal("addBeatsToMixtapeModal");showToast(`✓ ${checked.length} beat${checked.length===1?"":"s"} lagt til`);
 });
 document.getElementById("deleteMixtapeBtn").addEventListener("click",()=>{
-  if(!requireAdmin('slette mixtape')) return;
+  if(isProducerUser()){showToast("Produsentmodus: sletting er låst");return;}
   const mt=state.mixtapes.find(x=>x.id===currentMixtapeId);if(!mt)return;
   showDeleteConfirm(`Slette mixtapen "${mt.name}"?`,()=>{
     state.mixtapes=state.mixtapes.filter(x=>x.id!==currentMixtapeId);
@@ -1581,30 +1552,43 @@ function showRenameModal(label, currentName, onSave) {
 }
 
 window.renameBeat = function(id) {
-  if(!requireAdmin('gi nytt navn')) return;
+  if(!requireAdmin('gi nytt navn'))return;
   const b = state.beats.find(x => x.id === id); if (!b) return;
   showRenameModal('sang', b.name, val => {
-    b.name = val; saveState();
+    b.name = val; if(!b.beatName) b.beatName=val; saveState();
     if (typeof window.beatsTab?.renderBeatsTab === 'function') window.beatsTab.renderBeatsTab();
     renderAll(); showToast('✓ Navn oppdatert');
   });
 };
 window.renameAlbum = function(id) {
-  if(!requireAdmin('gi nytt navn')) return;
+  if(!requireAdmin('gi nytt navn'))return;
   const a = state.albums.find(x => x.id === id); if (!a) return;
-  showRenameModal('album', a.name, val => {
-    a.name = val; saveState(); renderAlbums();
-    if (id === currentAlbumId) renderAlbumDetail();
-    showToast('✓ Navn oppdatert');
-  });
+  showRenameModal('album', a.name, val => { a.name = val; saveState(); renderAlbums(); if(id===currentAlbumId)renderAlbumDetail(); showToast('✓ Navn oppdatert'); });
 };
 window.renameMixtape = function(id) {
-  if(!requireAdmin('gi nytt navn')) return;
+  if(!requireAdmin('gi nytt navn'))return;
   const mt = state.mixtapes.find(x => x.id === id); if (!mt) return;
-  showRenameModal('mixtape', mt.name, val => {
-    mt.name = val; saveState(); renderMixtapes();
-    if (id === currentMixtapeId) renderMixtapeDetail();
-    showToast('✓ Navn oppdatert');
+  showRenameModal('mixtape', mt.name, val => { mt.name = val; saveState(); renderMixtapes(); if(id===currentMixtapeId)renderMixtapeDetail(); showToast('✓ Navn oppdatert'); });
+};
+
+async function renderAlbumComments(albumId){
+  const el=document.getElementById('albumComments');if(!el)return;
+  const SB_URL='https://ylvqkfdvijqnecuqznyr.supabase.co';
+  const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlsdnFrZmR2aWpxbmVjdXF6bnlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzMzA4MzIsImV4cCI6MjA5MzkwNjgzMn0.bYPTaxQK8n7I7w5Ri2DVYW5_LbFHg2IXkuhHsLTDDqc';
+  el.innerHTML=`<div style="font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.28);margin-bottom:16px">Tilbakemeldinger fra pitch</div><div id="albumCommentsList"><div style="color:var(--muted);font-size:13px">Laster…</div></div>`;
+  try{
+    const res=await fetch(`${SB_URL}/rest/v1/pitch_comments?album_id=eq.${encodeURIComponent(albumId)}&order=created_at.desc&select=*`,{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});
+    const comments=res.ok?await res.json():[];
+    const listEl=document.getElementById('albumCommentsList');if(!listEl)return;
+    listEl.innerHTML=comments.length?comments.map(c=>{const d=new Date(c.created_at);return`<div style="padding:14px 16px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);margin-bottom:10px"><div style="display:flex;align-items:center;gap:10px;margin-bottom:8px"><span style="font-size:13px;font-weight:800;color:var(--accent)">${esc(c.author||'Anonym')}</span><span style="font-size:11px;color:rgba(255,255,255,.28)">${d.toLocaleDateString('no-NO')}</span><button onclick="deleteAlbumComment('${c.id}','${albumId}')" style="margin-left:auto;background:none;border:none;cursor:pointer;color:rgba(255,255,255,.25);font-size:14px" onmouseover="this.style.color='#fb7185'" onmouseout="this.style.color='rgba(255,255,255,.25)'">✕</button></div><div style="font-size:14px;line-height:1.65;color:rgba(255,255,255,.75);white-space:pre-wrap">${esc(c.comment||'')}</div></div>`;}).join(''):`<div style="color:var(--muted);font-size:13px">Ingen tilbakemeldinger ennå.</div>`;
+  }catch(e){document.getElementById('albumCommentsList').innerHTML=`<div style="color:var(--muted)">Kunne ikke laste.</div>`;}
+}
+window.deleteAlbumComment=async function(id,albumId){
+  const SB_URL='https://ylvqkfdvijqnecuqznyr.supabase.co';
+  const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlsdnFrZmR2aWpxbmVjdXF6bnlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzMzA4MzIsImV4cCI6MjA5MzkwNjgzMn0.bYPTaxQK8n7I7w5Ri2DVYW5_LbFHg2IXkuhHsLTDDqc';
+  showDeleteConfirm('Slette denne tilbakemeldingen?',async()=>{
+    await fetch(`${SB_URL}/rest/v1/pitch_comments?id=eq.${id}`,{method:'DELETE',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Prefer':'return=minimal'}});
+    renderAlbumComments(albumId);showToast('🗑 Slettet');
   });
 };
 
