@@ -68,155 +68,85 @@
   }
 
   // ── iOS audio unlock ────────────────────────────────────────
-  let _unlocked=false;
+  // Must happen synchronously on first user touch
+  let _unlocked = false;
   function unlockAudio(){
-    if(_unlocked) return; _unlocked=true;
-    // Play a silent buffer to unlock iOS audio context.
-    // Use a fresh Audio element so we don't disturb bottomPlayer.
-    try{
-      const silent='data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAAABkYXRhAAAAAA==';
-      const tmp=new Audio(silent);
-      tmp.volume=0;
+    if(_unlocked) return; _unlocked = true;
+    try {
+      const tmp = new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAAABkYXRhAAAAAA==');
+      tmp.volume = 0;
       tmp.play().then(()=>tmp.pause()).catch(()=>{});
-    }catch(e){}
+    } catch(e){}
   }
   document.addEventListener('touchstart', unlockAudio, {once:true, passive:true});
 
-  // ── Build overlay ───────────────────────────────────────────
-  function buildOverlay(){
-    const app=document.getElementById('app')||document.querySelector('.app')||document.querySelector('main');
-    if(app) app.style.display='none';
-    document.querySelectorAll('.bottom-player,.role-badge,.producer-login-btn,.global-search-wrap,.toolbar')
-      .forEach(el=>el.style.display='none');
-
-    const wrap=document.createElement('div');
-    wrap.id='mvMobileApp';
-    wrap.innerHTML=`
-      <div class="mv-top-bar">
-        <div class="mv-top-logo">Music Vault</div>
-        <div class="mv-top-user" id="mvTopUser"></div>
-      </div>
-
-      <!-- ① Sanger -->
-      <div class="mv-screen" id="mvScreenSongs">
-        <div class="mv-songs-header">Sanger</div>
-        <div class="mv-search-wrap">
-          <input class="mv-search" id="mvSearch" type="search"
-            placeholder="Søk etter sang…" autocomplete="off" autocorrect="off" spellcheck="false">
-        </div>
-        <div id="mvSongList"></div>
-      </div>
-
-      <!-- ② Spiller (Spotify-stil) -->
-      <div class="mv-screen hidden mv-player-screen" id="mvScreenPlayer">
-
-        <!-- Cover -->
-        <div class="mv-cover-area">
-          <div class="mv-big-cover" id="mvBigCover">🎵</div>
-        </div>
-
-        <!-- Tittel + fav -->
-        <div class="mv-player-info-row">
-          <div class="mv-player-title">
-            <div class="mv-player-name" id="mvPlayerName">Velg en sang</div>
-            <div class="mv-player-sub"  id="mvPlayerSub"></div>
-          </div>
-          <button class="mv-fav-btn" id="mvFavBtn" title="Favoritt">♡</button>
-        </div>
-
-        <!-- Progress -->
-        <div class="mv-progress-area">
-          <input class="mv-seek" id="mvSeek" type="range" min="0" max="1000" value="0">
-          <div class="mv-progress-times">
-            <span id="mvCurrent">0:00</span>
-            <span id="mvDuration">0:00</span>
-          </div>
-        </div>
-
-        <!-- Controls: shuffle | prev | play | next | repeat -->
-        <div class="mv-controls">
-          <button class="mv-ctrl-sm" id="mvShuffleBtn" title="Shuffle">⇌</button>
-          <button class="mv-ctrl-btn" id="mvPrevBtn">⏮</button>
-          <button class="mv-play-btn" id="mvPlayBtn">▶</button>
-          <button class="mv-ctrl-btn" id="mvNextBtn">⏭</button>
-          <button class="mv-ctrl-sm" id="mvSongsBtn" title="Sanglist">≡</button>
-        </div>
-
-        <!-- Sub-tabs -->
-        <div class="mv-player-tabs">
-          <button class="mv-player-tab active" data-tab="tekst">Tekst</button>
-          <button class="mv-player-tab" data-tab="info">Detaljer</button>
-        </div>
-
-        <!-- Sections editor (tab: tekst) -->
-        <div class="mv-sections-wrap" id="mvSectionsWrap">
-          <div class="mv-sections-toolbar">
-            <span class="mv-save-status" id="mvSaveStatus"></span>
-            <button class="mv-add-section-btn" id="mvAddSectionBtn">+ Seksjon</button>
-          </div>
-          <div id="mvSectionsList"></div>
-        </div>
-
-        <!-- Info tab -->
-        <div class="mv-sections-wrap hidden" id="mvInfoWrap">
-          <div id="mvInfoContent" style="padding:24px 24px 60px"></div>
-        </div>
-      </div>
-
-      <!-- ③ Demo -->
-      <div class="mv-screen hidden" id="mvScreenRecord">
-        <div class="mv-record-screen">
-          <div>
-            <div class="mv-record-header">Ta opp demo</div>
-            <div class="mv-record-context" id="mvRecordContext">Ingen sang valgt</div>
-          </div>
-          <div class="mv-record-btn-wrap">
-            <div class="mv-waveform" id="mvWaveform">
-              ${Array.from({length:24},()=>'<div class="mv-wave-bar" style="height:4px"></div>').join('')}
-            </div>
-            <div class="mv-record-timer" id="mvRecordTimer">0:00</div>
-            <button class="mv-record-btn" id="mvRecordBtn">🎤</button>
-            <div class="mv-record-label" id="mvRecordLabel">Trykk for å ta opp</div>
-          </div>
-          <div id="mvRecordingsList"></div>
-        </div>
-      </div>
-
-      <nav class="mv-nav">
-        <button class="mv-nav-btn active" data-screen="songs">
-          <span class="mv-nav-icon">🎵</span>Sanger
-        </button>
-        <button class="mv-nav-btn" data-screen="player">
-          <span class="mv-nav-icon">▶</span>Spiller
-        </button>
-        <button class="mv-nav-btn" data-screen="record">
-          <span class="mv-nav-icon">🎤</span>Demo
-        </button>
-      </nav>`;
-    document.body.appendChild(wrap);
+  // ── Audio: iOS-safe play ─────────────────────────────────────
+  function getDirectUrl(id){
+    const st = getState(); if(!st) return null;
+    const b = (st.beats||[]).find(x=>x.id===id); if(!b) return null;
+    return b.audio_url || b.url || null;
   }
 
-  // ── Navigation ───────────────────────────────────────────────
-  function showScreen(name){
-    _activeScreen=name;
-    const map={songs:'mvScreenSongs',player:'mvScreenPlayer',record:'mvScreenRecord'};
-    Object.entries(map).forEach(([k,id])=>document.getElementById(id)?.classList.toggle('hidden',k!==name));
-    document.querySelectorAll('.mv-nav-btn').forEach(btn=>btn.classList.toggle('active',btn.dataset.screen===name));
-    if(name==='player'){ updatePlayerUI(); renderSections(); }
-    if(name==='record')  updateRecordScreen();
+  function tapPlay(id){
+    unlockAudio();
+    const bp = window.bottomPlayer; if(!bp) return;
+    const cur = bp.queue?.[bp.index]?.id;
+
+    if(cur === id){
+      if(bp.audio.paused) bp.audio.play().catch(()=>{});
+      else bp.audio.pause();
+      setTimeout(()=>{ renderSongList(); updatePlayerUI(); }, 80);
+      return;
+    }
+
+    _currentBeatId = id;
+    const url = getDirectUrl(id);
+    if(!url){ showToastMobile('Ingen lydfil på denne sangen'); updatePlayerUI(); return; }
+
+    const a = bp.audio;
+    a.pause();
+    a.src = url;
+    a.volume = 1;
+    a.load();
+
+    const beat = (getState()?.beats||[]).find(b=>b.id===id);
+    if(beat){
+      bp.queue   = [beat];
+      bp.index   = 0;
+      bp.context = {type:'beat', id, label:'Beat', beatId:id};
+      bp.started = true;
+    }
+
+    const p = a.play();
+    if(p) p.catch(e=>{ if(e.name==='NotAllowedError') showToastMobile('Trykk ▶ for å starte'); });
+
+    if(typeof window.updateBottomUI === 'function') window.updateBottomUI();
+    setTimeout(()=>{ renderSongList(); updatePlayerUI(); }, 150);
   }
 
-  function showPlayerTab(tab){
-    _activeTab=tab;
-    document.querySelectorAll('.mv-player-tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));
-    document.getElementById('mvSectionsWrap')?.classList.toggle('hidden', tab!=='tekst');
-    document.getElementById('mvInfoWrap')?.classList.toggle('hidden', tab!=='info');
-    if(tab==='info') renderInfoTab();
+  function showToastMobile(msg){
+    if(typeof showToast === 'function'){ showToast(msg); return; }
+    let t = document.getElementById('mvToast');
+    if(!t){
+      t = document.createElement('div'); t.id = 'mvToast';
+      Object.assign(t.style, {position:'fixed',bottom:'110px',left:'50%',transform:'translateX(-50%)',
+        background:'rgba(20,18,16,.95)',color:'#f4ede4',padding:'10px 18px',
+        fontSize:'13px',fontFamily:'system-ui',fontWeight:'700',
+        zIndex:'10050',borderRadius:'8px',pointerEvents:'none',
+        transition:'opacity .25s',whiteSpace:'nowrap'});
+      document.body.appendChild(t);
+    }
+    t.textContent = msg; t.style.opacity = '1';
+    clearTimeout(t._t); t._t = setTimeout(()=>t.style.opacity='0', 2500);
   }
 
-  // ── Song list ────────────────────────────────────────────────
-  // ── Folder expand state (persists during session) ───────────────
-  const _folderOpen = {};
+  function selectBeat(id){
+    _currentBeatId = id;
+    // Start playback immediately — tapPlay is synchronous so iOS gesture is preserved
+    tapPlay(id);
+    renderSongList();
+    showScreen('player');
+  }
 
   function renderSongList(){
     const c = document.getElementById('mvSongList');
@@ -228,7 +158,6 @@
       const q     = _searchQuery.toLowerCase();
       const beats = (st && st.beats ? st.beats : []).filter(b => !b.archived);
 
-      // ── Search mode ─────────────────────────────────────────────
       if(q){
         const hits = beats.filter(b => b.name.toLowerCase().includes(q));
         c.innerHTML = hits.length
@@ -237,17 +166,14 @@
         return;
       }
 
-      // ── No beats at all ──────────────────────────────────────────
       if(!beats.length){
         c.innerHTML = `<div class="mv-empty"><div class="mv-empty-icon">🎵</div>Ingen sanger ennå</div>`;
         return;
       }
 
-      // ── Build id→beat lookup ─────────────────────────────────────
       const byId = {};
       beats.forEach(b => { byId[b.id] = b; });
 
-      // ── Build sections from albums + mixtapes ────────────────────
       const html = [];
       const usedIds = new Set();
 
@@ -257,45 +183,35 @@
       ].filter(x => x.col && !x.col.archived);
 
       collections.forEach(({col, type}) => {
-        const colBeats = (col.beatIds || [])
-          .map(id => byId[id])
-          .filter(Boolean);
+        const colBeats = (col.beatIds || []).map(id => byId[id]).filter(Boolean);
         if(!colBeats.length) return;
-
         colBeats.forEach(b => usedIds.add(b.id));
-
-        const id     = col.id;
-        const isOpen = _folderOpen[id] !== false;
-        const cover  = col.cover
-          ? `<img src="${esc(col.cover)}" alt="">`
-          : (type === 'album' ? '💿' : '📼');
-        const curId    = bp && bp.queue && bp.queue[bp.index] ? bp.queue[bp.index].id : null;
-        const isPlaying = curId && !bp.audio.paused && colBeats.some(b => b.id === curId);
-
-        const beatsHtml = colBeats.map((b, i) => beatRowHTML(b, bp, i + 1)).join('');
-
+        const id      = col.id;
+        const isOpen  = _folderOpen[id] !== false;
+        const cover   = col.cover ? `<img src="${esc(col.cover)}" alt="">` : (type==='album'?'💿':'📼');
+        const curId   = bp?.queue?.[bp.index]?.id;
+        const isPlaying = curId && !bp.audio.paused && colBeats.some(b=>b.id===curId);
         html.push(`
           <div class="mv-folder-section" id="mvfolder-${esc(id)}">
-            <div class="mv-folder-header${isPlaying ? ' playing' : ''}"
+            <div class="mv-folder-header${isPlaying?' playing':''}"
                  onclick="window.mvMobile.toggleFolder('${esc(id)}')">
               <div class="mv-folder-cover">${cover}</div>
               <div class="mv-folder-info">
                 <div class="mv-folder-name">${esc(col.name)}</div>
-                <div class="mv-folder-meta">${type === 'album' ? 'Album' : 'Mixtape'} · ${colBeats.length} sang${colBeats.length === 1 ? '' : 'er'}</div>
+                <div class="mv-folder-meta">${type==='album'?'Album':'Mixtape'} · ${colBeats.length} sang${colBeats.length===1?'':'er'}</div>
               </div>
               <button class="mv-folder-play-col"
                       onclick="event.stopPropagation();window.mvMobile.playCollection('${type}','${esc(id)}')">
-                ${isPlaying ? '⏸' : '▶'}
+                ${isPlaying?'⏸':'▶'}
               </button>
-              <span class="mv-folder-chevron${isOpen ? '' : ' closed'}">▾</span>
+              <span class="mv-folder-chevron${isOpen?'':' closed'}">▾</span>
             </div>
-            <div class="mv-folder-beats${isOpen ? '' : ' hidden'}">
-              ${beatsHtml}
+            <div class="mv-folder-beats${isOpen?'':' hidden'}">
+              ${colBeats.map((b,i)=>beatRowHTML(b,bp,i+1)).join('')}
             </div>
           </div>`);
       });
 
-      // ── Loose beats ──────────────────────────────────────────────
       const loose = beats.filter(b => !usedIds.has(b.id));
       if(loose.length){
         html.push(`
@@ -304,40 +220,32 @@
               <div class="mv-folder-cover">🎵</div>
               <div class="mv-folder-info">
                 <div class="mv-folder-name">Andre sanger</div>
-                <div class="mv-folder-meta">${loose.length} sang${loose.length === 1 ? '' : 'er'}</div>
+                <div class="mv-folder-meta">${loose.length} sang${loose.length===1?'':'er'}</div>
               </div>
             </div>
             <div class="mv-folder-beats">
-              ${loose.map(b => beatRowHTML(b, bp, null)).join('')}
+              ${loose.map(b=>beatRowHTML(b,bp,null)).join('')}
             </div>
           </div>`);
       }
 
-      // ── No collections found — flat fallback ─────────────────────
-      if(!html.length){
-        c.innerHTML = beats.map(b => beatRowHTML(b, bp, null)).join('');
-        return;
-      }
-
+      if(!html.length){ c.innerHTML = beats.map(b=>beatRowHTML(b,bp,null)).join(''); return; }
       c.innerHTML = html.join('');
 
     } catch(err) {
       console.error('[mvMobile] renderSongList krasjet:', err);
-      // Emergency flat fallback
       try {
-        const st = getState();
-        const beats = (st && st.beats ? st.beats : []).filter(b => !b.archived);
+        const beats = (getState()?.beats||[]).filter(b=>!b.archived);
         const bp = window.bottomPlayer;
-        c.innerHTML = beats.length
-          ? beats.map(b => beatRowHTML(b, bp, null)).join('')
+        c.innerHTML = beats.length ? beats.map(b=>beatRowHTML(b,bp,null)).join('')
           : `<div class="mv-empty"><div class="mv-empty-icon">🎵</div>Ingen sanger ennå</div>`;
       } catch(e2) {
-        c.innerHTML = `<div class="mv-empty"><div class="mv-empty-icon">🎵</div>Kunne ikke laste sanger</div>`;
+        c.innerHTML = `<div class="mv-empty">Kunne ikke laste sanger</div>`;
       }
     }
   }
 
-  function beatRowHTML(b,bp,trackNum){
+  function beatRowHTML(b, bp, trackNum){
     const cur=bp?.queue?.[bp.index]?.id;
     const playing=cur===b.id&&bp&&!bp.audio.paused;
     const cover=b.cover?`<img src="${esc(b.cover)}" alt="">`:'🎵';
@@ -357,83 +265,6 @@
       </div>`;
   }
 
-  function selectBeat(id){
-    _currentBeatId=id;
-    renderSongList();
-    showScreen('player');
-  }
-
-  // ── Audio: iOS-safe play ─────────────────────────────────────
-  function tapPlay(id){
-    const bp=window.bottomPlayer; if(!bp) return;
-    const cur=bp.queue?.[bp.index]?.id;
-
-    // Resume if same beat is paused
-    if(cur===id && bp.audio.paused){
-      bp.audio.play().catch(()=>{});
-      setTimeout(()=>{renderSongList();updatePlayerUI();},100);
-      return;
-    }
-
-    // Pause if same beat is playing
-    if(cur===id && !bp.audio.paused){
-      bp.audio.pause();
-      setTimeout(()=>{renderSongList();updatePlayerUI();},100);
-      return;
-    }
-
-    // New beat — iOS Safari requires play() to be called synchronously in gesture.
-    // Strategy: call play() immediately on the existing audio element (which is
-    // already unlocked from first touch), then swap the src via getPlayableAudioUrl.
-    _currentBeatId = id;
-    const a = bp.audio;
-
-    // Kick off url fetch in background
-    getPlayableAudioUrlMobile(id).then(url=>{
-      if(!url) return;
-      a.pause();
-      a.src = url;
-      a.load();
-      const p = a.play();
-      if(p) p.catch(e=>{
-        if(e.name==='NotAllowedError') showToastMobile('Trykk ▶ for å spille');
-      });
-      // Set up queue context so db.js bottomPlayer works normally
-      const beat = (getState()?.beats||[]).find(b=>b.id===id);
-      if(beat){
-        bp.queue = [beat];
-        bp.index = 0;
-        bp.context = {type:'beat',id,label:'Beat'};
-        bp.started = true;
-        if(typeof window.updateBottomUI==='function') window.updateBottomUI();
-      }
-      setTimeout(()=>{renderSongList();updatePlayerUI();},200);
-    });
-
-    // Immediately update UI so it looks responsive
-    updatePlayerUI();
-  }
-
-  function showToastMobile(msg){
-    if(typeof showToast==='function'){ showToast(msg); return; }
-    let t=document.getElementById('mvToast');
-    if(!t){t=document.createElement('div');t.id='mvToast';Object.assign(t.style,{position:'fixed',bottom:'100px',left:'50%',transform:'translateX(-50%)',background:'rgba(20,18,16,.95)',color:'#f4ede4',padding:'10px 18px',fontSize:'13px',fontFamily:'system-ui',fontWeight:'700',zIndex:'10050',borderRadius:'8px',pointerEvents:'none',transition:'opacity .25s'});document.body.appendChild(t);}
-    t.textContent=msg;t.style.opacity='1';
-    clearTimeout(t._t);t._t=setTimeout(()=>t.style.opacity='0',2500);
-  }
-
-  async function getPlayableAudioUrlMobile(id){
-    const st=getState(); if(!st) return null;
-    const beat=(st.beats||[]).find(b=>b.id===id); if(!beat) return null;
-    // Use db.js getPlayableAudioUrl if available
-    if(typeof window.getPlayableAudioUrl==='function'){
-      try{ return await window.getPlayableAudioUrl(beat); }catch(e){}
-    }
-    // Fallback: direct URL
-    return beat.audio_url||beat.url||null;
-  }
-
-  // ── Player UI ─────────────────────────────────────────────────
   function updatePlayerUI(){
     const beat=getCurrentBeat();
     const bp=window.bottomPlayer;
@@ -850,4 +681,5 @@
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',()=>setTimeout(init,300));
   else setTimeout(init,300);
 
+  // ── End of IIFE ─────────────────────────────────────────────
 })();
