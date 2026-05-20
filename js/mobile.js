@@ -93,6 +93,7 @@
     return b.audio_url || b.url || null;
   }
 
+  // Try playing directly; if iOS audio element errors, fetch as blob and retry
   function tapPlay(id){
     unlockAudio();
     const bp = window.bottomPlayer; if(!bp) return;
@@ -110,6 +111,10 @@
     if(!url){ showToastMobile('Ingen lydfil på denne sangen'); updatePlayerUI(); return; }
 
     const a = bp.audio;
+
+    // Remove previous error handler to avoid stale listeners
+    a.onerror = null;
+
     a.pause();
     a.src = url;
     a.volume = 1;
@@ -123,8 +128,31 @@
       bp.started = true;
     }
 
+    // One-shot error handler: if direct URL fails on iOS, fetch as blob and retry
+    a.onerror = () => {
+      a.onerror = null;
+      showToastMobile('Laster sang…');
+      fetch(url, {cache:'default'})
+        .then(r => { if(!r.ok) throw new Error(r.status); return r.blob(); })
+        .then(blob => {
+          const blobUrl = URL.createObjectURL(blob);
+          a.src = blobUrl;
+          a.load();
+          return a.play();
+        })
+        .then(()=>{ updatePlayerUI(); renderSongList(); })
+        .catch(e => {
+          console.error('[mvMobile] blob-fallback feilet:', e);
+          showToastMobile('Kunne ikke spille av denne sangen');
+          updatePlayerUI();
+        });
+    };
+
     const p = a.play();
-    if(p) p.catch(e=>{ if(e.name==='NotAllowedError') showToastMobile('Trykk ▶ for å starte'); });
+    if(p) p.catch(e=>{
+      if(e.name === 'NotAllowedError') showToastMobile('Trykk ▶ for å starte');
+      // Other errors handled by a.onerror above
+    });
 
     if(typeof window.updateBottomUI === 'function') window.updateBottomUI();
     setTimeout(()=>{ renderSongList(); updatePlayerUI(); }, 150);
