@@ -92,7 +92,13 @@ bottomPlayer.audio.addEventListener("loadedmetadata",function(){
 });
 bottomPlayer.audio.addEventListener("play",updateBottomUI);
 bottomPlayer.audio.addEventListener("pause",updateBottomUI);
-bottomPlayer.audio.addEventListener("error",()=>{const b=bottomPlayer.queue[bottomPlayer.index];if(b)showToast(`Kunne ikke spille "${b.name}"`);bottomNext(true);});
+bottomPlayer.audio.addEventListener("error",()=>{
+  // If mobile.js has set a.onerror for blob-fallback, let it handle the error
+  if(bottomPlayer.audio.onerror) return;
+  const b=bottomPlayer.queue[bottomPlayer.index];
+  if(b) showToast(`Kunne ikke spille "${b.name}"`);
+  bottomNext(true);
+});
 function beatsFromIds(ids){return (ids||[]).map(id=>state.beats.find(b=>b.id===id)).filter(b=>b&&!b.archived);}
 function fmtTime(sec){sec=Number(sec||0);if(!isFinite(sec))return "0:00";const m=Math.floor(sec/60);const s=Math.floor(sec%60);return `${m}:${String(s).padStart(2,"0")}`;}
 async function getPlayableAudioUrl(beat){
