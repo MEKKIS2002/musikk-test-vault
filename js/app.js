@@ -301,7 +301,7 @@
         <div class="track-play-icon">▶</div>
         <span class="track-name">${b.name.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</span>
         <span class="track-dur">${dStr}</span>
-        <button class="like-btn" id="like-${b.id}" onclick="event.stopPropagation();toggleLike('${b.id}')" title="Lik denne sangen">♡ <span class="like-count" id="lc-${b.id}">…</span></button>
+        <button class="like-btn" id="like-${b.id}" onclick="event.stopPropagation();toggleLike('${b.id}')" title="Lik denne sangen"><span class="like-count" id="lc-${b.id}">♡</span></button>
       </div>`;
     }).join('');
 
@@ -428,7 +428,7 @@ async function loadLikeCounts(){
       const btn=document.getElementById('like-'+b.id);
       const n=counts[b.id]||0;
       if(el) el.textContent=n>0?n+'♡':'♡';
-      if(btn&&liked[b.id]) btn.classList.add('liked');
+      if(btn) btn.classList.toggle('liked',!!liked[b.id]);
     });
   }catch(e){console.warn('Likes load failed:',e);}
 }
