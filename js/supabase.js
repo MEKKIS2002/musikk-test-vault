@@ -42,7 +42,7 @@ async function checkAdminRole(userId) {
   const { data, error } = await withTimeout(
     supabaseClient
       .from("profiles")
-      .select("role")
+      .select("role, package")
       .eq("id", userId)
       .maybeSingle(),
     15000,
@@ -54,6 +54,11 @@ async function checkAdminRole(userId) {
     showAdminMessage(`Kunne ikke sjekke admin-rolle: ${error.message}`, "error");
     return false;
   }
+
+  // Set package from profiles (falls back to 'admin' if not set)
+  const pkg = data?.package || (data?.role === 'admin' ? 'admin' : 'viewer');
+  if (typeof window.setPackage === 'function') window.setPackage(pkg);
+  else sessionStorage.setItem('mv_package', pkg);
 
   return data?.role === "admin";
 }
@@ -94,6 +99,7 @@ async function updateAdminUi() {
       if (logoutBox) logoutBox.style.display = "grid";
       showAdminMessage("Du er logget inn som admin.", "success");
       document.body.classList.add("admin-mode");
+      if (typeof window.applyPackage === 'function') window.applyPackage();
     } else if (user) {
       if (statusEl) statusEl.textContent = "Innlogget, men ikke admin";
       if (emailEl) emailEl.textContent = user.email || "Innlogget bruker";
@@ -264,7 +270,6 @@ setTimeout(updateAdminUi, 50);
   const SYNC_STATUS_ID = 'supabaseSyncStatus';
   let isPullingFromSupabase = false;
   let pushTimer = null;
-  let pushMaxTimer = null;
   let lastPushAt = 0;
 
   function client(){ return window.supabaseClient || null; }
@@ -478,15 +483,7 @@ setTimeout(updateAdminUi, 50);
     }
   }
 
-  async function upsertInBatches(table, rows, batchSize=20){
-    for(let i=0;i<rows.length;i+=batchSize){
-      const batch=rows.slice(i,i+batchSize);
-      const r=await client().from(table).upsert(batch,{onConflict:'id'});
-      if(r.error) throw r.error;
-    }
-  }
-
-  async function pushToSupabase({manual=false, retries=2}={}){
+  async function pushToSupabase({manual=false}={}){
     const st = appState();
     if(!st || !client()) { say('Supabase er ikke konfigurert.', 'warning'); return false; }
     if(!window.isAdminMode){
@@ -497,36 +494,27 @@ setTimeout(updateAdminUi, 50);
 
     say('Lagrer til Supabase...', 'info');
     try{
-      const beats    = (st.beats    || []).map(packBeat);
-      const albums   = (st.albums   || []).map(packAlbum);
+      const beats = (st.beats || []).map(packBeat);
+      const albums = (st.albums || []).map(packAlbum);
       const mixtapes = (st.mixtapes || []).map(packMixtape);
 
-      await deleteMissingRows('beats',    beats.map(x=>x.id));
-      await deleteMissingRows('albums',   albums.map(x=>x.id));
+      await deleteMissingRows('beats', beats.map(x=>x.id));
+      await deleteMissingRows('albums', albums.map(x=>x.id));
       await deleteMissingRows('mixtapes', mixtapes.map(x=>x.id));
 
-      // Use batch upsert to avoid payload size limits
-      if(beats.length)    await upsertInBatches('beats',    beats);
-      if(albums.length)   await upsertInBatches('albums',   albums);
-      if(mixtapes.length) await upsertInBatches('mixtapes', mixtapes);
+      if(beats.length){ const r = await client().from('beats').upsert(beats, { onConflict:'id' }); if(r.error) throw r.error; }
+      if(albums.length){ const r = await client().from('albums').upsert(albums, { onConflict:'id' }); if(r.error) throw r.error; }
+      if(mixtapes.length){ const r = await client().from('mixtapes').upsert(mixtapes, { onConflict:'id' }); if(r.error) throw r.error; }
 
-      await syncRelations('album_beats',   'album_id',   st.albums   || []);
+      await syncRelations('album_beats', 'album_id', st.albums || []);
       await syncRelations('mixtape_beats', 'mixtape_id', st.mixtapes || []);
 
       lastPushAt = Date.now();
-      _hasPendingChanges = false;
       say(`Lagret til Supabase ${new Date(lastPushAt).toLocaleTimeString()}.`, 'success');
       if(manual) toast('✓ Lokale data migrert til Supabase');
       return true;
     }catch(err){
       console.error('Supabase push-feil:', err);
-      // Auto-retry
-      if(retries > 0){
-        console.warn(`[Supabase] Retry ${retries} om 3s...`);
-        setTimeout(()=>pushToSupabase({manual, retries:retries-1}), 3000);
-        say(`Synkronisering feilet — prøver igjen... (${err.message||err})`, 'warning');
-        return false;
-      }
       const hint = /metadata/i.test(err.message || '')
         ? ' Mangler metadata-kolonne. Kjør SQL-en som står under Supabase sync-panelet.'
         : '';
@@ -538,27 +526,7 @@ setTimeout(updateAdminUi, 50);
   function schedulePush(){
     if(isPullingFromSupabase || !canWrite()) return;
     clearTimeout(pushTimer);
-    pushTimer = setTimeout(()=>{
-      clearTimeout(pushMaxTimer); pushMaxTimer = null;
-      pushToSupabase();
-    }, 1500);
-    // maxWait: force push after 8s even during continuous changes
-    if(!pushMaxTimer){
-      pushMaxTimer = setTimeout(()=>{
-        pushMaxTimer = null;
-        clearTimeout(pushTimer); pushTimer = null;
-        pushToSupabase();
-      }, 8000);
-    }
-    // Mark as having unpushed changes
-    _hasPendingChanges = true;
-    updatePendingIndicator();
-  }
-
-  let _hasPendingChanges = false;
-  function updatePendingIndicator(){
-    const el = document.getElementById('supabaseSyncStatus');
-    if(el && _hasPendingChanges) el.textContent = '⏳ Venter på synkronisering…';
+    pushTimer = setTimeout(()=>pushToSupabase(), 900);
   }
 
   function installSyncPanel(){
@@ -619,17 +587,6 @@ setTimeout(updateAdminUi, 50);
   // Expose directly so db.js and r2-storage.js can call it
   window.pushToSupabase = pushToSupabase;
   window.pullFromSupabase = pullFromSupabase;
-
-  // Warn before closing if there are unpushed changes
-  window.addEventListener('beforeunload', e => {
-    if(_hasPendingChanges && canWrite()){
-      // Attempt emergency sync
-      pushToSupabase({retries:0}).catch(()=>{});
-      e.preventDefault();
-      e.returnValue = 'Du har endringer som ikke er synkronisert til skyen. Vent litt og prøv igjen.';
-      return e.returnValue;
-    }
-  });
 
   installSyncPanel();
   setTimeout(()=>pullFromSupabase(), 800);
