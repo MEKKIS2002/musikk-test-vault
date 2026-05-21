@@ -101,10 +101,9 @@
 
 
   function installRoleBadge(){
-    let badge=document.getElementById('roleBadge');
-    if(!badge){badge=document.createElement('div');badge.id='roleBadge';badge.className='role-badge';document.body.appendChild(badge);}
-    const role=isProducerUser()?'Produsent':'Admin';
-    badge.textContent=role;badge.className='role-badge '+role.toLowerCase();
+    // Erstattet av mvUserCorner i lock.js — ikke gjør noe
+    const old = document.getElementById('roleBadge');
+    if(old) old.remove();
   }
 
 
@@ -278,117 +277,7 @@
     }
   };
 
-  // ── Mixtape share ────────────────────────────────────────────────────────
-  window.mixtapeShareMode = async function(mixtapeId) {
-    const mt = state.mixtapes?.find(m=>m.id===mixtapeId);
-    if (!mt) return;
-    const beats = beatsFromIds(mt.beatIds);
-    const WORKER = window.R2_WORKER_URL || 'https://beat-vault.marcus-aas-mekiassen.workers.dev';
-
-    // If already shared and enabled, show dialog with existing URL
-    if (mt._shareToken && mt._shareEnabled !== false) {
-      showShareDialog(mixtapeId, `${WORKER}/share/${mt._shareToken}`, WORKER, mt);
-      return;
-    }
-
-    // Generate NEW token — new URL every time
-    const token = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
-    showToast('Publiserer mixtape...');
-    try {
-      const payload = {
-        mt: { id: mt.id, name: mt.name, cover: mt.cover||'', color: mt.color||'#f4a443' },
-        beats: beats.map(b => ({
-          id: b.id, name: b.name,
-          duration: b.duration||0,
-          audio_url: b.audio_url||b.url||''
-        }))
-      };
-      const res = await fetch(`${WORKER}/share/${token}`, {
-        method: 'PUT',
-        headers: {'Content-Type':'application/json'},
-        body: JSON.stringify(payload)
-      });
-      const data = await res.json();
-      if (!data.ok) throw new Error(data.error||'Ukjent feil');
-      mt._shareToken = token;
-      mt._shareUrl = data.url;
-      mt._shareEnabled = true;
-      if(typeof saveState==='function') saveState();
-      showShareDialog(mixtapeId, data.url, WORKER, mt);
-    } catch(e) {
-      showToast('⚠ Kunne ikke publisere: ' + e.message);
-    }
-  };
-
-  function showShareDialog(mixtapeId, shareUrl, workerUrl, mt) {
-    let modal = document.getElementById('mvShareModal');
-    if (!modal) {
-      modal = document.createElement('div');
-      modal.id = 'mvShareModal';
-      modal.className = 'modal';
-      modal.innerHTML = `<div class="modal-card modal-sm" style="max-width:440px">
-        <div class="modal-hd">
-          <div class="modal-hd-left"><h2>Del mixtape</h2></div>
-          <div class="modal-hd-right"><button class="close-btn" onclick="document.getElementById('mvShareModal').classList.remove('open')">×</button></div>
-        </div>
-        <div class="modal-body" style="padding:22px 28px 28px;display:grid;gap:16px">
-          <div style="font-size:12px;color:rgba(255,255,255,.5);font-family:system-ui">Del denne lenken med alle som skal høre på</div>
-          <div style="display:flex;gap:8px">
-            <input id="mvShareUrl" readonly style="flex:1;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#f4ede4;padding:9px 12px;font-size:12px;font-family:system-ui;outline:none">
-            <button id="mvShareCopyBtn" class="primary-btn" style="font-size:12px;padding:8px 16px" onclick="navigator.clipboard.writeText(document.getElementById('mvShareUrl').value).then(()=>{this.textContent='✓ Kopiert!';setTimeout(()=>this.textContent='Kopier',2000)})">Kopier</button>
-          </div>
-          <div style="display:flex;gap:8px">
-            <button class="ghost-btn" style="font-size:12px" onclick="window.open(document.getElementById('mvShareUrl').value,'_blank')">🔗 Åpne</button>
-            <button id="mvShareUpdateBtn" class="ghost-btn" style="font-size:12px">🔄 Oppdater innhold</button>
-            <button id="mvShareDisableBtn" class="small-btn danger" style="font-size:12px;margin-left:auto">⛔ Deaktiver</button>
-          </div>
-          <div id="mvShareStatus" style="font-size:11px;color:rgba(255,255,255,.35);font-family:system-ui;min-height:16px"></div>
-        </div>
-      </div>`;
-      document.body.appendChild(modal);
-      modal.addEventListener('click', e => { if(e.target===modal) modal.classList.remove('open'); });
-    }
-    document.getElementById('mvShareUrl').value = shareUrl;
-    document.getElementById('mvShareStatus').textContent = '';
-
-    // Update button
-    document.getElementById('mvShareUpdateBtn').onclick = async () => {
-      const status = document.getElementById('mvShareStatus');
-      status.textContent = 'Oppdaterer...';
-      try {
-        const beats = beatsFromIds(mt.beatIds);
-        const payload = {
-          mt: { id: mt.id, name: mt.name, cover: mt.cover||'', color: mt.color||'#f4a443' },
-          beats: beats.map(b => ({id:b.id,name:b.name,duration:b.duration||0,audio_url:b.audio_url||b.url||''}))
-        };
-        const token = mt._shareToken;
-        const res = await fetch(`${workerUrl}/share/${token}`, {method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-        const data = await res.json();
-        status.textContent = data.ok ? '✓ Innhold oppdatert' : '⚠ '+data.error;
-      } catch(e) { status.textContent = '⚠ '+e.message; }
-    };
-
-    // Disable button — deactivates current token, clears it so next share gets new URL
-    document.getElementById('mvShareDisableBtn').onclick = async () => {
-      if (!confirm('Deaktivere delingen? Den nåværende lenken vil slutte å fungere.\nNeste gang du deler vil du få en ny lenke.')) return;
-      const status = document.getElementById('mvShareStatus');
-      status.textContent = 'Deaktiverer...';
-      try {
-        const token = mt._shareToken;
-        await fetch(`${workerUrl}/share/${token}`, {method:'DELETE'});
-        mt._shareEnabled = false;
-        mt._shareToken = null;
-        mt._shareUrl = null;
-        if(typeof saveState==='function') saveState();
-        status.textContent = '✓ Deling deaktivert. Neste deling gir ny lenke.';
-        setTimeout(()=>modal.classList.remove('open'), 2000);
-      } catch(e) { status.textContent = '⚠ '+e.message; }
-    };
-
-    modal.classList.add('open');
-  }
-
-  // ── Album pitch ────────────────────────────────────────────────────────────
+  // ── Pitch mode (one-pager) ────────────────────────────────────────────────
   window.albumPitchMode = function(albumId) {
     const album = state.albums?.find(a=>a.id===albumId);
     if (!album) return;
@@ -398,340 +287,35 @@
     const STATUS_COLORS = {'Idé':'#a855f7','Skriving':'#60a5fa','Innspilling':'#f97316','Mixing':'#f4a443','Ferdig':'#34d399'};
     const stCol = STATUS_COLORS[album.status||'Idé'] || '#f4a443';
     const mid = Math.ceil(beats.length/2);
-    const coverUrl = album.cover || '';
-
-    const beatsJson = JSON.stringify(beats.map(b=>({
-      id: b.id,
-      name: b.name,
-      duration: b.duration||0,
-      audio_url: b.audio_url||b.url||''
-    })));
-
     const rows = beats.map((b,i)=>{
       const sideDiv = beats.length>=4&&(i===0||i===mid)
-        ? `<div class="side-label">${i===0?'A':'B'}-SIDE</div>` : '';
+        ? '<div style="font-size:9px;font-weight:800;letter-spacing:.18em;color:'+stCol+';text-transform:uppercase;font-family:system-ui;padding:12px 0 4px;opacity:.6">'+(i===0?'A-SIDE':'B-SIDE')+'</div>' : '';
       const d=Number(b.duration||0), dStr=d>0?Math.floor(d/60)+':'+String(Math.floor(d%60)).padStart(2,'0'):'';
-      return sideDiv+`<div class="track-row" data-idx="${i}" onclick="playPreview(${i})">
-        <span class="track-num">${String(i+1).padStart(2,'0')}</span>
-        <div class="track-play-icon">▶</div>
-        <span class="track-name">${b.name.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</span>
-        <span class="track-dur">${dStr}</span>
-      </div>`;
+      return sideDiv+'<div style="display:flex;align-items:center;gap:14px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.05)">'
+        +'<span style="font-size:11px;color:rgba(255,255,255,.25);min-width:24px;font-family:system-ui">'+String(i+1).padStart(2,'0')+'</span>'
+        +'<span style="font-size:15px;font-weight:700;flex:1">'+b.name.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</span>'
+        +'<span style="font-size:11px;color:rgba(255,255,255,.3);font-family:system-ui">'+dStr+'</span></div>';
     }).join('');
-
-    const html = `<!DOCTYPE html><html lang="no"><head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${album.name} — Pitch</title>
-<style>
-*{box-sizing:border-box;margin:0;padding:0}
-body{background:#0d0b09;color:#f4ede4;font-family:Georgia,serif;min-height:100vh;display:flex;align-items:flex-start;justify-content:center;padding:60px 20px}
-.page{max-width:680px;width:100%}
-
-/* ── Hero ── */
-.hero{display:flex;align-items:flex-start;gap:40px;margin-bottom:56px}
-
-/* Square sleeve */
-.sleeve-wrap{position:relative;width:220px;height:200px;flex-shrink:0}
-.sleeve{width:200px;height:200px;background:rgba(255,255,255,.06);overflow:hidden;position:relative;z-index:2;box-shadow:0 20px 60px rgba(0,0,0,.7)}
-.sleeve img{width:100%;height:100%;object-fit:cover;display:block}
-.sleeve-ph{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:56px}
-
-/* Vinyl peeking out from behind sleeve */
-.vinyl-wrap{position:absolute;right:-20px;top:12px;z-index:0}
-.vinyl-disc{width:180px;height:180px;border-radius:50%;background:radial-gradient(circle,#1a1a1a 0%,#111 40%,#0a0a0a 100%);box-shadow:0 8px 32px rgba(0,0,0,.8);animation:vinylSpin 4s linear infinite;position:relative}
-.vinyl-grooves{position:absolute;inset:8px;border-radius:50%;background:repeating-radial-gradient(circle at center,transparent 0,transparent 4px,rgba(255,255,255,.03) 4px,rgba(255,255,255,.03) 5px)}
-.vinyl-label{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:60px;height:60px;border-radius:50%;background:${stCol};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:#000;font-family:system-ui}
-.vinyl-hole{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:8px;height:8px;border-radius:50%;background:#0d0b09}
-@keyframes vinylSpin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
-.vinyl-wrap.paused .vinyl-disc{animation-play-state:paused}
-
-/* Hero info */
-.hero-info{padding-top:6px;flex:1}
-.hero-status{font-size:10px;font-weight:800;letter-spacing:.2em;color:${stCol};text-transform:uppercase;font-family:system-ui;margin-bottom:12px}
-.hero-title{font-size:42px;font-weight:900;letter-spacing:-.04em;line-height:1.05;margin-bottom:14px}
-.hero-meta{display:flex;gap:16px;font-size:12px;color:rgba(255,255,255,.4);font-family:system-ui;font-weight:700}
-
-/* ── Tracklist ── */
-.tracklist-label{font-size:10px;font-weight:800;letter-spacing:.18em;color:rgba(255,255,255,.28);text-transform:uppercase;font-family:system-ui;padding-bottom:12px;border-bottom:1px solid rgba(255,255,255,.08);margin-bottom:6px}
-.side-label{font-size:9px;font-weight:800;letter-spacing:.18em;color:${stCol};text-transform:uppercase;font-family:system-ui;padding:14px 0 4px;opacity:.55}
-
-.track-row{display:flex;align-items:center;gap:14px;padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.05);cursor:pointer;transition:background .15s;border-radius:0;position:relative;overflow:hidden}
-.track-row:hover{background:rgba(255,255,255,.04)}
-.track-num{font-size:11px;color:rgba(255,255,255,.22);min-width:22px;font-family:system-ui;font-variant-numeric:tabular-nums}
-.track-play-icon{font-size:11px;color:rgba(255,255,255,.3);width:16px;flex-shrink:0;transition:color .15s}
-.track-name{font-size:15px;font-weight:700;flex:1;transition:all .2s}
-.track-dur{font-size:11px;color:rgba(255,255,255,.28);font-family:system-ui;font-variant-numeric:tabular-nums}
-
-/* ── Active / playing track — shiny text ── */
-.track-row.active{background:rgba(255,255,255,.04)}
-.track-row.active .track-name{
-  background:linear-gradient(90deg,#f4ede4 0%,${stCol} 40%,#fff 55%,${stCol} 70%,#f4ede4 100%);
-  background-size:200% auto;
-  -webkit-background-clip:text;
-  -webkit-text-fill-color:transparent;
-  background-clip:text;
-  animation:shineText 2.5s linear infinite;
-  font-weight:900;
-}
-.track-row.active .track-play-icon{color:${stCol}}
-.track-row.active .track-num{color:${stCol};opacity:.7}
-@keyframes shineText{0%{background-position:0% center}100%{background-position:200% center}}
-
-/* Preview progress bar under active track */
-.track-row.active::after{
-  content:'';position:absolute;bottom:0;left:0;height:2px;
-  background:${stCol};width:var(--progress,0%);transition:width .3s linear;
-}
-
-/* Controls */
-.controls{display:flex;align-items:center;gap:12px;margin-top:18px;margin-bottom:0}
-.ctrl-btn{background:none;border:none;color:rgba(255,255,255,.55);font-size:12px;font-weight:700;padding:6px 0;cursor:pointer;font-family:system-ui;letter-spacing:.08em;text-transform:uppercase;transition:color .15s;border-bottom:1px solid transparent}
-.ctrl-btn:hover{color:#f4ede4;border-bottom-color:rgba(255,255,255,.3)}
-.ctrl-btn.active-play{color:${stCol};border-bottom-color:${stCol}}
-.preview-label{font-size:11px;color:rgba(255,255,255,.3);font-family:system-ui;font-weight:700}
-
-.footer{font-size:11px;color:rgba(255,255,255,.18);font-family:system-ui;text-align:center;padding-top:24px;border-top:1px solid rgba(255,255,255,.06);margin-top:36px}
-</style>
-</head>
-<body>
-<div class="page">
-  <div class="hero">
-    <div class="sleeve-wrap">
-      <div class="sleeve">${coverUrl?`<img src="${coverUrl}" alt="">`:'<div class="sleeve-ph">🎵</div>'}</div>
-      <div class="vinyl-wrap paused" id="vinylWrap">
-        <div class="vinyl-disc">
-          <div class="vinyl-grooves"></div>
-          <div class="vinyl-label">${album.name.slice(0,3).toUpperCase()}</div>
-          <div class="vinyl-hole"></div>
-        </div>
-      </div>
-    </div>
-    <div class="hero-info">
-      <div class="hero-status">${album.status||'Album'}</div>
-      <h1 class="hero-title">${album.name}</h1>
-      <div class="hero-meta">
-        <span>${beats.length} sanger</span>
-        ${dur?`<span>• ${dur} total</span>`:''}
-        <span>• ${new Date().getFullYear()}</span>
-      </div>
-      <div class="controls" style="margin-top:18px">
-        <button class="ctrl-btn" id="playAllBtn" onclick="togglePlayAll()">▶ Spill preview</button>
-        <button class="ctrl-btn" onclick="stopAll()">⏹</button>
-        <span class="preview-label" id="previewLabel">15 sek per sang</span>
-      </div>
-    </div>
-  </div>
-
-  <div class="tracklist-label">Trackliste</div>
-  <div id="tracklist">${rows}</div>
-  <div class="footer">Laget med Music Vault</div>
-
-  <!-- Tilbakemeldinger -->
-  <div style="margin-top:48px;padding-top:32px;border-top:1px solid rgba(255,255,255,.08)">
-    <div style="font-size:10px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.28);margin-bottom:20px;font-family:system-ui">Gi tilbakemelding</div>
-    <div id="commentStatus" style="font-size:13px;font-family:system-ui;margin-bottom:14px;min-height:18px"></div>
-    <div style="display:flex;flex-direction:column;gap:12px">
-      <input id="cmtAuthor" placeholder="Navn (valgfritt)"
-        style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#f4ede4;font-family:Georgia,serif;font-size:14px;padding:11px 14px;outline:none;width:100%"
-        onfocus="this.style.borderColor='rgba(244,164,67,.4)'" onblur="this.style.borderColor='rgba(255,255,255,.1)'">
-      <textarea id="cmtText" placeholder="Hva synes du om albumet?" rows="4"
-        style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#f4ede4;font-family:Georgia,serif;font-size:14px;padding:11px 14px;outline:none;width:100%;resize:vertical;line-height:1.65"
-        onfocus="this.style.borderColor='rgba(244,164,67,.4)'" onblur="this.style.borderColor='rgba(255,255,255,.1)'"></textarea>
-      <button onclick="submitComment()"
-        style="align-self:flex-start;background:none;border:1px solid rgba(244,164,67,.45);color:#f4a443;font-family:system-ui;font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;padding:10px 24px;cursor:pointer;transition:all .15s"
-        onmouseover="this.style.background='rgba(244,164,67,.1)'" onmouseout="this.style.background='none'">
-        Send inn →
-      </button>
-    </div>
-  </div>
-</div>
-
-<script>
-const BEATS = ${beatsJson};
-const VOLUME = 0.30;
-const PREVIEW_SEC = 17;
-const FADE_SEC = 1.2; // crossfade duration
-
-let audioA = null; // primary player
-let audioB = null; // crossfade-in player
-let currentIdx = -1;
-let progressInterval = null;
-let previewStartTime = null;
-
-function createAudio(src){
-  const a = new Audio();
-  a.crossOrigin = 'anonymous';
-  a.volume = 0;
-  a.src = src;
-  return a;
-}
-
-function fadeVolume(a, fromVol, toVol, durationMs, onDone){
-  if(!a) return;
-  const steps = 30;
-  const interval = durationMs / steps;
-  let step = 0;
-  const t = setInterval(()=>{
-    step++;
-    const progress = step / steps;
-    a.volume = Math.max(0, Math.min(1, fromVol + (toVol - fromVol) * progress));
-    if(step >= steps){
-      clearInterval(t);
-      a.volume = toVol;
-      if(onDone) onDone();
-    }
-  }, interval);
-  return t;
-}
-
-function stopAll(silent){
-  clearInterval(progressInterval);
-  [audioA, audioB].forEach(a=>{ if(a){ a.pause(); a.src=''; } });
-  audioA = null; audioB = null;
-  document.querySelectorAll('.track-row').forEach(r=>{ r.classList.remove('active'); r.style.removeProperty('--progress'); });
-  document.getElementById('vinylWrap').classList.add('paused');
-  const btn=document.getElementById('playAllBtn');
-  btn.classList.remove('active-play'); btn.textContent='▶ Spill preview';
-  document.getElementById('previewLabel').textContent='15 sek per sang';
-  if(!silent) currentIdx=-1;
-}
-
-async function playPreview(idx){
-  // Stop old progress tracking
-  clearInterval(progressInterval);
-
-  const beat = BEATS[idx];
-  if(!beat || !beat.audio_url){ nextTrack(idx); return; }
-
-  currentIdx = idx;
-  document.querySelectorAll('.track-row').forEach((r,i)=>{
-    if(i !== idx){ r.classList.remove('active'); r.style.removeProperty('--progress'); }
-  });
-  document.getElementById('vinylWrap').classList.remove('paused');
-  document.getElementById('playAllBtn').classList.add('active-play');
-  document.getElementById('playAllBtn').textContent='⏸ Spiller';
-  document.getElementById('previewLabel').textContent=beat.name;
-  document.querySelectorAll('.track-row')[idx]?.scrollIntoView({behavior:'smooth',block:'nearest'});
-
-  // Fetch as blob (iOS-safe, no streaming restart)
-  let src = beat.audio_url;
-  try{
-    const res = await fetch(beat.audio_url);
-    if(res.ok){ const blob = await res.blob(); src = URL.createObjectURL(blob); }
-  } catch(e){}
-
-  const newAudio = createAudio(src);
-
-  if(audioA && !audioA.paused){
-    // Crossfade: fade A out while fading new audio in
-    const oldAudio = audioA;
-    audioB = newAudio;
-    audioB.play().catch(()=>{});
-    audioB.addEventListener('loadedmetadata', ()=>{
-      const start = Math.min((audioB.duration||999) - 5, Math.max(5, Math.min(10, (audioB.duration||0) * 0.15)));
-      audioB.currentTime = start;
-    });
-    fadeVolume(oldAudio, VOLUME, 0, FADE_SEC * 1000, ()=>{ oldAudio.pause(); oldAudio.src=''; });
-    fadeVolume(audioB, 0, VOLUME, FADE_SEC * 1000);
-    audioA = audioB;
-    audioB = null;
-  } else {
-    // Clean start
-    if(audioA){ audioA.pause(); audioA.src=''; }
-    audioA = newAudio;
-    audioA.play().catch(()=>{});
-    audioA.addEventListener('loadedmetadata', ()=>{
-      const start = Math.min((audioA.duration||999) - 5, Math.max(5, Math.min(10, (audioA.duration||0) * 0.15)));
-      audioA.currentTime = start;
-    });
-    fadeVolume(audioA, 0, VOLUME, 600);
-  }
-
-  // Mark row active
-  const row = document.querySelectorAll('.track-row')[idx];
-  if(row) row.classList.add('active');
-
-  previewStartTime = Date.now();
-
-  progressInterval = setInterval(()=>{
-    const elapsed = (Date.now() - previewStartTime) / 1000;
-    const pct = Math.min(100, (elapsed / PREVIEW_SEC) * 100);
-    const r = document.querySelectorAll('.track-row')[idx];
-    if(r) r.style.setProperty('--progress', pct + '%');
-    // Start crossfade FADE_SEC before end
-    if(elapsed >= PREVIEW_SEC - FADE_SEC && elapsed < PREVIEW_SEC){
-      // Pre-load next — kick off in background (handled by the next playPreview call)
-    }
-    if(elapsed >= PREVIEW_SEC){
-      clearInterval(progressInterval);
-      nextTrack(idx);
-    }
-  }, 80);
-}
-
-function nextTrack(fromIdx){
-  const next = fromIdx + 1;
-  if(next < BEATS.length) playPreview(next);
-  else stopAll();
-}
-
-function togglePlayAll(){
-  if(currentIdx >= 0 && audioA && !audioA.paused){
-    audioA.pause();
-    clearInterval(progressInterval);
-    document.getElementById('vinylWrap').classList.add('paused');
-    document.getElementById('playAllBtn').classList.remove('active-play');
-    document.getElementById('playAllBtn').textContent='▶ Fortsett';
-  } else if(currentIdx >= 0 && audioA && audioA.paused){
-    audioA.play();
-    document.getElementById('vinylWrap').classList.remove('paused');
-    document.getElementById('playAllBtn').classList.add('active-play');
-    document.getElementById('playAllBtn').textContent='⏸ Spiller';
-    const elapsed = (Date.now() - previewStartTime) / 1000;
-    progressInterval = setInterval(()=>{
-      const e2 = (Date.now() - previewStartTime) / 1000;
-      const r = document.querySelectorAll('.track-row')[currentIdx];
-      if(r) r.style.setProperty('--progress', Math.min(100,(e2/PREVIEW_SEC)*100)+'%');
-      if(e2 >= PREVIEW_SEC){ clearInterval(progressInterval); nextTrack(currentIdx); }
-    }, 80);
-  } else {
-    playPreview(0);
-  }
-}
-
-const SB_URL='https://ylvqkfdvijqnecuqznyr.supabase.co';
-const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlsdnFrZmR2aWpxbmVjdXF6bnlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzMzA4MzIsImV4cCI6MjA5MzkwNjgzMn0.bYPTaxQK8n7I7w5Ri2DVYW5_LbFHg2IXkuhHsLTDDqc';
-const ALBUM_ID='${albumId}';
-
-async function submitComment(){
-  const author=(document.getElementById('cmtAuthor').value||'').trim();
-  const comment=(document.getElementById('cmtText').value||'').trim();
-  const status=document.getElementById('commentStatus');
-  if(!comment){ status.style.color='#fb7185'; status.textContent='Skriv en tilbakemelding først.'; return; }
-  status.style.color='rgba(255,255,255,.4)'; status.textContent='Sender…';
-  try{
-    const res=await fetch(SB_URL+'/rest/v1/pitch_comments',{
-      method:'POST',
-      headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
-      body:JSON.stringify({album_id:ALBUM_ID, author:author||'Anonym', comment})
-    });
-    if(res.ok||res.status===201){
-      status.style.color='#34d399'; status.textContent='✓ Tilbakemelding sendt! Takk.';
-      document.getElementById('cmtText').value='';
-      document.getElementById('cmtAuthor').value='';
-    } else {
-      const err=await res.text();
-      status.style.color='#fb7185'; status.textContent='Feil: '+res.status+' '+err.slice(0,80);
-    }
-  } catch(e){
-    status.style.color='#fb7185'; status.textContent='Nettverksfeil – prøv igjen.';
-  }
-}
-</script>
-</body></html>`;
-
-    const blob2 = new Blob([html], {type:'text/html'});
-    window.open(URL.createObjectURL(blob2), '_blank');
+    const coverHtml = album.cover
+      ? '<img style="width:180px;height:180px;border-radius:16px;object-fit:cover;box-shadow:0 20px 60px rgba(0,0,0,.6)" src="'+album.cover+'" alt="">'
+      : '<div style="width:180px;height:180px;border-radius:16px;background:rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;font-size:48px">🎵</div>';
+    const html = '<!DOCTYPE html><html lang="no"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
+      + '<title>'+album.name+' — Pitch</title>'
+      + '<style>*{box-sizing:border-box;margin:0;padding:0}body{background:#0d0b09;color:#f4ede4;font-family:Georgia,serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:40px 20px}.page{max-width:700px;width:100%}</style>'
+      + '</head><body><div class="page">'
+      + '<div style="display:flex;align-items:flex-start;gap:32px;margin-bottom:48px">'+coverHtml
+      + '<div style="padding-top:8px">'
+      + '<div style="font-size:11px;font-weight:800;letter-spacing:.18em;color:'+stCol+';text-transform:uppercase;font-family:system-ui;margin-bottom:10px">'+(album.status||'Album')+'</div>'
+      + '<h1 style="font-size:40px;font-weight:900;letter-spacing:-.04em;line-height:1.1;margin-bottom:12px">'+album.name+'</h1>'
+      + '<div style="display:flex;gap:16px;font-size:12px;color:rgba(255,255,255,.45);font-family:system-ui;font-weight:700">'
+      + '<span>'+beats.length+' sanger</span>'+(dur?'<span>• '+dur+' total</span>':'')+'<span>• '+new Date().getFullYear()+'</span></div>'
+      + '</div></div>'
+      + '<div style="font-size:10px;font-weight:800;letter-spacing:.18em;color:rgba(255,255,255,.3);text-transform:uppercase;font-family:system-ui;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,.08);margin-bottom:8px">Trackliste</div>'
+      + rows
+      + '<div style="font-size:11px;color:rgba(255,255,255,.2);font-family:system-ui;text-align:center;padding-top:24px;border-top:1px solid rgba(255,255,255,.06);margin-top:32px">Laget med Music Vault</div>'
+      + '</div></body></html>';
+    const blob = new Blob([html], {type:'text/html'});
+    window.open(URL.createObjectURL(blob), '_blank');
     if(typeof showToast==='function') showToast('✓ Pitch-side åpnet i ny fane');
   };
   window.setAlbumCover=function(id,file){if(!file)return;const r=new FileReader();r.onload=e=>{const a=state.albums.find(x=>x.id===id);if(a){a.cover=e.target.result;saveState();renderAlbumDetail();renderAlbums();showToast('✓ Albumbilde oppdatert');}};r.readAsDataURL(file);};
@@ -1116,8 +700,7 @@ async function submitComment(){
         card.querySelector('.archive-song-btn').textContent=archiveLabel('beat',b);
         return;
       }
-      // Only inject in expanded area, NOT in collapsed card body
-      const target=card.querySelector('.ab-expand-actions')||card.querySelector('.ab-expand-right');
+      const target=card.querySelector('.ab-expand-actions')||card.querySelector('.ab-expand-right')||card.querySelector('.ab-body');
       if(target){
         target.insertAdjacentHTML('beforeend',`<button class="ghost-btn archive-song-btn" onclick="event.stopPropagation();toggleArchiveItem('beat','${id}')">${archiveLabel('beat',b)}</button>`);
       }
