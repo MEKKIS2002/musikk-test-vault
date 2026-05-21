@@ -87,8 +87,87 @@ function unlockAs(role){
     window.isAdminMode = false;
     document.body.classList.remove('admin-mode');
   }
+
+  // ── Alltid-synlig brukerknapp ────────────────────────────────
+  injectUserCorner(role);
+
   applyRoleMode();
 }
+
+function injectUserCorner(role){
+  // Fjern gammel
+  document.getElementById('mvUserCorner')?.remove();
+
+  const username = sessionStorage.getItem('mv_username') || role;
+  const pkg      = sessionStorage.getItem('mv_package')  || role;
+  const isAdmin  = role === 'admin';
+  const isViewer = role === 'viewer';
+
+  // Pakke-label
+  const pkgLabels = {
+    admin:'Admin', artist:'Artist', producer:'Produsent',
+    lyricist:'Tekstforfatter', label:'Label', viewer:'Lytter', user:'Bruker'
+  };
+  const pkgLabel = pkgLabels[pkg] || pkg;
+
+  const corner = document.createElement('div');
+  corner.id = 'mvUserCorner';
+  corner.style.cssText = `
+    position:fixed;top:10px;right:14px;z-index:8100;
+    display:flex;align-items:center;gap:8px;font-family:system-ui;
+  `;
+
+  // Admin-boble: kun for admin
+  const adminBubble = isAdmin ? `
+    <div style="
+      background:linear-gradient(135deg,rgba(244,164,67,.18),rgba(244,164,67,.08));
+      border:1px solid rgba(244,164,67,.35);border-radius:999px;
+      padding:5px 12px;font-size:11px;font-weight:800;letter-spacing:.08em;
+      color:#f4a443;text-transform:uppercase;cursor:default
+    ">⚡ Admin</div>` : '';
+
+  // Brukernavn + pakke
+  const userLabel = !isViewer ? `
+    <div style="
+      font-size:11px;font-weight:700;color:rgba(255,255,255,.45);
+      white-space:nowrap;
+    ">${username} · ${pkgLabel}</div>` : '';
+
+  // Logg ut-knapp
+  const logoutBtn = `
+    <button onclick="mvLogout()" title="Logg ut" style="
+      background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);
+      border-radius:8px;padding:5px 11px;color:rgba(255,255,255,.5);
+      font-size:11px;font-weight:800;cursor:pointer;font-family:system-ui;
+      transition:all .15s;white-space:nowrap;letter-spacing:.04em;
+    " onmouseover="this.style.background='rgba(255,255,255,.13)';this.style.color='#f4ede4'"
+       onmouseout="this.style.background='rgba(255,255,255,.07)';this.style.color='rgba(255,255,255,.5)'">
+      Logg ut
+    </button>`;
+
+  corner.innerHTML = adminBubble + userLabel + logoutBtn;
+  document.body.appendChild(corner);
+
+  // Skjul Supabase admin-panel for ikke-admins
+  if(!isAdmin){
+    const panel = document.getElementById('supabaseDataSyncPanel');
+    if(panel) panel.style.display = 'none';
+    const adminLogout = document.getElementById('adminLogoutBox');
+    if(adminLogout) adminLogout.style.display = 'none';
+    // Skjul viewerLoginBtn (vi har vår egen knapp nå)
+    const vBtn = document.getElementById('viewerLoginBtn');
+    if(vBtn) vBtn.style.display = 'none';
+  }
+}
+
+window.mvLogout = async function(){
+  // Logg ut fra Supabase
+  if(window.supabaseClient) await window.supabaseClient.auth.signOut().catch(()=>{});
+  window.isAdminMode = false;
+  window.currentAdminUser = null;
+  document.getElementById('mvUserCorner')?.remove();
+  returnToPasswordScreen();
+};
 
 function loginViewer(){
   unlockAs('viewer');
@@ -200,6 +279,8 @@ function initLock(){
       window.isAdminMode = true;
       document.body.classList.add('admin-mode');
     }
+    // Gjenopprett brukerknapp
+    injectUserCorner(role);
     applyRoleMode();
     return;
   }

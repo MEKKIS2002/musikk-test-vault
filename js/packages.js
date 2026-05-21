@@ -99,48 +99,41 @@ window.setPackage = function(packageKey) {
  * - Legg til body-klasse for CSS-targeting
  */
 window.applyPackage = function() {
-  const pkg = window.getCurrentPackage();
+  const pkg    = window.getCurrentPackage();
   const pkgKey = sessionStorage.getItem('mv_package') || 'admin';
 
-  // Body-klasse for CSS (fjern gamle)
+  // Body-klasse
   Object.keys(window.MV_PACKAGES).forEach(k => document.body.classList.remove('pkg-' + k));
   document.body.classList.add('pkg-' + pkgKey);
 
-  // Vis/skjul tabs
-  document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
-    const tab = btn.dataset.tab;
-    const allowed = hasTab(tab);
-    btn.style.display = allowed ? '' : 'none';
-  });
+  // Kjør tab-synlighet litt forsinket så DOM er klar
+  const applyTabs = () => {
+    document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
+      const tab = btn.dataset.tab;
+      btn.style.display = hasTab(tab) ? '' : 'none';
+    });
 
-  // Vis/skjul funksjoner via data-feature attributter
-  document.querySelectorAll('[data-feature]').forEach(el => {
-    const feat = el.dataset.feature;
-    el.style.display = hasFeature(feat) ? '' : 'none';
-  });
+    document.querySelectorAll('[data-feature]').forEach(el => {
+      el.style.display = hasFeature(el.dataset.feature) ? '' : 'none';
+    });
 
-  // Oppdater rolle-badge
-  const badge = document.getElementById('roleBadge');
-  if (badge) {
-    const pkgLabel = pkg.label || pkgKey;
-    const roleText = sessionStorage.getItem('mv_role') === 'admin' ? 'Admin' : pkgLabel;
-    badge.textContent = roleText;
-    badge.title = `Pakke: ${pkgLabel}`;
-  }
-
-  // Naviger til første tilgjengelige tab hvis aktiv tab ikke er tilgjengelig
-  const activeTab = document.querySelector('.tab-btn.active');
-  if (activeTab && !hasTab(activeTab.dataset.tab)) {
-    const tabs = pkg.tabs === '*'
-      ? null
-      : (Array.isArray(pkg.tabs) ? pkg.tabs : []);
-    if (tabs && tabs.length > 0) {
-      const firstTab = document.querySelector(`.tab-btn[data-tab="${tabs[0]}"]`);
-      if (firstTab) firstTab.click();
+    // Naviger til første tillatte tab hvis aktiv tab ikke er tilgjengelig
+    if(pkg.tabs !== '*' && Array.isArray(pkg.tabs) && pkg.tabs.length > 0){
+      const activeBtn = document.querySelector('.tab-btn.active');
+      const activeTab = activeBtn?.dataset?.tab;
+      if(!activeTab || !hasTab(activeTab)){
+        const firstBtn = document.querySelector(`.tab-btn[data-tab="${pkg.tabs[0]}"]`);
+        if(firstBtn) firstBtn.click();
+      }
     }
-  }
+  };
 
-  console.log(`[MV Packages] Pakke: ${pkgKey} | Tabs: ${JSON.stringify(pkg.tabs)} | Features: ${JSON.stringify(pkg.features)}`);
+  // Kjør nå + med forsinkelse (sikrer at render er ferdig)
+  applyTabs();
+  setTimeout(applyTabs, 150);
+  setTimeout(applyTabs, 500);
+
+  console.log(`[MV Packages] ${pkgKey} | tabs: ${JSON.stringify(pkg.tabs)}`);
 };
 
 // Kjør applyPackage når DOM er klar
