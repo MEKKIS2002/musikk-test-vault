@@ -285,17 +285,14 @@
     const beats = beatsFromIds(mt.beatIds);
     const WORKER = window.R2_WORKER_URL || 'https://beat-vault.marcus-aas-mekiassen.workers.dev';
 
-    // Check if already shared
-    const isMtShared = mt._shareEnabled !== false;
-
-    // Show share dialog
-    const existing = mt._shareUrl;
-    if (existing && isMtShared) {
-      showShareDialog(mixtapeId, existing, WORKER, mt);
+    // If already shared and enabled, show dialog with existing URL
+    if (mt._shareToken && mt._shareEnabled !== false) {
+      showShareDialog(mixtapeId, `${WORKER}/share/${mt._shareToken}`, WORKER, mt);
       return;
     }
 
-    // First time: publish to worker
+    // Generate NEW token — new URL every time
+    const token = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
     showToast('Publiserer mixtape...');
     try {
       const payload = {
@@ -306,13 +303,14 @@
           audio_url: b.audio_url||b.url||''
         }))
       };
-      const res = await fetch(`${WORKER}/share/${mixtapeId}`, {
+      const res = await fetch(`${WORKER}/share/${token}`, {
         method: 'PUT',
         headers: {'Content-Type':'application/json'},
         body: JSON.stringify(payload)
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error||'Ukjent feil');
+      mt._shareToken = token;
       mt._shareUrl = data.url;
       mt._shareEnabled = true;
       if(typeof saveState==='function') saveState();
@@ -363,24 +361,27 @@
           mt: { id: mt.id, name: mt.name, cover: mt.cover||'', color: mt.color||'#f4a443' },
           beats: beats.map(b => ({id:b.id,name:b.name,duration:b.duration||0,audio_url:b.audio_url||b.url||''}))
         };
-        const res = await fetch(`${workerUrl}/share/${mixtapeId}`, {method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+        const token = mt._shareToken;
+        const res = await fetch(`${workerUrl}/share/${token}`, {method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
         const data = await res.json();
         status.textContent = data.ok ? '✓ Innhold oppdatert' : '⚠ '+data.error;
       } catch(e) { status.textContent = '⚠ '+e.message; }
     };
 
-    // Disable button
+    // Disable button — deactivates current token, clears it so next share gets new URL
     document.getElementById('mvShareDisableBtn').onclick = async () => {
-      if (!confirm('Deaktivere delingen? Lenken vil slutte å fungere.')) return;
+      if (!confirm('Deaktivere delingen? Den nåværende lenken vil slutte å fungere.\nNeste gang du deler vil du få en ny lenke.')) return;
       const status = document.getElementById('mvShareStatus');
       status.textContent = 'Deaktiverer...';
       try {
-        await fetch(`${workerUrl}/share/${mixtapeId}`, {method:'DELETE'});
+        const token = mt._shareToken;
+        await fetch(`${workerUrl}/share/${token}`, {method:'DELETE'});
         mt._shareEnabled = false;
+        mt._shareToken = null;
         mt._shareUrl = null;
         if(typeof saveState==='function') saveState();
-        status.textContent = '✓ Deling deaktivert';
-        setTimeout(()=>modal.classList.remove('open'), 1500);
+        status.textContent = '✓ Deling deaktivert. Neste deling gir ny lenke.';
+        setTimeout(()=>modal.classList.remove('open'), 2000);
       } catch(e) { status.textContent = '⚠ '+e.message; }
     };
 
