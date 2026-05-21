@@ -214,8 +214,17 @@ async function createBeatFromFileIDB(file){
 }
 
 const STAGES=["Idé","Hook","Vers","Innspilt","Mix","Master","Klar"];
-const SK="musicVault.v4";
-const state=loadState();
+const SK_BASE = "musicVault.v4";
+// Use user-specific key if userId is known (multi-tenant)
+function getSK(){
+  const uid = sessionStorage.getItem('mv_user_id') || window._mvCurrentUserId || null;
+  return uid ? `${SK_BASE}.${uid}` : SK_BASE;
+}
+// For backward compat — keep SK as getter
+Object.defineProperty(window, 'SK', { get: getSK });
+const SK = SK_BASE; // used during initial load before auth
+const state = loadState();
+
 let currentAlbumId=null;
 let modalRating=0;
 let newAlbumCoverBase64=null;
@@ -269,7 +278,17 @@ function migrate(s){
   return n;
 }
 function loadState(){try{const r=localStorage.getItem(SK);const s=r?JSON.parse(r):null;return s?migrate(s):defaultState();}catch{return defaultState();}}
-function saveState(){try{localStorage.setItem(SK,JSON.stringify(state));}catch(e){console.warn('saveState failed:',e);}markDirty();renderStats();if(typeof window.mvSupabaseSync?.schedulePush==='function')window.mvSupabaseSync.schedulePush();}
+function saveState(){
+  try{
+    const key = getSK();
+    localStorage.setItem(key, JSON.stringify(state));
+    // Also keep base key in sync so page reload before auth works
+    if(key !== SK_BASE) localStorage.setItem(SK_BASE, JSON.stringify(state));
+  }catch(e){console.warn('saveState failed:',e);}
+  markDirty();
+  renderStats();
+  if(typeof window.mvSupabaseSync?.schedulePush==='function')window.mvSupabaseSync.schedulePush();
+}
 function isAdmin(){return sessionStorage.getItem('mv_role')==='admin';}
 function requireAdmin(action){if(window.isAdminMode&&isAdmin())return true;showToast(`⚠ Kun admin kan ${action||'gjøre dette'}`);return false;}
 

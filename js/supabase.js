@@ -445,9 +445,24 @@ setTimeout(updateAdminUi, 50);
 
       const remoteIsEmpty = !beatsRows.length && !albumRows.length && !mixtapeRows.length;
       const localHasData = (st.beats?.length || st.albums?.length || st.mixtapes?.length);
-      if(remoteIsEmpty && localHasData && !force){
+
+      // If we have a user_id, always trust Supabase over localStorage
+      // An empty result just means this user has no content yet — don't bail
+      if(remoteIsEmpty && localHasData && !force && !uid){
         say('Supabase er tom. Trykk «Migrer lokale data til Supabase».', 'warning');
         return false;
+      }
+
+      // If logged-in user has empty Supabase → clear local state (fresh profile)
+      if(remoteIsEmpty && uid){
+        st.beats = []; st.albums = []; st.mixtapes = [];
+        st.settings = st.settings || {}; st.demos = []; st.versions = [];
+        const sk = `musicVault.v4.${uid}`;
+        try { localStorage.setItem(sk, JSON.stringify(st)); } catch{}
+        try { localStorage.setItem('musicVault.v4', JSON.stringify(st)); } catch{}
+        if(typeof renderAll === 'function') renderAll();
+        say('Tom profil — ingen innhold ennå.', 'info');
+        return true;
       }
 
       const albumMap = idsFromRelations(albumBeatRows, 'album_id');
