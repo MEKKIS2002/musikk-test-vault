@@ -90,6 +90,8 @@ function unlockAs(role){
 
   // ── Alltid-synlig brukerknapp ────────────────────────────────
   injectUserCorner(role);
+  // Varsel-bjelle
+  setTimeout(()=>{ if(typeof window.installNotificationBell==='function') window.installNotificationBell(); }, 1500);
 
   applyRoleMode();
 }
@@ -232,7 +234,9 @@ async function loginWithUsername(){
       .maybeSingle();
 
     const role = profile?.role || 'user';
-    const pkg  = profile?.package || (role === 'admin' ? 'admin' : 'viewer');
+    // Fallback: bruk brukernavnet som pakke hvis det matcher (f.eks. 'label' → label-pakken)
+    const pkgFromUsername = window.MV_PACKAGES?.[username] ? username : null;
+    const pkg  = profile?.package || pkgFromUsername || (role === 'admin' ? 'admin' : 'viewer');
 
     // Lagre i sessionStorage
     sessionStorage.setItem('mv_username', username);

@@ -581,6 +581,7 @@ function renderAlbumDetail(){
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button class="primary-btn" id="playAlbumBtn" onclick="playAlbumFromStart('${album.id}')">▶ Spill fra start</button>
+        <button class="ghost-btn" onclick="openShareModal('album','${album.id}',${JSON.stringify(album.name||'Album')})" title="Del album">🔗 Del</button>
       <button class="small-btn danger hidden" id="stopAlbumBtn" onclick="stopCollectionPlayback()">⏹ Stopp</button>
     </div>`;
   const beats=beatsFromIds(album.beatIds);
@@ -1136,6 +1137,7 @@ function renderMixtapeDetail(){
       <div class="mixtape-detail-actions">
         <button class="primary-btn" id="playMixtapeBtn" onclick="playMixtapeFromStart('${mt.id}')">▶ Spill fra start</button>
         <button class="ghost-btn" onclick="mixtapeShareMode('${mt.id}')">🔗 Del</button>
+        <button class="ghost-btn" onclick="openShareModal('mixtape','${mt.id}',${JSON.stringify(mt.name||'Mixtape')})">👤 Del med bruker</button>
         <button class="small-btn danger hidden" id="stopMixtapeBtn" onclick="stopCollectionPlayback()">⏹ Stopp</button>
       </div>
     </div>

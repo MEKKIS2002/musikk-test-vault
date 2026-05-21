@@ -277,7 +277,254 @@
     }
   };
 
-  // ── Pitch mode (one-pager) ────────────────────────────────────────────────
+  // ── Deling og varsel-system ──────────────────────────────────────────────
+  const SB_URL = 'https://ylvqkfdvijqnecuqznyr.supabase.co';
+  const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlsdnFrZmR2aWpxbmVjdXF6bnlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzMzA4MzIsImV4cCI6MjA5MzkwNjgzMn0.bYPTaxQK8n7I7w5Ri2DVYW5_LbFHg2IXkuhHsLTDDqc';
+
+  function sbHeaders(token){
+    const t = token || sessionStorage.getItem('sb_access_token') || SB_KEY;
+    return {'apikey':SB_KEY,'Authorization':'Bearer '+t,'Content-Type':'application/json'};
+  }
+
+  // ── Varsel-bjelle ─────────────────────────────────────────────────────────
+  function installNotificationBell(){
+    if(document.getElementById('mvNotifBell')) return;
+    const bell = document.createElement('div');
+    bell.id = 'mvNotifBell';
+    bell.style.cssText = `
+      position:fixed;top:10px;right:170px;z-index:8050;
+      cursor:pointer;font-size:18px;padding:6px 8px;
+      border-radius:50%;transition:background .15s;
+      display:flex;align-items:center;justify-content:center;
+    `;
+    bell.innerHTML = `🔔<span id="mvNotifCount" style="
+      display:none;position:absolute;top:2px;right:2px;
+      background:#fb7185;color:#fff;font-size:9px;font-weight:900;
+      border-radius:999px;padding:1px 4px;font-family:system-ui;min-width:14px;text-align:center;
+    "></span>`;
+    bell.title = 'Varsler';
+    bell.onclick = () => openNotifPanel();
+    bell.onmouseover = () => bell.style.background = 'rgba(255,255,255,.1)';
+    bell.onmouseout  = () => bell.style.background = 'transparent';
+    document.body.appendChild(bell);
+    loadNotifications();
+  }
+
+  async function loadNotifications(){
+    const uid = window._mvCurrentUserId;
+    if(!uid) return;
+    try{
+      const {data:{session}} = await window.supabaseClient.auth.getSession();
+      const token = session?.access_token;
+      const res = await fetch(`${SB_URL}/rest/v1/notifications?recipient_id=eq.${uid}&order=created_at.desc&limit=20`, {
+        headers: sbHeaders(token)
+      });
+      if(!res.ok) return;
+      const notifs = await res.json();
+      const unread = notifs.filter(n=>!n.read).length;
+      const countEl = document.getElementById('mvNotifCount');
+      if(countEl){
+        countEl.textContent = unread > 9 ? '9+' : unread;
+        countEl.style.display = unread > 0 ? 'block' : 'none';
+      }
+      window._mvNotifications = notifs;
+    }catch(e){}
+  }
+
+  function openNotifPanel(){
+    let panel = document.getElementById('mvNotifPanel');
+    if(!panel){
+      panel = document.createElement('div');
+      panel.id = 'mvNotifPanel';
+      panel.style.cssText = `
+        position:fixed;top:50px;right:120px;z-index:8200;
+        background:#1a1612;border:1px solid rgba(255,255,255,.12);
+        border-radius:12px;width:320px;max-height:420px;overflow-y:auto;
+        box-shadow:0 16px 48px rgba(0,0,0,.6);font-family:system-ui;
+      `;
+      document.body.appendChild(panel);
+      document.addEventListener('click', e=>{
+        if(!panel.contains(e.target) && e.target.id!=='mvNotifBell'){
+          panel.style.display='none';
+        }
+      });
+    }
+    const notifs = window._mvNotifications || [];
+    const typeLabels = {
+      share_beat:'Beat delt med deg',
+      share_album:'Album delt med deg',
+      share_mixtape:'Mixtape delt med deg'
+    };
+    panel.innerHTML = `
+      <div style="padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:space-between">
+        <span style="font-size:13px;font-weight:800;color:#f4ede4">Varsler</span>
+        ${notifs.some(n=>!n.read)?`<button onclick="markAllNotifsRead()" style="background:none;border:none;color:rgba(255,255,255,.4);font-size:11px;cursor:pointer;font-family:system-ui">Merk alle som lest</button>`:''}
+      </div>
+      ${notifs.length ? notifs.map(n=>`
+        <div style="padding:12px 16px;border-bottom:1px solid rgba(255,255,255,.06);background:${n.read?'transparent':'rgba(244,164,67,.06)'}">
+          <div style="font-size:12px;font-weight:700;color:${n.read?'rgba(255,255,255,.5)':'#f4ede4'}">${typeLabels[n.type]||n.type}</div>
+          <div style="font-size:13px;color:#f4a443;font-weight:800;margin:3px 0">${n.content_name||n.content_id}</div>
+          <div style="font-size:11px;color:rgba(255,255,255,.35)">${n.role==='editor'?'Redaktørtilgang':'Visningsmodus'} · ${new Date(n.created_at).toLocaleDateString('no-NO')}</div>
+        </div>
+      `).join('') : `<div style="padding:24px 16px;text-align:center;color:rgba(255,255,255,.3);font-size:13px">Ingen varsler</div>`}
+    `;
+    panel.style.display = panel.style.display==='none' ? 'block' : (panel.style.display||'block');
+    markAllNotifsRead();
+  }
+
+  window.markAllNotifsRead = async function(){
+    const uid = window._mvCurrentUserId;
+    if(!uid) return;
+    try{
+      const {data:{session}} = await window.supabaseClient.auth.getSession();
+      await fetch(`${SB_URL}/rest/v1/notifications?recipient_id=eq.${uid}&read=eq.false`, {
+        method:'PATCH', headers:{...sbHeaders(session?.access_token),'Prefer':'return=minimal'},
+        body: JSON.stringify({read:true})
+      });
+      const countEl = document.getElementById('mvNotifCount');
+      if(countEl) countEl.style.display='none';
+      if(window._mvNotifications) window._mvNotifications.forEach(n=>n.read=true);
+    }catch(e){}
+  };
+
+  // ── Del-modal ─────────────────────────────────────────────────────────────
+  window.openShareModal = async function(contentType, contentId, contentName){
+    if(!requireAdmin('dele innhold')) return;
+    const uid = window._mvCurrentUserId;
+    if(!uid){ showToast('Logg inn for å dele'); return; }
+
+    // Hent eksisterende tilganger
+    const {data:{session}} = await window.supabaseClient.auth.getSession();
+    const token = session?.access_token;
+
+    const res = await fetch(
+      `${SB_URL}/rest/v1/content_access?content_type=eq.${contentType}&content_id=eq.${contentId}&select=*`,
+      {headers: sbHeaders(token)}
+    );
+    const existing = res.ok ? await res.json() : [];
+
+    // Hent brukernavn for eksisterende tilganger
+    let granteeNames = {};
+    if(existing.length){
+      const ids = existing.map(r=>r.grantee_id).join(',');
+      const pr = await fetch(
+        `${SB_URL}/rest/v1/profiles?id=in.(${ids})&select=id,username`,
+        {headers: sbHeaders(token)}
+      );
+      if(pr.ok){const profiles = await pr.json(); profiles.forEach(p=>granteeNames[p.id]=p.username||p.id);}
+    }
+
+    let modal = document.getElementById('mvShareItemModal');
+    if(!modal){
+      modal = document.createElement('div');
+      modal.id = 'mvShareItemModal';
+      modal.className = 'modal';
+      modal.addEventListener('click', e=>{ if(e.target===modal) modal.classList.remove('open'); });
+      document.body.appendChild(modal);
+    }
+
+    const typeLabel = {beat:'Beat',album:'Album',mixtape:'Mixtape'}[contentType]||contentType;
+
+    modal.innerHTML = `<div class="modal-card modal-sm" style="max-width:460px">
+      <div class="modal-hd">
+        <div class="modal-hd-left"><h2>Del ${typeLabel}: ${contentName}</h2></div>
+        <div class="modal-hd-right"><button class="close-btn" onclick="document.getElementById('mvShareItemModal').classList.remove('open')">×</button></div>
+      </div>
+      <div class="modal-body" style="padding:20px 24px 24px;display:grid;gap:16px">
+
+        <!-- Legg til ny bruker -->
+        <div style="display:grid;gap:8px">
+          <label style="font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.4)">Del med bruker</label>
+          <div style="display:flex;gap:8px">
+            <input id="shareUsername" placeholder="Brukernavn" style="flex:1;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#f4ede4;padding:9px 12px;font-size:13px;font-family:system-ui;outline:none;border-radius:6px">
+            <select id="shareRole" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#f4ede4;padding:9px 12px;font-size:13px;font-family:system-ui;outline:none;border-radius:6px">
+              <option value="viewer">Visningsmodus</option>
+              <option value="editor">Redaktør</option>
+            </select>
+          </div>
+          <button class="primary-btn" style="font-size:12px;padding:8px 16px;justify-self:start" onclick="doShare('${contentType}','${contentId}','${contentName}')">Del</button>
+          <div id="shareStatus" style="font-size:11px;color:rgba(255,255,255,.4);min-height:16px"></div>
+        </div>
+
+        <!-- Eksisterende tilganger -->
+        <div>
+          <div style="font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.4);margin-bottom:10px">Har tilgang</div>
+          <div id="shareAccessList">
+            ${existing.length ? existing.map(r=>`
+              <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06)">
+                <span style="font-size:13px;font-weight:700;color:#f4ede4;flex:1">👤 ${granteeNames[r.grantee_id]||r.grantee_id}</span>
+                <span style="font-size:11px;color:rgba(255,255,255,.4)">${r.role==='editor'?'Redaktør':'Visningsmodus'}</span>
+                <button onclick="revokeShare('${contentType}','${contentId}','${r.grantee_id}')" style="background:none;border:none;color:rgba(255,100,100,.6);cursor:pointer;font-size:13px;padding:2px 6px" title="Fjern tilgang">✕</button>
+              </div>
+            `).join('') : '<div style="font-size:12px;color:rgba(255,255,255,.3)">Ingen har tilgang ennå</div>'}
+          </div>
+        </div>
+      </div>
+    </div>`;
+    modal.classList.add('open');
+  };
+
+  window.doShare = async function(contentType, contentId, contentName){
+    const username = document.getElementById('shareUsername')?.value?.trim().toLowerCase();
+    const role = document.getElementById('shareRole')?.value || 'viewer';
+    const status = document.getElementById('shareStatus');
+    if(!username){ if(status) status.textContent='Skriv inn et brukernavn'; return; }
+
+    const {data:{session}} = await window.supabaseClient.auth.getSession();
+    const token = session?.access_token;
+    const uid = window._mvCurrentUserId;
+
+    // Finn grantee via username
+    const pr = await fetch(`${SB_URL}/rest/v1/profiles?username=eq.${encodeURIComponent(username)}&select=id`, {headers:sbHeaders(token)});
+    const profiles = pr.ok ? await pr.json() : [];
+    if(!profiles.length){ if(status) status.textContent=`Finner ingen bruker med brukernavn "${username}"`; return; }
+    const granteeId = profiles[0].id;
+    if(granteeId === uid){ if(status) status.textContent='Du kan ikke dele med deg selv'; return; }
+
+    // Insert i content_access
+    const ir = await fetch(`${SB_URL}/rest/v1/content_access`, {
+      method:'POST',
+      headers:{...sbHeaders(token),'Prefer':'resolution=merge-duplicates'},
+      body: JSON.stringify({content_type:contentType, content_id:contentId, owner_id:uid, grantee_id:granteeId, role})
+    });
+
+    if(!ir.ok){ if(status) status.textContent='Kunne ikke dele: '+await ir.text(); return; }
+
+    // Send varsel
+    const typeMap = {beat:'share_beat', album:'share_album', mixtape:'share_mixtape'};
+    await fetch(`${SB_URL}/rest/v1/notifications`, {
+      method:'POST',
+      headers:{...sbHeaders(token),'Prefer':'return=minimal'},
+      body: JSON.stringify({recipient_id:granteeId, sender_id:uid, type:typeMap[contentType]||'share_beat', content_id:contentId, content_name:contentName, role, read:false})
+    });
+
+    if(status) status.textContent=`✓ Delt med ${username} som ${role==='editor'?'redaktør':'betrakter'}`;
+    document.getElementById('shareUsername').value='';
+    showToast(`✓ Delt med ${username}`);
+  };
+
+  window.revokeShare = async function(contentType, contentId, granteeId){
+    if(!confirm('Fjerne tilgangen?')) return;
+    const {data:{session}} = await window.supabaseClient.auth.getSession();
+    await fetch(
+      `${SB_URL}/rest/v1/content_access?content_type=eq.${contentType}&content_id=eq.${contentId}&grantee_id=eq.${granteeId}`,
+      {method:'DELETE', headers:{...sbHeaders(session?.access_token),'Prefer':'return=minimal'}}
+    );
+    showToast('✓ Tilgang fjernet');
+    // Reload modal
+    const modal = document.getElementById('mvShareItemModal');
+    if(modal) modal.classList.remove('open');
+  };
+
+  // Poll varsler hvert 30s
+  setInterval(loadNotifications, 30000);
+
+  // ── Kjør ved oppstart ────────────────────────────────────────────────────
+  setTimeout(()=>{
+    if(sessionStorage.getItem('mv_unlocked')==='1'){
+      installNotificationBell();
+    }
+  }, 1200);
   window.albumPitchMode = function(albumId) {
     const album = state.albums?.find(a=>a.id===albumId);
     if (!album) return;

@@ -425,35 +425,69 @@ setTimeout(updateAdminUi, 50);
     if(!st || !client()) { say('Supabase er ikke konfigurert.', 'warning'); return false; }
     if(isPullingFromSupabase) return false;
 
-    // Restore userId from session if not cached
     if(!window._mvCurrentUserId) window._mvCurrentUserId = sessionStorage.getItem('mv_user_id') || null;
     const uid = window._mvCurrentUserId;
 
     isPullingFromSupabase = true;
     say('Henter data fra Supabase...', 'info');
     try{
-      // Filter by owner_id if we have a user — multi-tenant
-      const filter = uid ? (q) => q.eq('owner_id', uid) : (q) => q;
+      // ── 1. Hent eget innhold ────────────────────────────────────
+      const ownFilter = uid ? (q) => q.eq('owner_id', uid) : (q) => q;
 
-      const [beatsRows, albumRows, mixtapeRows, albumBeatRows, mixtapeBeatRows] = await Promise.all([
-        filter(client().from('beats').select('*')).then(r=>{ if(r.error) throw r.error; return r.data||[]; }),
-        filter(client().from('albums').select('*')).then(r=>{ if(r.error) throw r.error; return r.data||[]; }),
-        filter(client().from('mixtapes').select('*')).then(r=>{ if(r.error) throw r.error; return r.data||[]; }),
+      const [ownBeats, ownAlbums, ownMixtapes, albumBeatRows, mixtapeBeatRows] = await Promise.all([
+        ownFilter(client().from('beats').select('*')).then(r=>{ if(r.error) throw r.error; return r.data||[]; }),
+        ownFilter(client().from('albums').select('*')).then(r=>{ if(r.error) throw r.error; return r.data||[]; }),
+        ownFilter(client().from('mixtapes').select('*')).then(r=>{ if(r.error) throw r.error; return r.data||[]; }),
         selectAll('album_beats'),
         selectAll('mixtape_beats')
       ]);
 
-      const remoteIsEmpty = !beatsRows.length && !albumRows.length && !mixtapeRows.length;
-      const localHasData = (st.beats?.length || st.albums?.length || st.mixtapes?.length);
+      // ── 2. Hent delt innhold via content_access ─────────────────
+      let sharedBeats = [], sharedAlbums = [], sharedMixtapes = [];
+      if(uid){
+        const { data: accessRows } = await client()
+          .from('content_access')
+          .select('content_type, content_id, role, owner_id')
+          .eq('grantee_id', uid);
 
-      // If we have a user_id, always trust Supabase over localStorage
-      // An empty result just means this user has no content yet — don't bail
+        if(accessRows?.length){
+          const byType = { beat: [], album: [], mixtape: [] };
+          accessRows.forEach(r => byType[r.content_type]?.push(r.content_id));
+
+          const [sb, sa, sm] = await Promise.all([
+            byType.beat.length
+              ? client().from('beats').select('*').in('id', byType.beat).then(r=>r.data||[])
+              : Promise.resolve([]),
+            byType.album.length
+              ? client().from('albums').select('*').in('id', byType.album).then(r=>r.data||[])
+              : Promise.resolve([]),
+            byType.mixtape.length
+              ? client().from('mixtapes').select('*').in('id', byType.mixtape).then(r=>r.data||[])
+              : Promise.resolve([])
+          ]);
+
+          // Tag shared items with access role
+          const roleMap = {};
+          accessRows.forEach(r => { roleMap[r.content_id] = r.role; });
+          sharedBeats    = sb.map(r => ({...r, _shared: true, _sharedRole: roleMap[r.id]}));
+          sharedAlbums   = sa.map(r => ({...r, _shared: true, _sharedRole: roleMap[r.id]}));
+          sharedMixtapes = sm.map(r => ({...r, _shared: true, _sharedRole: roleMap[r.id]}));
+        }
+      }
+
+      // ── 3. Merge eget + delt ─────────────────────────────────────
+      const allBeats    = [...ownBeats,    ...sharedBeats];
+      const allAlbums   = [...ownAlbums,   ...sharedAlbums];
+      const allMixtapes = [...ownMixtapes, ...sharedMixtapes];
+
+      const remoteIsEmpty = !allBeats.length && !allAlbums.length && !allMixtapes.length;
+      const localHasData  = st.beats?.length || st.albums?.length || st.mixtapes?.length;
+
       if(remoteIsEmpty && localHasData && !force && !uid){
         say('Supabase er tom. Trykk «Migrer lokale data til Supabase».', 'warning');
         return false;
       }
 
-      // If logged-in user has empty Supabase → clear local state (fresh profile)
       if(remoteIsEmpty && uid){
         st.beats = []; st.albums = []; st.mixtapes = [];
         st.settings = st.settings || {}; st.demos = []; st.versions = [];
@@ -465,24 +499,24 @@ setTimeout(updateAdminUi, 50);
         return true;
       }
 
-      const albumMap = idsFromRelations(albumBeatRows, 'album_id');
+      const albumMap   = idsFromRelations(albumBeatRows,   'album_id');
       const mixtapeMap = idsFromRelations(mixtapeBeatRows, 'mixtape_id');
 
-      st.beats = beatsRows.map(unpackBeat);
-      st.albums = albumRows.map(r => unpackAlbum(r, albumMap.get(r.id) || []));
-      st.mixtapes = mixtapeRows.map(r => unpackMixtape(r, mixtapeMap.get(r.id) || []));
+      st.beats    = allBeats.map(unpackBeat);
+      st.albums   = allAlbums.map(r   => unpackAlbum(r,   albumMap.get(r.id)   || []));
+      st.mixtapes = allMixtapes.map(r => unpackMixtape(r, mixtapeMap.get(r.id) || []));
       st.settings = st.settings || {};
-      st.demos = st.demos || [];
+      st.demos    = st.demos    || [];
       st.versions = st.versions || [];
 
-      // Save to user-specific localStorage key
       const sk = uid ? `musicVault.v4.${uid}` : 'musicVault.v4';
-      try { localStorage.setItem(sk, JSON.stringify(st)); } catch{}
-      // Also update the active key so db.js picks it up
+      try { localStorage.setItem(sk,              JSON.stringify(st)); } catch{}
       try { localStorage.setItem('musicVault.v4', JSON.stringify(st)); } catch{}
 
       if(typeof renderAll === 'function') renderAll();
-      say(`Synket: ${st.beats.length} beats, ${st.albums.length} albumer, ${st.mixtapes.length} mixtapes.`, 'success');
+
+      const sharedCount = sharedBeats.length + sharedAlbums.length + sharedMixtapes.length;
+      say(`Synket: ${st.beats.length} beats, ${st.albums.length} albumer, ${st.mixtapes.length} mixtapes${sharedCount ? ` (${sharedCount} delt med deg)` : ''}.`, 'success');
       return true;
     }catch(err){
       console.error('Supabase pull-feil:', err);

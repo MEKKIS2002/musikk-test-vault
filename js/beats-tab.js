@@ -101,6 +101,8 @@
           </button>`;
         }).join('')}` : ''}
       ${admin ? `<hr style="border:none;border-top:1px solid rgba(255,255,255,.08);margin:4px 0">` : ''}
+      ${admin ? `<hr style="border:none;border-top:1px solid rgba(255,255,255,.08);margin:4px 0">` : ''}
+      ${admin ? `<button onclick="openShareModal('beat','${beatId}',${JSON.stringify(beat.name||'Beat')})">🔗 Del med bruker</button>` : ''}
       ${admin ? `<button onclick="beatsTab.archiveBeat('${beatId}')">${isArch ? '↩ Gjenopprett' : '📦 Arkiver sang'}</button>` : ''}
       ${admin ? `<button class="danger" onclick="beatsTab.deleteBeat('${beatId}')">🗑 Slett permanent</button>` : ''}
     `;
