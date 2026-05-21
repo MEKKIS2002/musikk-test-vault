@@ -99,14 +99,19 @@ async function updateAdminUi() {
       if (logoutBox) logoutBox.style.display = "grid";
       showAdminMessage("Du er logget inn som admin.", "success");
       document.body.classList.add("admin-mode");
+      // Cache user id for owner_id stamping
+      window._mvCurrentUserId = user.id;
+      sessionStorage.setItem('mv_user_id', user.id);
       if (typeof window.applyPackage === 'function') window.applyPackage();
     } else if (user) {
       if (statusEl) statusEl.textContent = "Innlogget, men ikke admin";
       if (emailEl) emailEl.textContent = user.email || "Innlogget bruker";
       if (loginBox) loginBox.style.display = "none";
-      if (logoutBox) logoutBox.style.display = "grid";
-      showAdminMessage("Denne brukeren finnes, men har ikke role = 'admin' i profiles-tabellen.", "warning");
+      if (logoutBox) logoutBox.style.display = "none";
+      showAdminMessage("Logget inn som pakke-bruker.", "success");
       document.body.classList.remove("admin-mode");
+      window._mvCurrentUserId = user.id;
+      sessionStorage.setItem('mv_user_id', user.id);
     } else {
       if (statusEl) statusEl.textContent = "Ikke innlogget";
       if (loginBox) loginBox.style.display = "grid";
@@ -309,6 +314,7 @@ setTimeout(updateAdminUi, 50);
       drive_file_id: b.drive_file_id || driveIdFromUrl(b.audio_url || b.url),
       archived: !!b.archived,
       created_at: safeDate(b.createdAt),
+      owner_id: window._mvCurrentUserId || null,
       metadata: meta
     };
   }
@@ -345,6 +351,7 @@ setTimeout(updateAdminUi, 50);
       cover_url: a.cover || a.cover_url || '',
       archived: !!a.archived,
       created_at: safeDate(a.createdAt),
+      owner_id: window._mvCurrentUserId || null,
       metadata: meta
     };
   }
@@ -374,6 +381,7 @@ setTimeout(updateAdminUi, 50);
       cover_url: m.cover || m.cover_url || '',
       archived: !!m.archived,
       created_at: safeDate(m.createdAt),
+      owner_id: window._mvCurrentUserId || null,
       metadata: meta
     };
   }
@@ -417,17 +425,28 @@ setTimeout(updateAdminUi, 50);
     if(!st || !client()) { say('Supabase er ikke konfigurert.', 'warning'); return false; }
     if(isPullingFromSupabase) return false;
 
+    // Restore userId from session if not cached
+    if(!window._mvCurrentUserId) window._mvCurrentUserId = sessionStorage.getItem('mv_user_id') || null;
+    const uid = window._mvCurrentUserId;
+
     isPullingFromSupabase = true;
-    say('Henter felles data fra Supabase...', 'info');
+    say('Henter data fra Supabase...', 'info');
     try{
+      // Filter by owner_id if we have a user — multi-tenant
+      const filter = uid ? (q) => q.eq('owner_id', uid) : (q) => q;
+
       const [beatsRows, albumRows, mixtapeRows, albumBeatRows, mixtapeBeatRows] = await Promise.all([
-        selectAll('beats'), selectAll('albums'), selectAll('mixtapes'), selectAll('album_beats'), selectAll('mixtape_beats')
+        filter(client().from('beats').select('*')).then(r=>{ if(r.error) throw r.error; return r.data||[]; }),
+        filter(client().from('albums').select('*')).then(r=>{ if(r.error) throw r.error; return r.data||[]; }),
+        filter(client().from('mixtapes').select('*')).then(r=>{ if(r.error) throw r.error; return r.data||[]; }),
+        selectAll('album_beats'),
+        selectAll('mixtape_beats')
       ]);
 
       const remoteIsEmpty = !beatsRows.length && !albumRows.length && !mixtapeRows.length;
       const localHasData = (st.beats?.length || st.albums?.length || st.mixtapes?.length);
       if(remoteIsEmpty && localHasData && !force){
-        say('Supabase er tom. Logg inn som admin og trykk «Migrer lokale data til Supabase».', 'warning');
+        say('Supabase er tom. Trykk «Migrer lokale data til Supabase».', 'warning');
         return false;
       }
 
@@ -441,16 +460,18 @@ setTimeout(updateAdminUi, 50);
       st.demos = st.demos || [];
       st.versions = st.versions || [];
 
-      try { localStorage.setItem(SK, JSON.stringify(st)); } catch{}
+      // Save to user-specific localStorage key
+      const sk = uid ? `musicVault.v4.${uid}` : 'musicVault.v4';
+      try { localStorage.setItem(sk, JSON.stringify(st)); } catch{}
+      // Also update the active key so db.js picks it up
+      try { localStorage.setItem('musicVault.v4', JSON.stringify(st)); } catch{}
+
       if(typeof renderAll === 'function') renderAll();
-      say(`Synket fra Supabase: ${st.beats.length} beats, ${st.albums.length} albumer, ${st.mixtapes.length} mixtapes.`, 'success');
+      say(`Synket: ${st.beats.length} beats, ${st.albums.length} albumer, ${st.mixtapes.length} mixtapes.`, 'success');
       return true;
     }catch(err){
       console.error('Supabase pull-feil:', err);
-      const hint = /metadata/i.test(err.message || '')
-        ? ' Mangler metadata-kolonne. Kjør SQL-en som står under Supabase sync-panelet.'
-        : '';
-      say(`Kunne ikke hente fra Supabase: ${err.message || err}.${hint}`, 'error');
+      say(`Kunne ikke hente fra Supabase: ${err.message || err}.`, 'error');
       return false;
     }finally{
       isPullingFromSupabase = false;
@@ -458,7 +479,11 @@ setTimeout(updateAdminUi, 50);
   }
 
   async function deleteMissingRows(table, currentIds){
-    const { data, error } = await client().from(table).select('id');
+    const uid = window._mvCurrentUserId;
+    // Only delete own content — filter by owner_id
+    let q = client().from(table).select('id');
+    if(uid) q = q.eq('owner_id', uid);
+    const { data, error } = await q;
     if(error) throw error;
     const keep = new Set(currentIds || []);
     const missing = (data || []).map(r=>r.id).filter(id=>!keep.has(id));
