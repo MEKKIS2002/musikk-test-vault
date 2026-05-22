@@ -585,7 +585,7 @@ function renderAlbumDetail(){
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button class="primary-btn" id="playAlbumBtn" onclick="playAlbumFromStart('${album.id}')">▶ Spill fra start</button>
       <button class="ghost-btn" onclick="window.albumPitchMode('${album.id}')">📄 Pitch</button>
-      <button class="ghost-btn" onclick="window.openShareModal('album','${album.id}',${JSON.stringify(album.name||'Album')})">👤 Del med bruker</button>
+      <button class="ghost-btn" onclick="window.openShareModal('album','${album.id}','${esc(album.name||'Album').replace(/'/g,"\\'")}')">👤 Del med bruker</button>
       <button class="small-btn danger hidden" id="stopAlbumBtn" onclick="stopCollectionPlayback()">⏹ Stopp</button>
     </div>`;
   const beats=beatsFromIds(album.beatIds);
@@ -1141,7 +1141,7 @@ function renderMixtapeDetail(){
       <div class="mixtape-detail-actions">
         <button class="primary-btn" id="playMixtapeBtn" onclick="playMixtapeFromStart('${mt.id}')">▶ Spill fra start</button>
         <button class="ghost-btn" onclick="window.mixtapeShareMode('${mt.id}')">🎤 Pitch</button>
-        <button class="ghost-btn" onclick="window.openShareModal('mixtape','${mt.id}',${JSON.stringify(mt.name||'Mixtape')})">👤 Del med bruker</button>
+        <button class="ghost-btn" onclick="window.openShareModal('mixtape','${mt.id}','${esc(mt.name||'Mixtape').replace(/'/g,"\\'")}')">👤 Del med bruker</button>
         <button class="small-btn danger hidden" id="stopMixtapeBtn" onclick="stopCollectionPlayback()">⏹ Stopp</button>
       </div>
     </div>
