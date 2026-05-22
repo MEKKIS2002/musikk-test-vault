@@ -238,12 +238,15 @@ async function loginWithUsername(){
     const pkgFromUsername = window.MV_PACKAGES?.[username] ? username : null;
     const pkg  = profile?.package || pkgFromUsername || (role === 'admin' ? 'admin' : 'viewer');
 
+    // Cache user ID — MÅ settes før pull så owner_id-filteret virker
+    window._mvCurrentUserId = data.user.id;
+    sessionStorage.setItem('mv_user_id', data.user.id);
+
     // Lagre i sessionStorage
     sessionStorage.setItem('mv_username', username);
     sessionStorage.setItem('mv_package', pkg);
 
     if(role === 'admin'){
-      // Full admin-tilgang
       window.isAdminMode = true;
       window.currentAdminUser = data.user;
       document.body.classList.add('admin-mode');
@@ -251,13 +254,14 @@ async function loginWithUsername(){
       if(typeof window.mvSupabaseSync?.pull === 'function') window.mvSupabaseSync.pull();
       if(typeof window.updateAdminUi === 'function') window.updateAdminUi();
     } else {
-      // Pakke-bruker: kan logge inn men er ikke admin
       window.isAdminMode = false;
       window.currentAdminUser = data.user;
       document.body.classList.remove('admin-mode');
       unlockAs('user');
-      // Pull data fra Supabase for å vise innhold
-      if(typeof window.mvSupabaseSync?.pull === 'function') window.mvSupabaseSync.pull();
+      // Liten forsinkelse så Supabase-klienten registrerer ny session før pull
+      setTimeout(()=>{
+        if(typeof window.mvSupabaseSync?.pull === 'function') window.mvSupabaseSync.pull();
+      }, 400);
     }
 
     // Anvend pakke-begrensninger
