@@ -85,19 +85,19 @@ AKTIVE BRUKERE:
     <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);padding:28px;display:grid;gap:12px;backdrop-filter:blur(24px)">
       <input id="adminUsername" type="text" placeholder="Brukernavn" autocomplete="username"
         onkeydown="if(event.key==='Enter')document.getElementById('adminPassword').focus()"
-        style="background:rgba(0,0,0,.4);border:none;border-bottom:2px solid rgba(244,164,67,.3);color:#f4ede4;font-size:15px;outline:none;width:100%;font-family:system-ui;box-sizing:border-box;padding:12px 14px;transition:border-color .2s;letter-spacing:.01em"
+        style="background:rgba(20,16,12,.8);border:none;border-bottom:2px solid rgba(244,164,67,.3);color:#f4ede4;font-size:15px;outline:none;width:100%;font-family:system-ui;box-sizing:border-box;padding:12px 14px;transition:border-color .2s;letter-spacing:.01em;-webkit-box-shadow:0 0 0 100px rgba(20,16,12,.8) inset;-webkit-text-fill-color:#f4ede4"
         onfocus="this.style.borderBottomColor='rgba(244,164,67,.8)'"
         onblur="this.style.borderBottomColor='rgba(244,164,67,.3)'"
       />
       <input id="adminPassword" type="password" placeholder="Passord" autocomplete="current-password"
         onkeydown="if(event.key==='Enter')loginWithUsername()"
-        style="background:rgba(0,0,0,.4);border:none;border-bottom:2px solid rgba(244,164,67,.3);color:#f4ede4;font-size:15px;outline:none;width:100%;font-family:system-ui;box-sizing:border-box;padding:12px 14px;transition:border-color .2s;letter-spacing:.01em"
+        style="background:rgba(20,16,12,.8);border:none;border-bottom:2px solid rgba(244,164,67,.3);color:#f4ede4;font-size:15px;outline:none;width:100%;font-family:system-ui;box-sizing:border-box;padding:12px 14px;transition:border-color .2s;letter-spacing:.01em;-webkit-box-shadow:0 0 0 100px rgba(20,16,12,.8) inset;-webkit-text-fill-color:#f4ede4"
         onfocus="this.style.borderBottomColor='rgba(244,164,67,.8)'"
         onblur="this.style.borderBottomColor='rgba(244,164,67,.3)'"
       />
       <button id="lockLoginBtn" onclick="loginWithUsername()"
         onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'"
-        style="background:linear-gradient(135deg,#f4a443,#cb6e1a);border:none;color:#000;font-size:14px;font-weight:900;padding:14px;cursor:pointer;font-family:system-ui;letter-spacing:.08em;text-transform:uppercase;margin-top:4px;transition:opacity .15s"
+        style="background:linear-gradient(135deg,#f4a443,#cb6e1a);border:none;border-radius:0;color:#000;font-size:14px;font-weight:900;padding:14px;cursor:pointer;font-family:system-ui;letter-spacing:.08em;text-transform:uppercase;margin-top:4px;transition:opacity .15s"
       >Logg inn</button>
       <div id="lockError" style="color:#fb7185;font-size:12px;text-align:center;display:none;font-family:system-ui;min-height:16px;letter-spacing:.01em"></div>
     </div>
