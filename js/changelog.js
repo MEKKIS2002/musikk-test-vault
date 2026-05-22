@@ -6,6 +6,82 @@
 
   const VERSIONS = [
     {
+      version: 'v2.6',
+      date: '22. mai 2026',
+      label: 'Multi-tenant og deling',
+      color: '#34d399',
+      changes: [
+        'Multi-tenant arkitektur: hver bruker ser kun sitt eget innhold via owner_id og Supabase RLS',
+        'Bruker-spesifikk localStorage-nøkkel (musicVault.v4.{userId}) — ingen datalekkasje mellom brukere',
+        'Innhold delt via content_access-tabell: editor og viewer roller per objekt',
+        'pullFromSupabase henter eget + delt innhold i én operasjon',
+        'Marcus og erik har automatisk redaktørtilgang på hverandres innhold',
+        'Del med bruker-modal: søk opp brukernavn, velg rolle, send varsel',
+        'Varsel-bjelle 🔔 med ulest-teller — varsler ved ny deling',
+        'Del-knapp på beats (⋯-meny), album og mixtapes',
+        'Tilgang kan trekkes tilbake direkte fra del-modalen',
+        'Nye brukere starter med tom profil — arver ikke andres data',
+      ],
+    },
+    {
+      version: 'v2.5',
+      date: '22. mai 2026',
+      label: 'Pakke-system og brukerroller',
+      color: '#a855f7',
+      changes: [
+        'packages.js: definerer hvilke tabs og funksjoner hver pakke har tilgang til',
+        'Pakker: admin / artist / producer / lyricist / label / viewer',
+        'Artist: Beats, Mixtapes, Albumer, Lyric Lab',
+        'Produsent: Beats, Mixtapes, Albumer, Pipeline',
+        'Tekstforfatter: Beats, Lyric Lab',
+        'Label: Beats, Mixtapes, Albumer, Pipeline',
+        'Pakke leses fra profiles.package-kolonne i Supabase ved innlogging',
+        'Tab-synlighet oppdateres automatisk basert på pakke',
+        'Testbrukere: artist/producer/lyricist/label/viewer (passord: 123)',
+        'hasFeature() og hasTab() for feature-flag-sjekk overalt i koden',
+        'applyPackage() kjøres ved innlogging og oppdaterer UI umiddelbart',
+      ],
+    },
+    {
+      version: 'v2.4',
+      date: '21. mai 2026',
+      label: 'Mixtape pitch, liker og forbedringer',
+      color: '#f4a443',
+      changes: [
+        'Mixtape pitch-side via Cloudflare Worker — fungerer på alle enheter (ikke bare blob-URL)',
+        'Pitch-URL er unik per deling — ny token ved ny deling, gammel token deaktiveres',
+        'Del-side: volum-slider starter på 30%, minimalistisk design',
+        'Liker-system på mixtape-delingsside: ♡-knapp per sang, teller vises (f.eks. 7♡)',
+        'Likes lagres i Supabase mixtape_likes med session-ID for å hindre doble likes',
+        'Deaktiver deling: pitch-URL slutter å fungere umiddelbart',
+        'Ny URL genereres automatisk neste gang man deler',
+        'Album pitch gjenopprettet: vinyl, crossfade, shiny tekst, kommentarer',
+        'Pitch-knapp på mixtapes omdøpt fra "Del" til "Pitch"',
+        'Sortering i mixtapes: lagt til "Mest tekst" og "Lengst varighet"',
+        '"Del med bruker"-knapp på mixtapes og albumer',
+        'Worker: GET /share/:id, PUT /share/:id, DELETE /share/:id endepunkter',
+        'Worker: GET /list endepunkt for å liste R2-nøkler (brukt til beat-gjenoppretting)',
+      ],
+    },
+    {
+      version: 'v2.35',
+      date: '21. mai 2026',
+      label: 'Listevisning og beat-gjenoppretting',
+      color: '#60a5fa',
+      changes: [
+        'Listevisning i album og mixtapes fullstendig omskrevet fra bunnen — ny HTML med egne klasser (abi-list-row)',
+        'track-cards.js sin enhanceCards() hopper over abi-list-row — ingen CSS-konflikter lenger',
+        'Listevisning: 66px rader med kvadratisk cover, nummer, tittel, uploader, varighet, ▶-knapp, ★-knapp',
+        'Kortvisning: TAKE/DEMO-badge skjult på kollapsede kort — tittelen er nå synlig',
+        'Beat-gjenoppretting: 18 beats som bare lå i R2 gjenopprettet til Supabase og localStorage',
+        'supabase.js: automatisk retry (2x) ved push-feil med 3s mellomrom',
+        'schedulePush: maxWait 8s sikrer at push alltid skjer under kontinuerlig skriving',
+        'uploadBeatToR2 awaiter nå push til Supabase — ikke fire-and-forget',
+        'beforeunload-advarsel ved usynkroniserte endringer + emergency push',
+        'Batch-upsert i grupper av 20 for å unngå payload-størrelsesgrenser',
+      ],
+    },
+    {
       version: 'v2.3',
       date: '16. mai 2026',
       label: 'Album & Pipeline',
@@ -72,7 +148,6 @@
         'Vedlikeholdsnotater oppdatert i alle JS-filer og index.html',
       ],
     },
-
     {
       version: 'v2.0',
       date: '13. mai 2026',
@@ -89,7 +164,6 @@
         'Myk fade-overgang (150ms) ved tab-bytte',
       ],
     },
-
     {
       version: 'v1.9',
       date: '13. mai 2026',
@@ -189,34 +263,6 @@
       ],
     },
     {
-      version: 'v1.2',
-      date: '13. mai 2026',
-      label: 'Scroll-fiksing',
-      color: '#67e8f9',
-      changes: [
-        'Tab-bytte forårsaket ikke lenger scroll-hopp opp/ned på siden',
-        'Scroll-posisjon bevares nå på tvers av alle tabs',
-        'Gammel "scheduleRestore"-løsning (5 overlappende setTimeout-kall) erstattet med double-rAF',
-        'history.scrollRestoration satt til "manual" for å hindre browser-innblanding',
-        'Arkiv-tab hadde konkurrerende scrollTo-kall — alle fjernet',
-      ],
-    },
-    {
-      version: 'v1.1',
-      date: '13. mai 2026',
-      label: 'Kode-opprydding (runde 1)',
-      color: '#a3e635',
-      changes: [
-        'Duplikat .album-card:hover .vinyl-disc CSS-regel fjernet',
-        'marcus-hero-vinyl-cleanup-patch fusjonert inn i imperfections-patch',
-        '2 store alignment-patcher (~310 linjer) erstattet av én patch',
-        'Tre mixtape-søk-CSS-blokker fusjonert til én',
-        'scheduleRestore redusert fra 5 til 3 restoreY-kall',
-        'try/catch lagt til saveState og setTrackViewMode (guard mot private browsing)',
-        'MutationObserver i tab-order-script disconnecter nå etter suksess',
-      ],
-    },
-    {
       version: 'v1.0',
       date: '13. mai 2026',
       label: 'Første versjon (denne chatten)',
@@ -231,62 +277,12 @@
         'Rating og ferdigstillelsesprosent per beat',
       ],
     },
-    {
-      version: 'v0.9',
-      date: 'mai 2026',
-      label: 'Lydfiler, sikkerhetsfeatures og polering',
-      color: '#64748b',
-      changes: [
-        'IndexedDB for varig lagring av lydfiler mellom sesjoner — filer forsvinner ikke lenger ved reload',
-        'Lydavspilling direkte i mixtapes og albumer inne i beat-kortene',
-        'Sletting med bekreftelse — må skrive "slett" + confirm for album og mixtape',
-        'SHA-256-hashet passordlås — klartekstpassord aldri synlig i koden',
-        'Drag-and-drop: slipp lydfiler direkte inn i album eller mixtape',
-        'Bottom player med kø, seek, volum og "nå spilles"-indikator',
-        'Pipeline redesignet til album-oversikt med individuell og gjennomsnittlig progress per album',
-      ],
-    },
-    {
-      version: 'v0.8',
-      date: 'mai 2026',
-      label: 'Rich editor, vinyl og kasett-design',
-      color: '#475569',
-      changes: [
-        'Albumer redesignet som vinyl — spinner konstant, coverbilde plassert som label i midten',
-        'Mixtapes redesignet som kassetter — detaljert kassett-art med label, roterende hjul og tapespor',
-        'Hover på album skalerer vinyl 10% opp med glow-effekt',
-        'Rich text editor i beat-kortene med 6-fargers highlighting (gul, grønn, blå, rosa, rød, lilla)',
-        'Tekstboks ekspanderer nedover som dropdown når man klikker på et beat',
-        'Lukke/åpne styres kun av coverbildet — stjerner og slider trigger ikke toggle',
-        'Beat-kort i album viser coverbilde, 1-10 stjernerangering, ferdigstillelse % og tekstfelt',
-      ],
-    },
-    {
-      version: 'v0.7',
-      date: 'mai 2026',
-      label: 'Første versjon (forrige chat)',
-      color: '#334155',
-      changes: [
-        'Beats-fane med Google Drive API-integrasjon, stjernemerking og tekstboks per beat',
-        'Demoer-fane med SoundCloud oEmbed, pipeline-status (Idé→Klar), 1-10 rangering og ferdigstillelsesprosent',
-        'Release Score (0-100) basert på pipeline, rating, ferdigstillelse, moodboard og versjonslogg',
-        'Albumer med enkel mappestruktur og kvadratisk forsidebilde',
-        'Lydavspilling via Google Drive-delelenker og direkte URL-er',
-        'Moodboards, Prompts og A/B-rating (senere fjernet)',
-        'Demo-modal med fem tabs: Oversikt, Moodboard, Versjonslogg, A/B og Notater',
-        'Dagsbasert skrivepromt med historikk',
-        'Sortering etter Release Score, rangering, ferdigstillelse og dato',
-      ],
-    },
   ];
 
-  // ── Render ────────────────────────────────────────────────────────────────
   function renderChangelog() {
     const el = document.getElementById('changelogPanel');
     if (!el) return;
-
     const latest = VERSIONS[0];
-
     el.innerHTML = `
       <div class="cl-header">
         <div>
@@ -323,59 +319,37 @@
     btn.textContent = open ? 'Skjul ▴' : 'Vis alle versjoner ▾';
   };
 
-  // ── Install ───────────────────────────────────────────────────────────────
   function install() {
-    // Inject into integrations tab content-panel
     const panel = document.querySelector('#integrationsTab .content-panel');
     if (!panel || document.getElementById('changelogPanel')) return;
-
     const card = document.createElement('div');
     card.className = 'settings-card';
     card.id = 'changelogPanel';
     panel.appendChild(card);
     renderChangelog();
-
-    // Inject styles
     if (document.getElementById('cl-style')) return;
     const style = document.createElement('style');
     style.id = 'cl-style';
     style.textContent = `
       .cl-header { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap; }
       .cl-toggle { font-size:12px !important; padding:6px 12px !important; white-space:nowrap; }
-
       .cl-version { padding: 14px 0; border-bottom: 1px solid rgba(255,255,255,.06); }
       .cl-version:last-child { border-bottom: none; padding-bottom: 0; }
       .cl-latest { padding-top: 0; }
-
       .cl-version-header { display:flex; align-items:center; gap:10px; margin-bottom:8px; flex-wrap:wrap; }
-      .cl-badge {
-        font-size: 11px; font-weight: 900; letter-spacing: .06em;
-        padding: 3px 10px; border-radius: 999px; border: 1px solid;
-        flex-shrink: 0;
-      }
-      .cl-label { font-size: 14px; font-weight: 800; }
-      .cl-date { font-size: 11px; color: var(--muted); margin-left: auto; white-space: nowrap; }
-
-      .cl-list {
-        margin: 0; padding-left: 18px;
-        display: flex; flex-direction: column; gap: 4px;
-      }
-      .cl-list li {
-        font-size: 12px; color: var(--muted); line-height: 1.55;
-        list-style: disc;
-      }
+      .cl-badge { font-size:11px; font-weight:900; letter-spacing:.06em; padding:3px 10px; border-radius:999px; border:1px solid; flex-shrink:0; }
+      .cl-label { font-size:14px; font-weight:800; }
+      .cl-date { font-size:11px; color:var(--muted); margin-left:auto; white-space:nowrap; }
+      .cl-list { margin:0; padding-left:18px; display:flex; flex-direction:column; gap:4px; }
+      .cl-list li { font-size:12px; color:var(--muted); line-height:1.55; list-style:disc; }
     `;
     document.head.appendChild(style);
   }
 
-  // Install when integrations tab is opened
   document.addEventListener('click', e => {
-    if (e.target.closest('.tab-btn[data-tab="integrations"]')) {
-      setTimeout(install, 80);
-    }
+    if (e.target.closest('.tab-btn[data-tab="integrations"]')) setTimeout(install, 80);
   });
 
-  // Also try on load
   if (document.readyState !== 'loading') setTimeout(install, 800);
   else document.addEventListener('DOMContentLoaded', () => setTimeout(install, 800));
 })();

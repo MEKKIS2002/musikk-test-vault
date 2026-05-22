@@ -1079,39 +1079,38 @@ window.openShareModal = async function(contentType, contentId, contentName){
     if(pr.ok){const profiles = await pr.json(); profiles.forEach(p=>granteeNames[p.id]=p.username||p.id);}
   }
 
+  // Build and show share modal with inline styles (avoids CSS class dependency)
+  const closeShare = () => { const m = document.getElementById('mvShareItemModal'); if(m) m.style.display='none'; };
+
   let modal = document.getElementById('mvShareItemModal');
   if(!modal){
     modal = document.createElement('div');
     modal.id = 'mvShareItemModal';
-    modal.className = 'modal';
-    modal.addEventListener('click', e=>{ if(e.target===modal) modal.classList.remove('open'); });
+    modal.addEventListener('click', e=>{ if(e.target===modal) closeShare(); });
     document.body.appendChild(modal);
   }
 
   const typeLabel = {beat:'Beat',album:'Album',mixtape:'Mixtape'}[contentType]||contentType;
 
-  modal.innerHTML = `<div class="modal-card modal-sm" style="max-width:460px">
-    <div class="modal-hd">
-      <div class="modal-hd-left"><h2>Del ${typeLabel}: ${contentName}</h2></div>
-      <div class="modal-hd-right"><button class="close-btn" onclick="document.getElementById('mvShareItemModal').classList.remove('open')">×</button></div>
+  modal.innerHTML = `<div style="background:#1a1612;border:1px solid rgba(255,255,255,.12);max-width:460px;width:100%;padding:24px 28px;position:relative">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <h2 style="font-size:16px;font-weight:800;margin:0">Del ${typeLabel}: ${contentName}</h2>
+      <button onclick="document.getElementById('mvShareItemModal').style.display='none'" style="background:none;border:none;color:rgba(255,255,255,.5);font-size:20px;cursor:pointer;padding:0;line-height:1">×</button>
     </div>
-    <div class="modal-body" style="padding:20px 24px 24px;display:grid;gap:16px">
-
-      <!-- Legg til ny bruker -->
+    <div style="display:grid;gap:16px">
       <div style="display:grid;gap:8px">
         <label style="font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.4)">Del med bruker</label>
         <div style="display:flex;gap:8px">
-          <input id="shareUsername" placeholder="Brukernavn" style="flex:1;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#f4ede4;padding:9px 12px;font-size:13px;font-family:system-ui;outline:none;border-radius:6px">
-          <select id="shareRole" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#f4ede4;padding:9px 12px;font-size:13px;font-family:system-ui;outline:none;border-radius:6px">
+          <input id="shareUsername" placeholder="Brukernavn (f.eks. erik)" style="flex:1;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#f4ede4;padding:9px 12px;font-size:13px;font-family:system-ui;outline:none"
+            onkeydown="if(event.key==='Enter') window.doShare('${contentType}','${contentId}','${contentName}')">
+          <select id="shareRole" style="background:#1a1612;border:1px solid rgba(255,255,255,.12);color:#f4ede4;padding:9px 12px;font-size:13px;font-family:system-ui;outline:none">
             <option value="viewer">Visningsmodus</option>
             <option value="editor">Redaktør</option>
           </select>
         </div>
-        <button class="primary-btn" style="font-size:12px;padding:8px 16px;justify-self:start" onclick="doShare('${contentType}','${contentId}','${contentName}')">Del</button>
+        <button onclick="window.doShare('${contentType}','${contentId}','${contentName}')" style="background:#f4a443;border:none;color:#000;font-size:12px;font-weight:800;padding:8px 16px;cursor:pointer;font-family:system-ui;align-self:start">Del</button>
         <div id="shareStatus" style="font-size:11px;color:rgba(255,255,255,.4);min-height:16px"></div>
       </div>
-
-      <!-- Eksisterende tilganger -->
       <div>
         <div style="font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.4);margin-bottom:10px">Har tilgang</div>
         <div id="shareAccessList">
@@ -1119,14 +1118,15 @@ window.openShareModal = async function(contentType, contentId, contentName){
             <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06)">
               <span style="font-size:13px;font-weight:700;color:#f4ede4;flex:1">👤 ${granteeNames[r.grantee_id]||r.grantee_id}</span>
               <span style="font-size:11px;color:rgba(255,255,255,.4)">${r.role==='editor'?'Redaktør':'Visningsmodus'}</span>
-              <button onclick="revokeShare('${contentType}','${contentId}','${r.grantee_id}')" style="background:none;border:none;color:rgba(255,100,100,.6);cursor:pointer;font-size:13px;padding:2px 6px" title="Fjern tilgang">✕</button>
+              <button onclick="window.revokeShare('${contentType}','${contentId}','${r.grantee_id}')" style="background:none;border:none;color:rgba(255,100,100,.6);cursor:pointer;font-size:13px;padding:2px 6px">✕</button>
             </div>
           `).join('') : '<div style="font-size:12px;color:rgba(255,255,255,.3)">Ingen har tilgang ennå</div>'}
         </div>
       </div>
     </div>
   </div>`;
-  modal.classList.add('open');
+
+  modal.style.cssText = 'position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px)';
 };
 
 window.doShare = async function(contentType, contentId, contentName){
