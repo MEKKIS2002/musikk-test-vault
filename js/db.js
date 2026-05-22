@@ -293,6 +293,7 @@ function saveState(){
 }
 function isAdmin(){return sessionStorage.getItem('mv_role')==='admin';}
 function requireAdmin(action){if(window.isAdminMode&&isAdmin())return true;showToast(`⚠ Kun admin kan ${action||'gjøre dette'}`);return false;}
+window.requireAdmin = requireAdmin;
 
 function setupSel(el,opts){el.innerHTML=opts;}
 function setupRating(el){el.innerHTML=Array.from({length:10},(_,i)=>`<option value="${i+1}">${i+1} stjerne${i===0?"":"r"}`).join("");}
@@ -583,6 +584,7 @@ function renderAlbumDetail(){
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button class="primary-btn" id="playAlbumBtn" onclick="playAlbumFromStart('${album.id}')">▶ Spill fra start</button>
+      <button class="ghost-btn" onclick="window.albumPitchMode('${album.id}')">📄 Pitch</button>
       <button class="ghost-btn" onclick="window.openShareModal('album','${album.id}',${JSON.stringify(album.name||'Album')})">👤 Del med bruker</button>
       <button class="small-btn danger hidden" id="stopAlbumBtn" onclick="stopCollectionPlayback()">⏹ Stopp</button>
     </div>`;
@@ -1399,6 +1401,7 @@ function applyHighlight(beatId,color){
 // ── TOAST ──
 let _tt;
 function showToast(msg){
+  window.showToast = showToast; // expose globally
   let t=document.getElementById("_toast");
   if(!t){t=document.createElement("div");t.id="_toast";t.style.cssText="position:fixed;bottom:22px;right:22px;background:rgba(18,18,27,.96);backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,.2);border-radius:12px;padding:11px 18px;font-size:13px;z-index:999;transform:translateY(60px);opacity:0;transition:all .25s;pointer-events:none";document.body.appendChild(t);}
   t.textContent=String(msg||'');t.style.transform="translateY(0)";t.style.opacity="1";

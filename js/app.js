@@ -1054,7 +1054,6 @@ window.markAllNotifsRead = async function(){
 
 // ── Del-modal ─────────────────────────────────────────────────────────────
 window.openShareModal = async function(contentType, contentId, contentName){
-  if(!requireAdmin('dele innhold')) return;
   const uid = window._mvCurrentUserId;
   if(!uid){ showToast('Logg inn for å dele'); return; }
 
