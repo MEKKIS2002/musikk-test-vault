@@ -1100,15 +1100,16 @@ window.openShareModal = async function(contentType, contentId, contentName){
     <div style="display:grid;gap:16px">
       <div style="display:grid;gap:8px">
         <label style="font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.4)">Del med bruker</label>
+        <input id="shareUsername" placeholder="Brukernavn (f.eks. erik)"
+          style="width:100%;box-sizing:border-box;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#f4ede4;padding:10px 12px;font-size:13px;font-family:system-ui;outline:none;border-radius:0!important"
+          onkeydown="if(event.key==='Enter') window.doShare('${contentType}','${contentId}','${contentName}')">
         <div style="display:flex;gap:8px">
-          <input id="shareUsername" placeholder="Brukernavn (f.eks. erik)" style="flex:1;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#f4ede4;padding:9px 12px;font-size:13px;font-family:system-ui;outline:none"
-            onkeydown="if(event.key==='Enter') window.doShare('${contentType}','${contentId}','${contentName}')">
-          <select id="shareRole" style="background:#1a1612;border:1px solid rgba(255,255,255,.12);color:#f4ede4;padding:9px 12px;font-size:13px;font-family:system-ui;outline:none">
+          <select id="shareRole" style="flex:1;background:#1a1612;border:1px solid rgba(255,255,255,.12);color:#f4ede4;padding:10px 12px;font-size:13px;font-family:system-ui;outline:none">
             <option value="viewer">Visningsmodus</option>
             <option value="editor">Redaktør</option>
           </select>
+          <button onclick="window.doShare('${contentType}','${contentId}','${contentName}')" style="background:#f4a443;border:none;color:#000;font-size:13px;font-weight:800;padding:10px 20px;cursor:pointer;font-family:system-ui;white-space:nowrap">Del</button>
         </div>
-        <button onclick="window.doShare('${contentType}','${contentId}','${contentName}')" style="background:#f4a443;border:none;color:#000;font-size:12px;font-weight:800;padding:8px 16px;cursor:pointer;font-family:system-ui;align-self:start">Del</button>
         <div id="shareStatus" style="font-size:11px;color:rgba(255,255,255,.4);min-height:16px"></div>
       </div>
       <div>
