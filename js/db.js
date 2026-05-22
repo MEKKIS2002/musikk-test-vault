@@ -1141,7 +1141,7 @@ function renderMixtapeDetail(){
       <div class="mixtape-detail-actions">
         <button class="primary-btn" id="playMixtapeBtn" onclick="playMixtapeFromStart('${mt.id}')">▶ Spill fra start</button>
         <button class="ghost-btn" onclick="window.mixtapeShareMode('${mt.id}')">🎤 Pitch</button>
-        <button class="ghost-btn" onclick="window.openShareModal('mixtape','${mt.id}','${esc(mt.name||'Mixtape').replace(/'/g,"\\'")}')">👤 Del med bruker</button>
+        ${!mt._shared ? `<button class="ghost-btn" onclick="window.openShareModal('mixtape','${mt.id}','${esc(mt.name||'Mixtape').replace(/'/g,"\\'")}')">👤 Del med bruker</button>` : ''}
         <button class="small-btn danger hidden" id="stopMixtapeBtn" onclick="stopCollectionPlayback()">⏹ Stopp</button>
       </div>
     </div>
