@@ -921,3 +921,11 @@ body.admin-mode .admin-only-btn { display: inline-flex !important; }
 }
 
 /* ── Vinyl spin animation ─────────────────────────────────────── */
+
+/* ── Viewer-delt innhold: skjul redigering ─────────────────── */
+.beat-shared-viewer .ab-lyric-editor,
+.beat-shared-viewer .ab-expand-top-bar label,
+.beat-shared-viewer [onclick*="removeFromCollection"],
+.beat-shared-viewer [onclick*="uploadBeatAudio"],
+.beat-shared-viewer [onclick*="downloadBeat"],
+.beat-shared-viewer .ab-beatname { display: none !important; }
