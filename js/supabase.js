@@ -337,7 +337,10 @@ setTimeout(updateAdminUi, 50);
       rating: Number(meta.rating || 0),
       cover: meta.cover || '',
       done: Number(meta.done || 0),
-      createdAt: meta.createdAt || fromIso(row.created_at)
+      createdAt: meta.createdAt || fromIso(row.created_at),
+      owner_id: row.owner_id || meta.owner_id || null,
+      _shared: row._shared || false,
+      _sharedRole: row._sharedRole || null
     };
   }
   function packAlbum(a){
@@ -367,7 +370,10 @@ setTimeout(updateAdminUi, 50);
       cover_url: row.cover_url || meta.cover || '',
       archived: !!row.archived,
       beatIds: beatIds || meta.beatIds || [],
-      createdAt: meta.createdAt || fromIso(row.created_at)
+      createdAt: meta.createdAt || fromIso(row.created_at),
+      owner_id: row.owner_id || meta.owner_id || null,
+      _shared: row._shared || false,
+      _sharedRole: row._sharedRole || null
     };
   }
   function packMixtape(m){
@@ -397,7 +403,10 @@ setTimeout(updateAdminUi, 50);
       cover_url: row.cover_url || meta.cover || '',
       archived: !!row.archived,
       beatIds: beatIds || meta.beatIds || [],
-      createdAt: meta.createdAt || fromIso(row.created_at)
+      createdAt: meta.createdAt || fromIso(row.created_at),
+      owner_id: row.owner_id || meta.owner_id || null,
+      _shared: row._shared || false,
+      _sharedRole: row._sharedRole || null
     };
   }
 
