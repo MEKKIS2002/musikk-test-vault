@@ -489,7 +489,8 @@ loadComments();
     const blob2 = new Blob([html], {type:'text/html'});
     window.open(URL.createObjectURL(blob2), '_blank');
     if(typeof showToast==='function') showToast('✓ Pitch-side åpnet i ny fane');
-  };indow.setAlbumCover=function(id,file){if(!file)return;const r=new FileReader();r.onload=e=>{const a=state.albums.find(x=>x.id===id);if(a){a.cover=e.target.result;saveState();renderAlbumDetail();renderAlbums();showToast('✓ Albumbilde oppdatert');}};r.readAsDataURL(file);};
+  };
+  window.setAlbumCover=function(id,file){if(!file)return;const r=new FileReader();r.onload=e=>{const a=state.albums.find(x=>x.id===id);if(a){a.cover=e.target.result;saveState();renderAlbumDetail();renderAlbums();showToast('✓ Albumbilde oppdatert');}};r.readAsDataURL(file);};
 
   const _oldRenderAlbumBeats=window.renderAlbumBeats;
   window.renderAlbumBeats=function(beats,mode,customEl){
@@ -943,8 +944,8 @@ loadComments();
 // ── Deling, varsler og pitch ──────────────────────────────────────
 
 // ── Deling og varsel-system ──────────────────────────────────────────────
-const SB_URL = 'https://ylvqkfdvijqnecuqznyr.supabase.co';
-const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlsdnFrZmR2aWpxbmVjdXF6bnlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzMzA4MzIsImV4cCI6MjA5MzkwNjgzMn0.bYPTaxQK8n7I7w5Ri2DVYW5_LbFHg2IXkuhHsLTDDqc';
+var SB_URL = 'https://ylvqkfdvijqnecuqznyr.supabase.co';
+var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlsdnFrZmR2aWpxbmVjdXF6bnlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzMzA4MzIsImV4cCI6MjA5MzkwNjgzMn0.bYPTaxQK8n7I7w5Ri2DVYW5_LbFHg2IXkuhHsLTDDqc';
 
 function sbHeaders(token){
   const t = token || sessionStorage.getItem('sb_access_token') || SB_KEY;
