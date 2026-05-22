@@ -292,8 +292,12 @@ function saveState(){
   if(typeof window.mvSupabaseSync?.schedulePush==='function')window.mvSupabaseSync.schedulePush();
 }
 function isAdmin(){return sessionStorage.getItem('mv_role')==='admin';}
-function requireAdmin(action){if(window.isAdminMode&&isAdmin())return true;showToast(`⚠ Kun admin kan ${action||'gjøre dette'}`);return false;}
-window.requireAdmin = requireAdmin;
+function isOwnerOrEditor(item){
+  if(!item) return true;
+  if(!item._shared) return true; // eier
+  return item._sharedRole === 'editor';
+}
+window.isOwnerOrEditor = isOwnerOrEditor;
 
 function setupSel(el,opts){el.innerHTML=opts;}
 function setupRating(el){el.innerHTML=Array.from({length:10},(_,i)=>`<option value="${i+1}">${i+1} stjerne${i===0?"":"r"}`).join("");}
@@ -689,7 +693,7 @@ function renderAlbumBeats(beats,mode,customEl){
       const noLyric=!(b.lyrics||(b.lyricSections||[]).some(s=>s.text?.trim()));
       const durStr=b.duration?`${Math.floor(b.duration/60)}:${String(Math.floor(b.duration%60)).padStart(2,'0')}`:'';
       const dragAttrsL=canDrag?`draggable="true" ondragstart="startCollectionDrag(event,'${b.id}','${listMode}')" ondragend="endCollectionDrag()" ondragover="dragBeatOver(event,'${b.id}')" ondragleave="dragBeatLeave(event,'${b.id}')" ondrop="dropCollectionBeat(event,'${b.id}','${listMode}')"`:"";
-      return `<div class="album-beat-card abi-list-row" id="abi-${b.id}" data-beat-id="${b.id}" ${dragAttrsL}>
+      return `<div class="album-beat-card abi-list-row${b._shared && b._sharedRole!=='editor' ? ' beat-shared-viewer' : ''}" id="abi-${b.id}" data-beat-id="${b.id}" ${dragAttrsL}>
         <div class="abi-row-inner" onclick="toggleAlbumBeat('${b.id}')">
           <div class="abi-row-cover">${coverHtml}</div>
           <span class="abi-row-num">${String(idx+1).padStart(2,'0')}</span>
@@ -1140,7 +1144,7 @@ function renderMixtapeDetail(){
       </div>
       <div class="mixtape-detail-actions">
         <button class="primary-btn" id="playMixtapeBtn" onclick="playMixtapeFromStart('${mt.id}')">▶ Spill fra start</button>
-        <button class="ghost-btn" onclick="window.mixtapeShareMode('${mt.id}')">🎤 Pitch</button>
+        ${isOwnerOrEditor(mt) ? `<button class="ghost-btn" onclick="window.mixtapeShareMode('${mt.id}')">🎤 Pitch</button>` : ''}
         ${!mt._shared ? `<button class="ghost-btn" onclick="window.openShareModal('mixtape','${mt.id}','${esc(mt.name||'Mixtape').replace(/'/g,"\\'")}')">👤 Del med bruker</button>` : ''}
         <button class="small-btn danger hidden" id="stopMixtapeBtn" onclick="stopCollectionPlayback()">⏹ Stopp</button>
       </div>
@@ -1151,6 +1155,15 @@ function renderMixtapeDetail(){
   const beats=getSortedMixtapeBeats(mt);
   renderAlbumBeats(beats,"mixtape",document.getElementById("mixtapeBeatList"));
   updateCollectionPlayerUI();
+
+  // Skjul destruktive knapper for viewer-tilgang
+  const isMtViewer = mt._shared && mt._sharedRole !== 'editor';
+  ['archiveMixtapeBtn','deleteMixtapeBtn','mixtapeUploadInput'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.style.display = isMtViewer ? 'none' : '';
+  });
+  const sortWrap=document.querySelector('.mixtape-sort-wrap');
+  if(sortWrap) sortWrap.style.display = isMtViewer ? 'none' : '';
   updateArchiveToolbarButtons?.();
 }
 
