@@ -1229,29 +1229,29 @@ function _showMixtapePitchDialog(mixtapeId, shareUrl, workerUrl, mt) {
   if (!modal) {
     modal = document.createElement('div');
     modal.id = 'mvMixtapePitchModal';
-    modal.className = 'modal';
-    modal.innerHTML = `<div class="modal-card modal-sm" style="max-width:440px">
-      <div class="modal-hd">
-        <div class="modal-hd-left"><h2>Pitch mixtape</h2></div>
-        <div class="modal-hd-right"><button class="close-btn" onclick="document.getElementById('mvMixtapePitchModal').classList.remove('open')">×</button></div>
-      </div>
-      <div class="modal-body" style="padding:22px 28px 28px;display:grid;gap:16px">
-        <div style="font-size:12px;color:rgba(255,255,255,.5);font-family:system-ui">Del denne lenken med A&R, labels eller samarbeidspartnere</div>
-        <div style="display:flex;gap:8px">
-          <input id="mvPitchUrl" readonly style="flex:1;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#f4ede4;padding:9px 12px;font-size:12px;font-family:system-ui;outline:none">
-          <button class="primary-btn" style="font-size:12px;padding:8px 16px" onclick="navigator.clipboard.writeText(document.getElementById('mvPitchUrl').value).then(()=>{this.textContent='✓ Kopiert!';setTimeout(()=>this.textContent='Kopier',2000)})">Kopier</button>
-        </div>
-        <div style="display:flex;gap:8px">
-          <button class="ghost-btn" style="font-size:12px" onclick="window.open(document.getElementById('mvPitchUrl').value,'_blank')">🔗 Åpne</button>
-          <button id="mvPitchUpdateBtn" class="ghost-btn" style="font-size:12px">🔄 Oppdater</button>
-          <button id="mvPitchDisableBtn" class="small-btn danger" style="font-size:12px;margin-left:auto">⛔ Deaktiver</button>
-        </div>
-        <div id="mvPitchStatus" style="font-size:11px;color:rgba(255,255,255,.35);font-family:system-ui;min-height:16px"></div>
-      </div>
-    </div>`;
+    modal.addEventListener('click', e => { if(e.target===modal) modal.style.display='none'; });
     document.body.appendChild(modal);
-    modal.addEventListener('click', e => { if(e.target===modal) modal.classList.remove('open'); });
   }
+
+  modal.innerHTML = `<div style="background:#1a1612;border:1px solid rgba(255,255,255,.12);max-width:440px;width:100%;padding:24px 28px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <h2 style="font-size:16px;font-weight:800;margin:0">🎤 Pitch mixtape</h2>
+      <button onclick="document.getElementById('mvMixtapePitchModal').style.display='none'" style="background:none;border:none;color:rgba(255,255,255,.5);font-size:20px;cursor:pointer;padding:0;line-height:1">×</button>
+    </div>
+    <div style="display:grid;gap:14px">
+      <div style="font-size:12px;color:rgba(255,255,255,.5);font-family:system-ui">Del denne lenken med A&R, labels eller samarbeidspartnere</div>
+      <div style="display:flex;gap:8px">
+        <input id="mvPitchUrl" readonly style="flex:1;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#f4ede4;padding:9px 12px;font-size:12px;font-family:system-ui;outline:none">
+        <button onclick="navigator.clipboard.writeText(document.getElementById('mvPitchUrl').value).then(()=>{this.textContent='✓';setTimeout(()=>this.textContent='Kopier',2000)})" style="background:#f4a443;border:none;color:#000;font-size:12px;font-weight:800;padding:8px 14px;cursor:pointer;font-family:system-ui">Kopier</button>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button onclick="window.open(document.getElementById('mvPitchUrl').value,'_blank')" style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);color:#f4ede4;font-size:12px;padding:7px 14px;cursor:pointer;font-family:system-ui">🔗 Åpne</button>
+        <button id="mvPitchUpdateBtn" style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);color:#f4ede4;font-size:12px;padding:7px 14px;cursor:pointer;font-family:system-ui">🔄 Oppdater</button>
+        <button id="mvPitchDisableBtn" style="background:rgba(251,113,133,.1);border:1px solid rgba(251,113,133,.3);color:#fb7185;font-size:12px;padding:7px 14px;cursor:pointer;font-family:system-ui;margin-left:auto">⛔ Deaktiver</button>
+      </div>
+      <div id="mvPitchStatus" style="font-size:11px;color:rgba(255,255,255,.35);font-family:system-ui;min-height:16px"></div>
+    </div>
+  </div>`;
 
   document.getElementById('mvPitchUrl').value = shareUrl;
   document.getElementById('mvPitchStatus').textContent = '';
@@ -1280,11 +1280,11 @@ function _showMixtapePitchDialog(mixtapeId, shareUrl, workerUrl, mt) {
       mt._shareToken = null; mt._shareUrl = null; mt._shareEnabled = false;
       if(typeof saveState==='function') saveState();
       status.textContent = '✓ Deaktivert. Neste pitch gir ny lenke.';
-      setTimeout(()=>modal.classList.remove('open'), 2000);
+      setTimeout(()=>{modal.style.display='none';}, 2000);
     } catch(e) { status.textContent = '⚠ '+e.message; }
   };
 
-  modal.classList.add('open');
+  modal.style.cssText = 'position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px)';
 }
 
 // Expose for lock.js
