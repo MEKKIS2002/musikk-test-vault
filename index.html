@@ -61,44 +61,92 @@ AKTIVE BRUKERE:
   <link rel="stylesheet" href="css/mobile.css?v=202506163300">
 </head>
 <body>
-<!-- Viewer mode login shortcut -->
-<button id="viewerLoginBtn" onclick="returnToPasswordScreen()" title="Logg inn som admin" style="display:none;position:fixed;top:14px;right:16px;z-index:8000;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:10px;padding:7px 12px;color:#aaa4bd;font-size:12px;font-weight:800;cursor:pointer;letter-spacing:.04em;gap:6px;align-items:center;font-family:inherit">
-  🔐 Admin
-</button>
-<!-- PASSWORD SCREEN -->
-<div id="lockScreen" style="position:fixed;inset:0;background:radial-gradient(circle at 30% 20%,rgba(168,85,247,.3),transparent 40%),radial-gradient(circle at 80% 80%,rgba(34,211,238,.2),transparent 40%),#09090f;display:flex;align-items:center;justify-content:center;z-index:9999;flex-direction:column;gap:0">
-  <div style="text-align:center;margin-bottom:28px">
-    <div style="font-size:44px;margin-bottom:10px">🎵</div>
-    <div style="font-size:26px;font-weight:900;letter-spacing:-.05em;color:#f6f4ff">Music Vault</div>
+<!-- Viewer mode login shortcut (legacy, hidden) -->
+<button id="viewerLoginBtn" onclick="returnToPasswordScreen()" style="display:none"></button>
+
+<!-- LOCK SCREEN -->
+<div id="lockScreen" style="position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#0d0c0b">
+
+  <!-- Ambient gradient -->
+  <div style="position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(244,164,67,.12),transparent 70%),radial-gradient(ellipse 60% 80% at 80% 100%,rgba(124,58,237,.08),transparent 70%);pointer-events:none"></div>
+
+  <!-- Spinning vinyl background — real PNG -->
+  <div id="lockVinyl" style="position:absolute;width:min(780px,140vw);height:min(780px,140vw);top:50%;left:50%;pointer-events:none;border-radius:50%;overflow:hidden">
+    <img src="assets/vinyl-label.png" alt="" style="width:100%;height:100%;display:block;object-fit:cover;mix-blend-mode:screen;opacity:.7">
   </div>
 
-  <!-- Tab switcher -->
-  <div style="display:flex;gap:0;margin-bottom:20px;background:rgba(255,255,255,.07);border-radius:12px;padding:3px;width:min(340px,88vw)">
-    <button id="lockTabAdmin" onclick="switchLockTab('admin')" style="flex:1;padding:9px;border:none;border-radius:9px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;letter-spacing:.02em;background:linear-gradient(135deg,#f4a443,#cb6e1a);color:#fff;transition:all .2s">Admin</button>
-    <button id="lockTabViewer" onclick="switchLockTab('viewer')" style="flex:1;padding:9px;border:none;border-radius:9px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;letter-spacing:.02em;background:transparent;color:#aaa4bd;transition:all .2s">Visningsmodus</button>
-  </div>
-
-  <!-- Admin login card -->
-  <div id="lockCardAdmin" style="background:linear-gradient(135deg,rgba(255,255,255,.11),rgba(255,255,255,.055));border:1px solid rgba(255,255,255,.14);border-radius:20px;padding:28px 32px;width:min(340px,88vw);display:grid;gap:12px;backdrop-filter:blur(18px);box-shadow:0 24px 80px rgba(0,0,0,.45)">
-    <input id="adminUsername" type="text" placeholder="Brukernavn" autocomplete="username" onkeydown="if(event.key==='Enter')document.getElementById('adminPassword').focus()" style="background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.18);border-radius:12px;padding:12px 14px;color:#f6f4ff;font-size:15px;outline:none;width:100%;font-family:inherit;box-sizing:border-box" />
-    <input id="adminPassword" type="password" placeholder="Passord" autocomplete="current-password" onkeydown="if(event.key==='Enter')loginWithUsername()" style="background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.18);border-radius:12px;padding:12px 14px;color:#f6f4ff;font-size:15px;outline:none;width:100%;font-family:inherit;box-sizing:border-box" />
-    <button onclick="loginWithUsername()" id="lockLoginBtn" style="background:linear-gradient(135deg,#f4a443,#cb6e1a);border:none;border-radius:12px;padding:12px;color:#fff;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;letter-spacing:.2px">Logg inn</button>
-    <div id="lockError" style="color:#fb7185;font-size:12px;text-align:center;display:none;min-height:16px"></div>
-  </div>
-
-  <!-- Viewer mode card -->
-  <div id="lockCardViewer" style="display:none;background:linear-gradient(135deg,rgba(255,255,255,.11),rgba(255,255,255,.055));border:1px solid rgba(255,255,255,.14);border-radius:20px;padding:28px 32px;width:min(340px,88vw);display:none;gap:12px;backdrop-filter:blur(18px);box-shadow:0 24px 80px rgba(0,0,0,.45)">
-    <div style="color:#aaa4bd;font-size:13px;line-height:1.6;text-align:center">
-      Visningsmodus lar deg bla gjennom og lytte til sanger i mixtapes.<br>
-      <span style="color:rgba(255,255,255,.35)">Tekster, albumer og redigering er ikke tilgjengelig.</span>
+  <!-- Login card -->
+  <div id="lockCard" style="position:relative;z-index:2;width:min(360px,90vw);display:grid;gap:0;animation:lockCardEnter .6s cubic-bezier(.22,.68,0,1.2) both">
+    <div style="text-align:center;margin-bottom:40px">
+      <div style="font-size:11px;font-weight:800;letter-spacing:.3em;text-transform:uppercase;color:rgba(244,164,67,.7);font-family:system-ui;margin-bottom:12px">Music Vault</div>
+      <div style="font-size:38px;font-weight:900;letter-spacing:-.06em;color:#f4ede4;line-height:1;font-family:Georgia,serif">Din musikk.<br>Din vault.</div>
     </div>
-    <button onclick="loginViewer()" style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);border-radius:12px;padding:12px;color:#f6f4ff;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;letter-spacing:.2px">Fortsett i visningsmodus</button>
+
+    <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);padding:28px;display:grid;gap:12px;backdrop-filter:blur(24px)">
+      <input id="adminUsername" type="text" placeholder="Brukernavn" autocomplete="username"
+        onkeydown="if(event.key==='Enter')document.getElementById('adminPassword').focus()"
+        style="background:rgba(0,0,0,.4);border:none;border-bottom:2px solid rgba(244,164,67,.3);color:#f4ede4;font-size:15px;outline:none;width:100%;font-family:system-ui;box-sizing:border-box;padding:12px 14px;transition:border-color .2s;letter-spacing:.01em"
+        onfocus="this.style.borderBottomColor='rgba(244,164,67,.8)'"
+        onblur="this.style.borderBottomColor='rgba(244,164,67,.3)'"
+      />
+      <input id="adminPassword" type="password" placeholder="Passord" autocomplete="current-password"
+        onkeydown="if(event.key==='Enter')loginWithUsername()"
+        style="background:rgba(0,0,0,.4);border:none;border-bottom:2px solid rgba(244,164,67,.3);color:#f4ede4;font-size:15px;outline:none;width:100%;font-family:system-ui;box-sizing:border-box;padding:12px 14px;transition:border-color .2s;letter-spacing:.01em"
+        onfocus="this.style.borderBottomColor='rgba(244,164,67,.8)'"
+        onblur="this.style.borderBottomColor='rgba(244,164,67,.3)'"
+      />
+      <button id="lockLoginBtn" onclick="loginWithUsername()"
+        onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'"
+        style="background:linear-gradient(135deg,#f4a443,#cb6e1a);border:none;color:#000;font-size:14px;font-weight:900;padding:14px;cursor:pointer;font-family:system-ui;letter-spacing:.08em;text-transform:uppercase;margin-top:4px;transition:opacity .15s"
+      >Logg inn</button>
+      <div id="lockError" style="color:#fb7185;font-size:12px;text-align:center;display:none;font-family:system-ui;min-height:16px;letter-spacing:.01em"></div>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:18px;padding:0 2px">
+      <div style="font-size:10px;color:rgba(255,255,255,.18);font-family:system-ui;letter-spacing:.06em;text-transform:uppercase">Kun for autoriserte brukere</div>
+      <div style="font-size:10px;color:rgba(244,164,67,.3);font-family:system-ui;font-weight:700;letter-spacing:.08em">v2.6</div>
+    </div>
   </div>
 
-  <!-- Hidden legacy inputs (keep for backwards compat) -->
   <input id="pwInput" type="hidden" value="" />
   <div id="pwError" style="display:none"></div>
+  <div id="lockCardAdmin" style="display:none"></div>
+  <div id="lockCardViewer" style="display:none"></div>
+  <button id="lockTabAdmin" style="display:none"></button>
+  <button id="lockTabViewer" style="display:none"></button>
 </div>
+
+<style>
+#lockVinyl { animation: lockVinylSpin 18s linear infinite; }
+#lockVinyl.exiting { animation: lockVinylExit 1.1s ease-in forwards; }
+@keyframes lockVinylSpin {
+  from { transform: translate(-50%,-50%) rotate(0deg); }
+  to   { transform: translate(-50%,-50%) rotate(360deg); }
+}
+@keyframes lockVinylExit {
+  0%   { opacity:.18; transform:translate(-50%,-50%) rotate(0deg) scale(1); }
+  60%  { opacity:.32; transform:translate(-50%,-50%) rotate(720deg) scale(1.06); }
+  100% { opacity:0;   transform:translate(-50%,-50%) rotate(1080deg) scale(1.15); }
+}
+@keyframes lockCardEnter {
+  from { opacity:0; transform:translateY(28px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+</style>
+
+<script>
+(function(){
+  // Exit animation on unlock
+  const _orig = window.unlockAs;
+  window.unlockAs = function(role){
+    const vinyl  = document.getElementById('lockVinyl');
+    const screen = document.getElementById('lockScreen');
+    if(vinyl)  vinyl.classList.add('exiting');
+    setTimeout(()=>{ if(screen){ screen.style.transition='opacity .7s'; screen.style.opacity='0'; } }, 250);
+    setTimeout(()=>{ if(_orig) _orig(role); }, 950);
+  };
+})();
+</script>
 <main class="app">
 <button id="producerLoginBtn" class="producer-login-btn" onclick="returnToPasswordScreen()">Logg inn</button>
 
@@ -601,18 +649,18 @@ AKTIVE BRUKERE:
   <!-- App scripts (load order matters) -->
   <script src="js/audio-compress.js?v=202506163300"></script>
   <script src="js/packages.js?v=202506165600"></script>
-  <script src="js/lock.js?v=202506166100"></script>
+  <script src="js/lock.js?v=202506165600"></script>
   <script src="js/pipeline.js?v=202506163300"></script>
   <script src="js/lyriclab.js?v=202506163300"></script>
-  <script src="js/db.js?v=202506166600"></script>
-  <script src="js/app.js?v=202506166800"></script>
+  <script src="js/db.js?v=202506163300"></script>
+  <script src="js/app.js?v=202506163300"></script>
   <script src="js/track-cards.js?v=202506163300"></script>
   <script src="js/r2-storage.js?v=202506163300"></script>
   <script src="js/archive.js?v=202506163300"></script>
   <script src="js/mixtape.js?v=202506163300"></script>
-  <script src="js/changelog.js?v=202506166500"></script>
-  <script src="js/beats-tab.js?v=202506166300"></script>
-  <script src="js/supabase.js?v=202506166300"></script>
+  <script src="js/changelog.js?v=202506163300"></script>
+  <script src="js/beats-tab.js?v=202506163300"></script>
+  <script src="js/supabase.js?v=202506163300"></script>
   <!-- Mobile overlay — must load last, after all state is ready -->
   <script src="js/mobile.js?v=202506163300"></script>
 
