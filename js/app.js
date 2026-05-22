@@ -277,6 +277,7 @@
     }
   };
 
+  // ── Pitch mode (one-pager) ────────────────────────────────────────────────
   window.albumPitchMode = function(albumId) {
     const album = state.albums?.find(a=>a.id===albumId);
     if (!album) return;
@@ -286,38 +287,209 @@
     const STATUS_COLORS = {'Idé':'#a855f7','Skriving':'#60a5fa','Innspilling':'#f97316','Mixing':'#f4a443','Ferdig':'#34d399'};
     const stCol = STATUS_COLORS[album.status||'Idé'] || '#f4a443';
     const mid = Math.ceil(beats.length/2);
+    const coverUrl = album.cover || '';
+    const PREVIEW_SEC = 17;
+    const CROSSFADE_SEC = 1.2;
+    const SB_URL_P = 'https://ylvqkfdvijqnecuqznyr.supabase.co';
+    const SB_KEY_P = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlsdnFrZmR2aWpxbmVjdXF6bnlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzMzA4MzIsImV4cCI6MjA5MzkwNjgzMn0.bYPTaxQK8n7I7w5Ri2DVYW5_LbFHg2IXkuhHsLTDDqc';
+
+    const beatsJson = JSON.stringify(beats.map(b=>({
+      id:b.id, name:b.name, duration:b.duration||0, audio_url:b.audio_url||b.url||''
+    })));
+
     const rows = beats.map((b,i)=>{
       const sideDiv = beats.length>=4&&(i===0||i===mid)
-        ? '<div style="font-size:9px;font-weight:800;letter-spacing:.18em;color:'+stCol+';text-transform:uppercase;font-family:system-ui;padding:12px 0 4px;opacity:.6">'+(i===0?'A-SIDE':'B-SIDE')+'</div>' : '';
+        ? `<div class="side-label">${i===0?'A':'B'}-SIDE</div>` : '';
       const d=Number(b.duration||0), dStr=d>0?Math.floor(d/60)+':'+String(Math.floor(d%60)).padStart(2,'0'):'';
-      return sideDiv+'<div style="display:flex;align-items:center;gap:14px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.05)">'
-        +'<span style="font-size:11px;color:rgba(255,255,255,.25);min-width:24px;font-family:system-ui">'+String(i+1).padStart(2,'0')+'</span>'
-        +'<span style="font-size:15px;font-weight:700;flex:1">'+b.name.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</span>'
-        +'<span style="font-size:11px;color:rgba(255,255,255,.3);font-family:system-ui">'+dStr+'</span></div>';
+      return sideDiv+`<div class="track-row" data-idx="${i}" onclick="playPreview(${i})">
+        <span class="track-num">${String(i+1).padStart(2,'0')}</span>
+        <div class="track-play-icon">▶</div>
+        <span class="track-name">${b.name.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</span>
+        <span class="track-dur">${dStr}</span>
+      </div>`;
     }).join('');
-    const coverHtml = album.cover
-      ? '<img style="width:180px;height:180px;border-radius:16px;object-fit:cover;box-shadow:0 20px 60px rgba(0,0,0,.6)" src="'+album.cover+'" alt="">'
-      : '<div style="width:180px;height:180px;border-radius:16px;background:rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;font-size:48px">🎵</div>';
-    const html = '<!DOCTYPE html><html lang="no"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
-      + '<title>'+album.name+' — Pitch</title>'
-      + '<style>*{box-sizing:border-box;margin:0;padding:0}body{background:#0d0b09;color:#f4ede4;font-family:Georgia,serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:40px 20px}.page{max-width:700px;width:100%}</style>'
-      + '</head><body><div class="page">'
-      + '<div style="display:flex;align-items:flex-start;gap:32px;margin-bottom:48px">'+coverHtml
-      + '<div style="padding-top:8px">'
-      + '<div style="font-size:11px;font-weight:800;letter-spacing:.18em;color:'+stCol+';text-transform:uppercase;font-family:system-ui;margin-bottom:10px">'+(album.status||'Album')+'</div>'
-      + '<h1 style="font-size:40px;font-weight:900;letter-spacing:-.04em;line-height:1.1;margin-bottom:12px">'+album.name+'</h1>'
-      + '<div style="display:flex;gap:16px;font-size:12px;color:rgba(255,255,255,.45);font-family:system-ui;font-weight:700">'
-      + '<span>'+beats.length+' sanger</span>'+(dur?'<span>• '+dur+' total</span>':'')+'<span>• '+new Date().getFullYear()+'</span></div>'
-      + '</div></div>'
-      + '<div style="font-size:10px;font-weight:800;letter-spacing:.18em;color:rgba(255,255,255,.3);text-transform:uppercase;font-family:system-ui;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,.08);margin-bottom:8px">Trackliste</div>'
-      + rows
-      + '<div style="font-size:11px;color:rgba(255,255,255,.2);font-family:system-ui;text-align:center;padding-top:24px;border-top:1px solid rgba(255,255,255,.06);margin-top:32px">Laget med Music Vault</div>'
-      + '</div></body></html>';
-    const blob = new Blob([html], {type:'text/html'});
-    window.open(URL.createObjectURL(blob), '_blank');
+
+    const html = `<!DOCTYPE html><html lang="no"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${album.name} — Pitch</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0d0b09;color:#f4ede4;font-family:Georgia,serif;min-height:100vh;display:flex;align-items:flex-start;justify-content:center;padding:60px 20px}
+.page{max-width:680px;width:100%}
+.hero{display:flex;align-items:flex-start;gap:48px;margin-bottom:56px}
+.sleeve-wrap{position:relative;width:200px;height:200px;flex-shrink:0}
+.sleeve{width:200px;height:200px;overflow:hidden;position:relative;z-index:2;box-shadow:0 20px 60px rgba(0,0,0,.7)}
+.sleeve img{width:100%;height:100%;object-fit:cover;display:block}
+.sleeve-ph{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:56px;background:rgba(255,255,255,.06)}
+.vinyl-wrap{position:absolute;right:-60px;top:10px;z-index:1}
+.vinyl-disc{width:170px;height:170px;border-radius:50%;background:radial-gradient(circle,#1c1c1c 0%,#111 45%,#0a0a0a 100%);box-shadow:0 8px 32px rgba(0,0,0,.8);animation:vinylSpin 4s linear infinite;position:relative}
+.vinyl-grooves{position:absolute;inset:8px;border-radius:50%;background:repeating-radial-gradient(circle at center,transparent 0,transparent 4px,rgba(255,255,255,.025) 4px,rgba(255,255,255,.025) 5px)}
+.vinyl-label{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:58px;height:58px;border-radius:50%;background:${stCol};display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:#000;font-family:system-ui}
+.vinyl-hole{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:7px;height:7px;border-radius:50%;background:#0d0b09}
+@keyframes vinylSpin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+.vinyl-wrap.paused .vinyl-disc{animation-play-state:paused}
+.hero-info{padding-top:6px;flex:1;min-width:0}
+.hero-status{font-size:10px;font-weight:800;letter-spacing:.2em;color:${stCol};text-transform:uppercase;font-family:system-ui;margin-bottom:12px}
+.hero-title{font-size:40px;font-weight:900;letter-spacing:-.04em;line-height:1.05;margin-bottom:14px}
+.hero-meta{display:flex;gap:16px;font-size:12px;color:rgba(255,255,255,.4);font-family:system-ui;font-weight:700}
+.controls{display:flex;align-items:center;gap:10px;margin-top:20px;flex-wrap:wrap}
+.ctrl-btn{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);color:#f4ede4;font-size:12px;font-weight:700;padding:8px 16px;cursor:pointer;font-family:system-ui;letter-spacing:.04em;transition:all .15s}
+.ctrl-btn:hover{background:rgba(255,255,255,.13)}
+.ctrl-btn.active-play{background:${stCol};color:#000;border-color:${stCol}}
+.preview-label{font-size:11px;color:rgba(255,255,255,.3);font-family:system-ui;font-weight:700;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tracklist-label{font-size:10px;font-weight:800;letter-spacing:.18em;color:rgba(255,255,255,.28);text-transform:uppercase;font-family:system-ui;padding-bottom:12px;border-bottom:1px solid rgba(255,255,255,.08);margin-bottom:6px}
+.side-label{font-size:9px;font-weight:800;letter-spacing:.18em;color:${stCol};text-transform:uppercase;font-family:system-ui;padding:14px 0 4px;opacity:.55}
+.track-row{display:flex;align-items:center;gap:14px;padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.05);cursor:pointer;transition:background .15s;position:relative;overflow:hidden}
+.track-row:hover{background:rgba(255,255,255,.04)}
+.track-num{font-size:11px;color:rgba(255,255,255,.22);min-width:22px;font-family:system-ui;font-variant-numeric:tabular-nums}
+.track-play-icon{font-size:11px;color:rgba(255,255,255,.3);width:16px;flex-shrink:0}
+.track-name{font-size:15px;font-weight:700;flex:1}
+.track-dur{font-size:11px;color:rgba(255,255,255,.28);font-family:system-ui;font-variant-numeric:tabular-nums}
+.track-row.active{background:rgba(255,255,255,.04)}
+.track-row.active .track-name{background:linear-gradient(90deg,#f4ede4 0%,${stCol} 40%,#fff 55%,${stCol} 70%,#f4ede4 100%);background-size:200% auto;-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;animation:shineText 2.5s linear infinite;font-weight:900}
+.track-row.active .track-play-icon{color:${stCol}}
+.track-row.active .track-num{color:${stCol};opacity:.7}
+@keyframes shineText{0%{background-position:0% center}100%{background-position:200% center}}
+.track-row.active::after{content:'';position:absolute;bottom:0;left:0;height:2px;background:${stCol};width:var(--progress,0%);transition:width .3s linear}
+.comments-section{margin-top:40px;padding-top:24px;border-top:1px solid rgba(255,255,255,.07)}
+.comments-label{font-size:10px;font-weight:800;letter-spacing:.18em;color:rgba(255,255,255,.28);text-transform:uppercase;font-family:system-ui;margin-bottom:16px}
+.comment-form{display:grid;gap:10px;margin-bottom:24px}
+.comment-input{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#f4ede4;padding:10px 14px;font-size:13px;font-family:Georgia,serif;outline:none;resize:vertical;min-height:80px;transition:border-color .15s}
+.comment-input:focus{border-color:rgba(244,164,67,.4)}
+.comment-name-row{display:flex;gap:8px}
+.comment-name{flex:1;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#f4ede4;padding:8px 12px;font-size:13px;font-family:system-ui;outline:none;transition:border-color .15s}
+.comment-name:focus{border-color:rgba(244,164,67,.4)}
+.comment-submit{background:${stCol};border:none;color:#000;font-size:12px;font-weight:800;padding:8px 20px;cursor:pointer;font-family:system-ui}
+.comment-card{padding:14px 16px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);margin-bottom:10px}
+.comment-author{font-size:12px;font-weight:800;color:${stCol};font-family:system-ui}
+.comment-date{font-size:11px;color:rgba(255,255,255,.28);font-family:system-ui;margin-left:8px}
+.comment-body{font-size:14px;line-height:1.65;color:rgba(255,255,255,.75);margin-top:8px;white-space:pre-wrap}
+.no-comments{font-size:12px;color:rgba(255,255,255,.3);font-family:system-ui}
+.footer{font-size:11px;color:rgba(255,255,255,.18);font-family:system-ui;text-align:center;padding-top:24px;border-top:1px solid rgba(255,255,255,.06);margin-top:36px}
+</style>
+</head><body>
+<div class="page">
+  <div class="hero">
+    <div class="sleeve-wrap">
+      <div class="sleeve">${coverUrl?`<img src="${coverUrl}" alt="">`:'<div class="sleeve-ph">🎵</div>'}</div>
+      <div class="vinyl-wrap paused" id="vinylWrap">
+        <div class="vinyl-disc">
+          <div class="vinyl-grooves"></div>
+          <div class="vinyl-label">${album.name.slice(0,3).toUpperCase()}</div>
+          <div class="vinyl-hole"></div>
+        </div>
+      </div>
+    </div>
+    <div class="hero-info">
+      <div class="hero-status">${album.status||'Album'}</div>
+      <h1 class="hero-title">${album.name}</h1>
+      <div class="hero-meta">
+        <span>${beats.length} sanger</span>
+        ${dur?`<span>• ${dur} total</span>`:''}
+        <span>• ${new Date().getFullYear()}</span>
+      </div>
+      <div class="controls">
+        <button class="ctrl-btn" id="playAllBtn" onclick="togglePlayAll()">▶ Spill preview</button>
+        <button class="ctrl-btn" onclick="stopAll()">⏹</button>
+        <span class="preview-label" id="previewLabel">17 sek per sang</span>
+      </div>
+    </div>
+  </div>
+  <div class="tracklist-label">Trackliste</div>
+  <div id="tracklist">${rows}</div>
+  <div class="comments-section">
+    <div class="comments-label">Tilbakemeldinger</div>
+    <div class="comment-form">
+      <textarea class="comment-input" id="commentBody" placeholder="Skriv en tilbakemelding..."></textarea>
+      <div class="comment-name-row">
+        <input class="comment-name" id="commentAuthor" placeholder="Ditt navn">
+        <button class="comment-submit" onclick="submitComment()">Send</button>
+      </div>
+    </div>
+    <div id="commentsList"><div class="no-comments">Laster kommentarer...</div></div>
+  </div>
+  <div class="footer">Laget med Music Vault</div>
+</div>
+<script>
+const BEATS=${beatsJson};
+const ALBUM_ID='${album.id}';
+const SB_URL='${SB_URL_P}';
+const SB_KEY='${SB_KEY_P}';
+const VOL=0.3;
+const PREVIEW_SEC=${PREVIEW_SEC};
+const CROSSFADE_SEC=${CROSSFADE_SEC};
+let audio=null,nextAudio=null,currentIdx=-1,progressInterval=null;
+function stopAll(silent){
+  clearInterval(progressInterval);
+  if(audio){audio.pause();audio.src='';audio=null;}
+  if(nextAudio){nextAudio.pause();nextAudio.src='';nextAudio=null;}
+  document.querySelectorAll('.track-row').forEach(r=>{r.classList.remove('active');r.style.removeProperty('--progress');});
+  document.getElementById('vinylWrap').classList.add('paused');
+  const btn=document.getElementById('playAllBtn');
+  btn.classList.remove('active-play');btn.textContent='▶ Spill preview';
+  document.getElementById('previewLabel').textContent='17 sek per sang';
+  if(!silent)currentIdx=-1;
+}
+async function playPreview(idx){
+  clearInterval(progressInterval);
+  if(audio){audio.pause();audio.src='';audio=null;}
+  if(nextAudio){nextAudio.pause();nextAudio.src='';nextAudio=null;}
+  const beat=BEATS[idx];if(!beat||!beat.audio_url){nextTrack(idx);return;}
+  currentIdx=idx;
+  document.querySelectorAll('.track-row').forEach((r,i)=>{r.classList.toggle('active',i===idx);r.style.removeProperty('--progress');});
+  document.querySelectorAll('.track-row')[idx]?.scrollIntoView({behavior:'smooth',block:'nearest'});
+  document.getElementById('vinylWrap').classList.remove('paused');
+  document.getElementById('playAllBtn').classList.add('active-play');
+  document.getElementById('playAllBtn').textContent='⏸ Spiller';
+  document.getElementById('previewLabel').textContent=beat.name;
+  audio=new Audio();audio.volume=VOL;
+  try{const res=await fetch(beat.audio_url);if(res.ok){const blob=await res.blob();audio.src=URL.createObjectURL(blob);}else audio.src=beat.audio_url;}
+  catch(e){audio.src=beat.audio_url;}
+  audio.addEventListener('loadedmetadata',()=>{audio.currentTime=Math.max(0,(audio.duration||0)*0.08);});
+  audio.play().catch(()=>{});
+  const startTime=Date.now();
+  progressInterval=setInterval(()=>{
+    const elapsed=(Date.now()-startTime)/1000;
+    const pct=Math.min(100,(elapsed/PREVIEW_SEC)*100);
+    const row=document.querySelectorAll('.track-row')[idx];
+    if(row)row.style.setProperty('--progress',pct+'%');
+    if(elapsed>=PREVIEW_SEC-CROSSFADE_SEC){
+      if(audio)audio.volume=Math.max(0,VOL*((PREVIEW_SEC-elapsed)/CROSSFADE_SEC));
+      if(!nextAudio&&idx+1<BEATS.length){const nb=BEATS[idx+1];if(nb?.audio_url){nextAudio=new Audio();nextAudio.volume=0;nextAudio.src=nb.audio_url;nextAudio.load();}}
+    }
+    if(elapsed>=PREVIEW_SEC)nextTrack(idx);
+  },80);
+}
+function nextTrack(fromIdx){clearInterval(progressInterval);const next=fromIdx+1;if(next<BEATS.length)playPreview(next);else stopAll();}
+function togglePlayAll(){
+  if(currentIdx>=0&&audio&&!audio.paused){audio.pause();document.getElementById('vinylWrap').classList.add('paused');document.getElementById('playAllBtn').classList.remove('active-play');document.getElementById('playAllBtn').textContent='▶ Fortsett';clearInterval(progressInterval);}
+  else if(currentIdx>=0&&audio&&audio.paused){audio.play();document.getElementById('vinylWrap').classList.remove('paused');document.getElementById('playAllBtn').classList.add('active-play');document.getElementById('playAllBtn').textContent='⏸ Spiller';}
+  else playPreview(0);
+}
+async function loadComments(){
+  try{
+    const res=await fetch(SB_URL+'/rest/v1/pitch_comments?album_id=eq.'+ALBUM_ID+'&order=created_at.asc&select=*',{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}});
+    const comments=res.ok?await res.json():[];
+    const el=document.getElementById('commentsList');
+    el.innerHTML=comments.length?comments.map(c=>'<div class="comment-card"><span class="comment-author">'+c.author+'</span><span class="comment-date">'+new Date(c.created_at).toLocaleDateString('no-NO')+'</span><div class="comment-body">'+c.comment+'</div></div>').join(''):'<div class="no-comments">Ingen tilbakemeldinger ennå.</div>';
+  }catch(e){document.getElementById('commentsList').innerHTML='<div class="no-comments">Kunne ikke laste.</div>';}
+}
+async function submitComment(){
+  const body=document.getElementById('commentBody')?.value?.trim();
+  const author=document.getElementById('commentAuthor')?.value?.trim()||'Anonym';
+  if(!body)return;
+  try{
+    await fetch(SB_URL+'/rest/v1/pitch_comments',{method:'POST',headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({album_id:ALBUM_ID,author,comment:body,created_at:new Date().toISOString()})});
+    document.getElementById('commentBody').value='';loadComments();
+  }catch(e){}
+}
+loadComments();
+</script></body></html>`;
+
+    const blob2 = new Blob([html], {type:'text/html'});
+    window.open(URL.createObjectURL(blob2), '_blank');
     if(typeof showToast==='function') showToast('✓ Pitch-side åpnet i ny fane');
-  };
-  window.setAlbumCover=function(id,file){if(!file)return;const r=new FileReader();r.onload=e=>{const a=state.albums.find(x=>x.id===id);if(a){a.cover=e.target.result;saveState();renderAlbumDetail();renderAlbums();showToast('✓ Albumbilde oppdatert');}};r.readAsDataURL(file);};
+  };indow.setAlbumCover=function(id,file){if(!file)return;const r=new FileReader();r.onload=e=>{const a=state.albums.find(x=>x.id===id);if(a){a.cover=e.target.result;saveState();renderAlbumDetail();renderAlbums();showToast('✓ Albumbilde oppdatert');}};r.readAsDataURL(file);};
 
   const _oldRenderAlbumBeats=window.renderAlbumBeats;
   window.renderAlbumBeats=function(beats,mode,customEl){
