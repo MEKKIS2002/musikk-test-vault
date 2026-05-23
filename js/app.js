@@ -552,7 +552,8 @@ loadComments();
   document.getElementById('exportBtn')?.addEventListener('click',()=>{state.settings.lastBackup=new Date().toLocaleString('no-NO');setTimeout(()=>showToast('✓ Backup eksportert'),80);});
   document.getElementById('importInput')?.addEventListener('change',e=>{const f=e.target.files?.[0]; if(f)showToast(`Importer: ${f.name}. Sjekk at dette er riktig backup.`);});
 
-  ensureUxData();installRoleBadge();setTimeout(()=>{try{renderAll();}catch(e){console.error(e);}},80);
+  if(typeof state !== 'undefined') { ensureUxData(); installRoleBadge(); }
+  setTimeout(()=>{try{ if(typeof state !== 'undefined'){ensureUxData();} renderAll();}catch(e){console.error(e);}},80);
 })();
 
 // === fullUpgradeScript ===
