@@ -209,9 +209,17 @@ async function loginWithUsername(){
   }
 
   const email = USERNAME_MAP[username];
-  if(!email){
-    if(errEl){errEl.textContent='Ukjent brukernavn.';errEl.style.display='block';}
-    return;
+  let loginEmail = email;
+
+  if(!loginEmail){
+    // Ny bruker — ikke i USERNAME_MAP, prøv direkte som epost
+    if(username.includes('@')){
+      loginEmail = username;
+    } else {
+      if(errEl){errEl.textContent='Ukjent brukernavn. Prøv å logge inn med e-post.';errEl.style.display='block';}
+      if(btn){btn.disabled=false;btn.textContent='Logg inn';}
+      return;
+    }
   }
 
   if(btn){btn.disabled=true;btn.textContent='Logger inn...';}
@@ -223,7 +231,7 @@ async function loginWithUsername(){
       return;
     }
 
-    const {data, error} = await window.supabaseClient.auth.signInWithPassword({email, password});
+    const {data, error} = await window.supabaseClient.auth.signInWithPassword({email: loginEmail, password});
     if(error) throw error;
 
     // Hent rolle OG pakke fra profiles
@@ -295,3 +303,155 @@ function initLock(){
   setTimeout(()=>document.getElementById('adminUsername')?.focus(), 60);
 }
 initLock();
+
+// ── Onboarding / registrering ─────────────────────────────────────────────
+let _selectedPkg = 'artist';
+
+window.selectPkg = function(el) {
+  document.querySelectorAll('.pkg-card').forEach(c => {
+    c.style.border = '1px solid rgba(255,255,255,.1)';
+    c.style.background = 'rgba(255,255,255,.03)';
+    c.querySelector('div').style.color = '#f4ede4';
+  });
+  el.style.border = '1px solid rgba(244,164,67,.5)';
+  el.style.background = 'rgba(244,164,67,.08)';
+  el.querySelector('div').style.color = '#f4a443';
+  _selectedPkg = el.dataset.pkg;
+  // Vis invitasjonskode-felt for label
+  const inviteWrap = document.getElementById('regInviteWrap');
+  if(inviteWrap) inviteWrap.style.display = _selectedPkg === 'label' ? 'block' : 'none';
+};
+
+window.showRegister = function() {
+  document.getElementById('lockCard').style.display = 'none';
+  const rc = document.getElementById('registerCard');
+  rc.style.display = 'grid';
+  rc.style.animation = 'lockCardEnter .4s cubic-bezier(.22,.68,0,1.2) both';
+};
+
+window.showLogin = function() {
+  document.getElementById('registerCard').style.display = 'none';
+  document.getElementById('lockCard').style.display = 'grid';
+};
+
+window.registerUser = async function() {
+  const username = document.getElementById('regUsername')?.value?.trim().toLowerCase();
+  const email    = document.getElementById('regEmail')?.value?.trim();
+  const password = document.getElementById('regPassword')?.value;
+  const invite   = document.getElementById('regInvite')?.value?.trim().toUpperCase();
+  const errEl    = document.getElementById('regError');
+  const btn      = document.getElementById('regBtn');
+
+  if(errEl) errEl.style.display = 'none';
+
+  // Validering
+  if(!username || !email || !password) {
+    if(errEl){ errEl.textContent='Fyll inn alle feltene.'; errEl.style.display='block'; }
+    return;
+  }
+  if(username.length < 3) {
+    if(errEl){ errEl.textContent='Brukernavnet må være minst 3 tegn.'; errEl.style.display='block'; }
+    return;
+  }
+  if(password.length < 6) {
+    if(errEl){ errEl.textContent='Passordet må være minst 6 tegn.'; errEl.style.display='block'; }
+    return;
+  }
+
+  // Label krever invitasjonskode
+  if(_selectedPkg === 'label') {
+    if(!invite) {
+      if(errEl){ errEl.textContent='Label-pakken krever en invitasjonskode.'; errEl.style.display='block'; }
+      return;
+    }
+    // Valider koden mot Supabase
+    const SB_URL = 'https://ylvqkfdvijqnecuqznyr.supabase.co';
+    const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlsdnFrZmR2aWpxbmVjdXF6bnlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzMzA4MzIsImV4cCI6MjA5MzkwNjgzMn0.bYPTaxQK8n7I7w5Ri2DVYW5_LbFHg2IXkuhHsLTDDqc';
+    const r = await fetch(`${SB_URL}/rest/v1/invite_codes?code=eq.${invite}&select=code,used_by`, {
+      headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY}
+    });
+    const codes = await r.json();
+    if(!codes.length) {
+      if(errEl){ errEl.textContent='Ugyldig invitasjonskode.'; errEl.style.display='block'; }
+      return;
+    }
+    if(codes[0].used_by) {
+      if(errEl){ errEl.textContent='Denne koden er allerede brukt.'; errEl.style.display='block'; }
+      return;
+    }
+  }
+
+  if(btn){ btn.disabled=true; btn.textContent='Oppretter konto...'; }
+
+  try {
+    if(!window.supabaseClient) throw new Error('Supabase ikke konfigurert');
+
+    // Registrer bruker med metadata
+    const { data, error } = await window.supabaseClient.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { username, package: _selectedPkg }
+      }
+    });
+
+    if(error) throw error;
+
+    // Merk invitasjonskode som brukt
+    if(_selectedPkg === 'label' && data.user) {
+      const SB_URL = 'https://ylvqkfdvijqnecuqznyr.supabase.co';
+      const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlsdnFrZmR2aWpxbmVjdXF6bnlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzMzA4MzIsImV4cCI6MjA5MzkwNjgzMn0.bYPTaxQK8n7I7w5Ri2DVYW5_LbFHg2IXkuhHsLTDDqc';
+      await fetch(`${SB_URL}/rest/v1/invite_codes?code=eq.${invite}`, {
+        method:'PATCH',
+        headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
+        body: JSON.stringify({ used_by: data.user.id, used_at: new Date().toISOString() })
+      });
+    }
+
+    // Logg inn automatisk
+    sessionStorage.setItem('mv_username', username);
+    sessionStorage.setItem('mv_package', _selectedPkg);
+    window._mvCurrentUserId = data.user?.id;
+    sessionStorage.setItem('mv_user_id', data.user?.id || '');
+
+    if(errEl){ errEl.style.color='#34d399'; errEl.textContent='✓ Konto opprettet! Logger inn...'; errEl.style.display='block'; }
+
+    setTimeout(async () => {
+      // Logg inn
+      const { error: loginErr } = await window.supabaseClient.auth.signInWithPassword({ email, password });
+      if(!loginErr) {
+        unlockAs('user');
+        if(typeof window.setPackage === 'function') window.setPackage(_selectedPkg);
+        setTimeout(() => {
+          if(typeof window.mvSupabaseSync?.pull === 'function') window.mvSupabaseSync.pull();
+        }, 400);
+      }
+    }, 800);
+
+  } catch(e) {
+    if(errEl){ errEl.style.color='#fb7185'; errEl.textContent = e.message || 'Registrering feilet.'; errEl.style.display='block'; }
+    if(btn){ btn.disabled=false; btn.textContent='Opprett konto'; }
+  }
+};
+
+// Legg til USERNAME_MAP for nye brukere dynamisk
+const _origLogin2 = window.loginWithUsername;
+if(_origLogin2 && !window._usernameFallbackPatched) {
+  window._usernameFallbackPatched = true;
+  window.loginWithUsername = async function() {
+    const username = (document.getElementById('adminUsername')?.value||'').trim().toLowerCase();
+    // Hvis brukernavn ikke er i USERNAME_MAP, prøv å finne epost fra profiles
+    if(username && !USERNAME_MAP[username] && window.supabaseClient) {
+      const { data } = await window.supabaseClient
+        .from('profiles')
+        .select('id, username')
+        .eq('username', username)
+        .maybeSingle();
+      if(data) {
+        // Hent epost fra auth (kun mulig som anon via signin)
+        // Fallback: vis "ukjent brukernavn" fra original
+      }
+    }
+    return _origLogin2.apply(this, arguments);
+  };
+}
