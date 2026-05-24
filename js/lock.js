@@ -417,15 +417,36 @@ window.registerUser = async function() {
     if(errEl){ errEl.style.color='#34d399'; errEl.textContent='✓ Konto opprettet! Logger inn...'; errEl.style.display='block'; }
 
     setTimeout(async () => {
-      // Logg inn
-      const { error: loginErr } = await window.supabaseClient.auth.signInWithPassword({ email, password });
-      if(!loginErr) {
-        unlockAs('user');
-        if(typeof window.setPackage === 'function') window.setPackage(_selectedPkg);
-        setTimeout(() => {
-          if(typeof window.mvSupabaseSync?.pull === 'function') window.mvSupabaseSync.pull();
-        }, 400);
+      const { data: loginData, error: loginErr } = await window.supabaseClient.auth.signInWithPassword({ email, password });
+      if(loginErr){
+        if(errEl){ errEl.style.color='#fb7185'; errEl.textContent='Konto opprettet, men innlogging feilet. Prøv å logge inn manuelt.'; }
+        if(btn){ btn.disabled=false; btn.textContent='Opprett konto'; }
+        return;
       }
+      // Sett userId før unlock
+      window._mvCurrentUserId = loginData.user.id;
+      sessionStorage.setItem('mv_user_id', loginData.user.id);
+      sessionStorage.setItem('mv_username', username);
+      sessionStorage.setItem('mv_package', _selectedPkg);
+      localStorage.setItem('mv_last_user', username);
+
+      // Sett pakke og lås opp
+      window.isAdminMode = false;
+      window.currentAdminUser = loginData.user;
+      document.body.classList.remove('admin-mode');
+
+      if(typeof window.setPackage === 'function') window.setPackage(_selectedPkg);
+
+      // Skjul lock screen direkte uten exit-animasjon
+      const lockScreen = document.getElementById('lockScreen');
+      if(lockScreen){ lockScreen.style.transition='opacity .6s'; lockScreen.style.opacity='0'; setTimeout(()=>{ lockScreen.style.display='none'; }, 650); }
+
+      // Hent data etter liten pause
+      setTimeout(()=>{
+        if(typeof window.mvSupabaseSync?.pull === 'function') window.mvSupabaseSync.pull();
+        if(typeof renderAll === 'function') renderAll();
+      }, 500);
+
     }, 800);
 
   } catch(e) {
