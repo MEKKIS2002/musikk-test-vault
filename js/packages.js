@@ -17,32 +17,27 @@ window.MV_PACKAGES = {
     features: '*'       // alle funksjoner
   },
 
-  // ── Artist: mixtapes, album, lyric lab ───────────────────────
+  // ── Artist — standardpakke ────────────────────────────────────
   artist: {
     label: 'Artist',
-    tabs: ['mixtapes', 'albums', 'lyriclab'],
-    features: ['upload', 'lyrics', 'share_mixtape', 'ai_inspire', 'rhymes']
+    tabs: ['beats', 'mixtapes', 'albums', 'lyriclab'],
+    features: ['upload', 'lyrics', 'share_mixtape', 'ai_inspire', 'rhymes', 'download']
   },
 
-  // ── Produsent: beats, mixtapes, album, pipeline ──────────────
-  producer: {
-    label: 'Produsent',
-    tabs: ['beats', 'mixtapes', 'albums', 'pipeline'],
-    features: ['upload', 'share_mixtape', 'pitch', 'r2_upload', 'download']
+  // ── PRO Artist — utvidet pakke ────────────────────────────────
+  pro: {
+    label: 'PRO',
+    tabs: ['beats', 'mixtapes', 'albums', 'lyriclab', 'pipeline'],
+    features: ['upload', 'lyrics', 'share_mixtape', 'pitch', 'ai_inspire', 'rhymes',
+               'download', 'r2_upload', 'stats', 'collab', 'release_planner']
   },
 
-  // ── Tekstforfatter: beats + lyric lab ────────────────────────
-  lyricist: {
-    label: 'Tekstforfatter',
-    tabs: ['beats', 'lyriclab'],
-    features: ['lyrics', 'ai_inspire', 'rhymes']
-  },
-
-  // ── Label: oversikt over alt + pipeline ──────────────────────
+  // ── Label ─────────────────────────────────────────────────────
   label: {
     label: 'Label',
     tabs: ['beats', 'mixtapes', 'albums', 'pipeline'],
-    features: ['upload', 'share_mixtape', 'pitch', 'r2_upload', 'download', 'multi_artist']
+    features: ['upload', 'share_mixtape', 'pitch', 'r2_upload', 'download',
+               'multi_artist', 'label_dashboard', 'comments']
   },
 
   // ── Kun lytting (ingen innlogging / viewer) ───────────────────
