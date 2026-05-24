@@ -83,7 +83,7 @@ AKTIVE BRUKERE:
     </div>
 
     <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);padding:28px;display:grid;gap:12px;backdrop-filter:blur(24px)">
-      <input id="adminUsername" type="text" placeholder="Brukernavn" autocomplete="username"
+      <input id="adminUsername" type="text" placeholder="Brukernavn eller e-post" autocomplete="username"
         onkeydown="if(event.key==='Enter')document.getElementById('adminPassword').focus()"
         style="background:rgba(20,16,12,.8);border:none;border-bottom:2px solid rgba(244,164,67,.3);color:#f4ede4;font-size:15px;outline:none;width:100%;font-family:system-ui;box-sizing:border-box;padding:12px 14px;transition:border-color .2s;letter-spacing:.01em;-webkit-box-shadow:0 0 0 100px rgba(20,16,12,.8) inset;-webkit-text-fill-color:#f4ede4"
         onfocus="this.style.borderBottomColor='rgba(244,164,67,.8)'"
@@ -105,6 +105,71 @@ AKTIVE BRUKERE:
     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:18px;padding:0 2px">
       <div style="font-size:10px;color:rgba(255,255,255,.18);font-family:system-ui;letter-spacing:.06em;text-transform:uppercase">Kun for autoriserte brukere</div>
       <div style="font-size:10px;color:rgba(244,164,67,.3);font-family:system-ui;font-weight:700;letter-spacing:.08em">v2.6</div>
+    </div>
+    <div style="text-align:center;margin-top:16px">
+      <button onclick="showRegister()" style="background:none;border:none;color:rgba(255,255,255,.3);font-size:11px;font-family:system-ui;cursor:pointer;text-decoration:underline;text-underline-offset:3px;letter-spacing:.04em" onmouseover="this.style.color='rgba(255,255,255,.6)'" onmouseout="this.style.color='rgba(255,255,255,.3)'">Opprett ny konto</button>
+    </div>
+  </div>
+
+  <!-- REGISTER CARD -->
+  <div id="registerCard" style="position:relative;z-index:2;width:min(380px,90vw);display:none;animation:lockCardEnter .6s cubic-bezier(.22,.68,0,1.2) both">
+    <div style="text-align:center;margin-bottom:28px">
+      <div style="font-size:11px;font-weight:800;letter-spacing:.3em;text-transform:uppercase;color:rgba(244,164,67,.7);font-family:system-ui;margin-bottom:10px">Music Vault</div>
+      <div style="font-size:28px;font-weight:900;letter-spacing:-.04em;color:#f4ede4;line-height:1.1;font-family:Georgia,serif">Opprett konto</div>
+    </div>
+
+    <!-- Package picker -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px">
+      <div class="pkg-card" data-pkg="artist" onclick="selectPkg(this)" style="border:1px solid rgba(244,164,67,.5);background:rgba(244,164,67,.08);cursor:pointer;padding:12px;transition:all .15s">
+        <div style="font-size:13px;font-weight:800;color:#f4a443;margin-bottom:4px">🎤 Artist</div>
+        <div style="font-size:10px;color:rgba(255,255,255,.45);font-family:system-ui;line-height:1.4">Beats · Mixtapes<br>Albumer · Lyric Lab</div>
+      </div>
+      <div class="pkg-card" data-pkg="producer" onclick="selectPkg(this)" style="border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.03);cursor:pointer;padding:12px;transition:all .15s">
+        <div style="font-size:13px;font-weight:800;color:#f4ede4;margin-bottom:4px">🎛 Produsent</div>
+        <div style="font-size:10px;color:rgba(255,255,255,.45);font-family:system-ui;line-height:1.4">Beats · Mixtapes<br>Albumer · Pipeline</div>
+      </div>
+      <div class="pkg-card" data-pkg="lyricist" onclick="selectPkg(this)" style="border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.03);cursor:pointer;padding:12px;transition:all .15s">
+        <div style="font-size:13px;font-weight:800;color:#f4ede4;margin-bottom:4px">✍️ Tekstforfatter</div>
+        <div style="font-size:10px;color:rgba(255,255,255,.45);font-family:system-ui;line-height:1.4">Beats<br>Lyric Lab</div>
+      </div>
+      <div class="pkg-card" data-pkg="label" onclick="selectPkg(this)" style="border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.03);cursor:pointer;padding:12px;transition:all .15s">
+        <div style="font-size:13px;font-weight:800;color:#f4ede4;margin-bottom:4px">🏷 Label</div>
+        <div style="font-size:10px;color:rgba(255,255,255,.45);font-family:system-ui;line-height:1.4">Alt + dashboard<br><span style="color:rgba(244,164,67,.6)">Krever invitasjonskode</span></div>
+      </div>
+    </div>
+
+    <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);padding:24px;display:grid;gap:10px">
+      <input id="regUsername" type="text" placeholder="Brukernavn"
+        style="background:rgba(20,16,12,.85);border:none;border-bottom:2px solid rgba(244,164,67,.3);color:#f4ede4;font-size:14px;outline:none;width:100%;font-family:system-ui;box-sizing:border-box;padding:10px 12px;-webkit-box-shadow:0 0 0 100px rgba(20,16,12,.85) inset;-webkit-text-fill-color:#f4ede4"
+        onfocus="this.style.borderBottomColor='rgba(244,164,67,.8)'"
+        onblur="this.style.borderBottomColor='rgba(244,164,67,.3)'"
+      />
+      <input id="regEmail" type="email" placeholder="E-post"
+        style="background:rgba(20,16,12,.85);border:none;border-bottom:2px solid rgba(244,164,67,.3);color:#f4ede4;font-size:14px;outline:none;width:100%;font-family:system-ui;box-sizing:border-box;padding:10px 12px;-webkit-box-shadow:0 0 0 100px rgba(20,16,12,.85) inset;-webkit-text-fill-color:#f4ede4"
+        onfocus="this.style.borderBottomColor='rgba(244,164,67,.8)'"
+        onblur="this.style.borderBottomColor='rgba(244,164,67,.3)'"
+      />
+      <input id="regPassword" type="password" placeholder="Passord (min. 6 tegn)"
+        style="background:rgba(20,16,12,.85);border:none;border-bottom:2px solid rgba(244,164,67,.3);color:#f4ede4;font-size:14px;outline:none;width:100%;font-family:system-ui;box-sizing:border-box;padding:10px 12px;-webkit-box-shadow:0 0 0 100px rgba(20,16,12,.85) inset;-webkit-text-fill-color:#f4ede4"
+        onfocus="this.style.borderBottomColor='rgba(244,164,67,.8)'"
+        onblur="this.style.borderBottomColor='rgba(244,164,67,.3)'"
+      />
+      <div id="regInviteWrap" style="display:none">
+        <input id="regInvite" type="text" placeholder="Invitasjonskode (LABEL-XXXXXXXX)"
+          style="background:rgba(20,16,12,.85);border:none;border-bottom:2px solid rgba(244,164,67,.3);color:#f4ede4;font-size:14px;outline:none;width:100%;font-family:system-ui;box-sizing:border-box;padding:10px 12px;-webkit-box-shadow:0 0 0 100px rgba(20,16,12,.85) inset;-webkit-text-fill-color:#f4ede4"
+          onfocus="this.style.borderBottomColor='rgba(244,164,67,.8)'"
+          onblur="this.style.borderBottomColor='rgba(244,164,67,.3)'"
+        />
+      </div>
+      <button id="regBtn" onclick="registerUser()"
+        onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'"
+        style="background:linear-gradient(135deg,#f4a443,#cb6e1a);border:none;border-radius:0;color:#000;font-size:14px;font-weight:900;padding:13px;cursor:pointer;font-family:system-ui;letter-spacing:.08em;text-transform:uppercase;margin-top:4px;transition:opacity .15s"
+      >Opprett konto</button>
+      <div id="regError" style="color:#fb7185;font-size:12px;text-align:center;display:none;font-family:system-ui;min-height:16px"></div>
+    </div>
+
+    <div style="text-align:center;margin-top:14px">
+      <button onclick="showLogin()" style="background:none;border:none;color:rgba(255,255,255,.3);font-size:11px;font-family:system-ui;cursor:pointer;text-decoration:underline;text-underline-offset:3px" onmouseover="this.style.color='rgba(255,255,255,.6)'" onmouseout="this.style.color='rgba(255,255,255,.3)'">← Tilbake til innlogging</button>
     </div>
   </div>
 
