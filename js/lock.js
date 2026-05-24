@@ -418,11 +418,24 @@ window.registerUser = async function() {
 
     setTimeout(async () => {
       const { data: loginData, error: loginErr } = await window.supabaseClient.auth.signInWithPassword({ email, password });
+
       if(loginErr){
-        if(errEl){ errEl.style.color='#fb7185'; errEl.textContent='Konto opprettet, men innlogging feilet. Prøv å logge inn manuelt.'; }
+        // Sannsynligvis e-postbekreftelse påkrevd
+        if(errEl){
+          errEl.style.color='#60a5fa';
+          errEl.textContent='✓ Konto opprettet! Sjekk e-posten din for å bekrefte kontoen, logg deretter inn.';
+          errEl.style.display='block';
+        }
         if(btn){ btn.disabled=false; btn.textContent='Opprett konto'; }
+        // Bytt tilbake til innloggingsskjerm etter 3 sekunder
+        setTimeout(()=>{
+          showLogin();
+          const u = document.getElementById('adminUsername');
+          if(u) u.value = email;
+        }, 3000);
         return;
       }
+
       // Sett userId før unlock
       window._mvCurrentUserId = loginData.user.id;
       sessionStorage.setItem('mv_user_id', loginData.user.id);
@@ -430,18 +443,16 @@ window.registerUser = async function() {
       sessionStorage.setItem('mv_package', _selectedPkg);
       localStorage.setItem('mv_last_user', username);
 
-      // Sett pakke og lås opp
       window.isAdminMode = false;
       window.currentAdminUser = loginData.user;
       document.body.classList.remove('admin-mode');
 
       if(typeof window.setPackage === 'function') window.setPackage(_selectedPkg);
 
-      // Skjul lock screen direkte uten exit-animasjon
+      // Skjul lock screen
       const lockScreen = document.getElementById('lockScreen');
       if(lockScreen){ lockScreen.style.transition='opacity .6s'; lockScreen.style.opacity='0'; setTimeout(()=>{ lockScreen.style.display='none'; }, 650); }
 
-      // Hent data etter liten pause
       setTimeout(()=>{
         if(typeof window.mvSupabaseSync?.pull === 'function') window.mvSupabaseSync.pull();
         if(typeof renderAll === 'function') renderAll();
