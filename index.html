@@ -51,14 +51,14 @@ AKTIVE BRUKERE:
 -->
 
   <!-- Stylesheets -->
-  <link rel="stylesheet" href="css/lyriclab.css?v=202506169600">
-  <link rel="stylesheet" href="css/pipeline.css?v=202506169600">
-  <link rel="stylesheet" href="css/main.css?v=202506169600">
-  <link rel="stylesheet" href="css/ui.css?v=202506169600">
-  <link rel="stylesheet" href="css/track-cards.css?v=202506169600">
-  <link rel="stylesheet" href="css/archive.css?v=202506169600">
-  <link rel="stylesheet" href="css/mixtape.css?v=202506169600">
-  <link rel="stylesheet" href="css/mobile.css?v=202506169600">
+  <link rel="stylesheet" href="css/lyriclab.css?v=202506163300">
+  <link rel="stylesheet" href="css/pipeline.css?v=202506163300">
+  <link rel="stylesheet" href="css/main.css?v=202506163300">
+  <link rel="stylesheet" href="css/ui.css?v=202506163300">
+  <link rel="stylesheet" href="css/track-cards.css?v=202506163300">
+  <link rel="stylesheet" href="css/archive.css?v=202506163300">
+  <link rel="stylesheet" href="css/mixtape.css?v=202506163300">
+  <link rel="stylesheet" href="css/mobile.css?v=202506163300">
 </head>
 <body>
 <!-- Viewer mode login shortcut (legacy, hidden) -->
@@ -269,6 +269,7 @@ AKTIVE BRUKERE:
   <button class="tab-btn" data-tab="archive">🗄️ Arkivert</button>
   <button class="tab-btn" data-tab="lyriclab">✍️ Lyric Lab</button>
   <button class="tab-btn label-tab-hidden" data-tab="label" style="display:none">🏷 Label</button>
+  <button class="tab-btn admin-tab-hidden" data-tab="adminpanel" style="display:none">🛠 Admin</button>
   <button class="tab-btn" data-tab="integrations">🔌 Integrasjoner</button>
 </nav>
 
@@ -365,6 +366,8 @@ AKTIVE BRUKERE:
 </section>
 
 <!-- INTEGRASJONER -->
+<section id="adminPanelTab" class="tab-view hidden"></section>
+
 <section id="labelTab" class="tab-view hidden"></section>
 
 <section id="integrationsTab" class="tab-view hidden">
