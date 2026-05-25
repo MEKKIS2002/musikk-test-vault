@@ -48,9 +48,10 @@
           <span class="label-icon">🏷</span>
           <span id="labelName" class="label-title">Label</span>
         </div>
-        <button class="ghost-btn label-invite-btn" onclick="window.labelOpenInvite()">
-          + Inviter artist
-        </button>
+        <div style="display:flex;gap:8px">
+          <button class="ghost-btn label-invite-btn" onclick="window.labelShowFeed()">📋 Aktivitet</button>
+          <button class="ghost-btn label-invite-btn" onclick="window.labelOpenInvite()">+ Inviter artist</button>
+        </div>
       </div>
 
       <div class="label-body">
@@ -70,14 +71,25 @@
       </div>
     </div>
 
+    <!-- Activity feed modal -->
+    <div id="labelFeedModal" style="display:none;position:fixed;inset:0;z-index:9100;background:rgba(0,0,0,.75);align-items:flex-start;justify-content:center;backdrop-filter:blur(4px);padding-top:60px;overflow-y:auto">
+      <div style="background:#1a1612;border:1px solid rgba(255,255,255,.12);width:min(600px,92vw);padding:0 0 24px">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:20px 24px;border-bottom:1px solid rgba(255,255,255,.08)">
+          <h2 style="font-size:16px;font-weight:800;margin:0">📋 Aktivitetsfeed</h2>
+          <button onclick="document.getElementById('labelFeedModal').style.display='none'" style="background:none;border:none;color:rgba(255,255,255,.5);font-size:20px;cursor:pointer;line-height:1">×</button>
+        </div>
+        <div id="labelFeedContent" style="padding:0 24px"></div>
+      </div>
+    </div>
+
     <!-- Invite modal -->
-    <div id="labelInviteModal" style="display:none;position:fixed;inset:0;z-index:9100;background:rgba(0,0,0,.75);display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px)">
+    <div id="labelInviteModal" style="display:none;position:fixed;inset:0;z-index:9100;background:rgba(0,0,0,.75);align-items:center;justify-content:center;backdrop-filter:blur(4px)">
       <div style="background:#1a1612;border:1px solid rgba(255,255,255,.12);max-width:400px;width:90%;padding:28px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
           <h2 style="font-size:16px;font-weight:800;margin:0">Inviter artist</h2>
           <button onclick="window.labelCloseInvite()" style="background:none;border:none;color:rgba(255,255,255,.5);font-size:20px;cursor:pointer;line-height:1">×</button>
         </div>
-        <input id="labelInviteUsername" placeholder="Brukernavn" 
+        <input id="labelInviteUsername" placeholder="Brukernavn"
           style="width:100%;box-sizing:border-box;background:rgba(255,255,255,.06);border:none;border-bottom:2px solid rgba(244,164,67,.3);color:#f4ede4;padding:10px 12px;font-size:14px;font-family:system-ui;outline:none;margin-bottom:12px"
           onfocus="this.style.borderBottomColor='rgba(244,164,67,.8)'"
           onblur="this.style.borderBottomColor='rgba(244,164,67,.3)'"
@@ -340,7 +352,6 @@
           <div class="label-detail-meta">${profile.email || ''}</div>
         </div>
         <button class="ghost-btn" style="font-size:12px" onclick="window.labelPitchArtist('${artistId}')">📄 Pitch</button>
-        <button class="ghost-btn" style="font-size:12px;color:rgba(251,113,133,.7)" onclick="window.labelRemoveArtist('${artistId}','${name}')">✕ Fjern</button>
       </div>
 
       <div class="label-stats">
@@ -360,17 +371,43 @@
 
       ${albums.length ? `
       <div class="label-section-hd">Albumer</div>
-      <div style="margin-bottom:20px">${albumRows}</div>` : '<div style="font-size:12px;color:rgba(255,255,255,.4);margin-bottom:16px">Ingen albumer ennå.</div>'}
-
-      ${mixtapes.length ? `
-      <div class="label-section-hd">Mixtapes</div>
-      <div>${mixtapes.map(m=>{
-        const meta = m.metadata||{};
+      <div style="margin-bottom:20px">${albums.map(a => {
+        const meta = a.metadata || {};
+        const done = Number(meta.done || 0);
+        const status = meta.status || a.status || 'Idé';
+        const cover = meta.cover || '';
+        const beatCount = (a.beat_ids || meta.beatIds || []).length;
         return `<div class="label-album-row">
-          <div class="label-album-cover">📼</div>
-          <div class="label-album-name">${m.title||meta.name||'Untitled'}</div>
+          <div class="label-album-cover">${cover ? `<img src="${cover}" style="width:100%;height:100%;object-fit:cover">` : '🎵'}</div>
+          <div style="flex:1;min-width:0">
+            <div class="label-album-name">${a.title || meta.name || 'Untitled'}</div>
+            <div class="label-album-meta">${beatCount} sanger</div>
+          </div>
+          <div style="min-width:70px">
+            <div class="label-progress"><div class="label-progress-fill" style="width:${done}%"></div></div>
+            <div style="font-size:10px;color:rgba(255,255,255,.4);margin-top:2px;text-align:right">${done}%</div>
+          </div>
+          ${statusBadge(status)}
+          <button onclick="window.labelOpenComments('${a.id}','${(a.title||meta.name||'Album').replace(/'/g,"\\'")}','${artistId}')" style="background:none;border:1px solid rgba(255,255,255,.12);color:rgba(255,255,255,.5);font-size:11px;padding:3px 8px;cursor:pointer;font-family:system-ui;margin-left:4px">💬</button>
         </div>`;
-      }).join('')}</div>` : ''}
+      }).join('')}</div>` : '<div style="font-size:12px;color:rgba(255,255,255,.4);margin-bottom:16px">Ingen albumer ennå.</div>'}
+
+      ${beats.length ? `
+      <div class="label-section-hd">Sanger</div>
+      <div>${beats.slice(0,8).map(b => {
+        const meta = b.metadata || {};
+        const title = b.title || meta.name || 'Untitled';
+        const dur = Number(meta.duration||b.duration||0);
+        const dStr = dur > 0 ? Math.floor(dur/60)+':'+String(Math.floor(dur%60)).padStart(2,'0') : '';
+        const audio = meta.audio_url || meta.url || b.audio_url || '';
+        return `<div class="label-album-row" style="padding:8px 0">
+          <div class="label-album-cover" style="font-size:12px">🎵</div>
+          <div class="label-album-name" style="flex:1">${title}</div>
+          ${dStr ? `<span style="font-size:11px;color:rgba(255,255,255,.3);font-family:system-ui;margin-right:8px">${dStr}</span>` : ''}
+          ${audio ? `<button onclick="window.labelPlayBeat('${b.id}','${title.replace(/'/g,"\\'")}','${audio}')" style="background:#f4a443;border:none;color:#000;font-size:11px;font-weight:800;width:28px;height:28px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">▶</button>` : ''}
+        </div>`;
+      }).join('')}
+      ${beats.length > 8 ? `<div style="font-size:11px;color:rgba(255,255,255,.3);padding:8px 0">+ ${beats.length-8} til...</div>` : ''}</div>` : ''}
     `;
   };
 
@@ -561,6 +598,138 @@
   // ── Oppdater varsel-typeLabels til å inkludere label_invite ─────────────
   // (label.js lastes etter app.js, så vi patcher direkte)
   const _origOpenNotif2 = window.openNotifPanel;
+
+  // ── Aktivitetsfeed ───────────────────────────────────────────────────────
+  window.labelShowFeed = async function(){
+    const modal = document.getElementById('labelFeedModal');
+    if(modal) modal.style.display = 'flex';
+    const feedEl = document.getElementById('labelFeedContent');
+    if(!feedEl) return;
+    feedEl.innerHTML = '<div class="label-loading">Laster aktivitet...</div>';
+
+    const token = await getToken();
+    const uid   = await getUid();
+
+    const laRes = await fetch(`${SB_URL}/rest/v1/label_artists?label_id=eq.${uid}&status=eq.accepted&select=artist_id`, {headers:sbH(token)});
+    const laRows = laRes.ok ? await laRes.json() : [];
+    const artistIds = laRows.map(r=>r.artist_id);
+
+    if(!artistIds.length){
+      feedEl.innerHTML = '<div style="padding:20px;font-size:13px;color:rgba(255,255,255,.3)">Ingen artister i labelen ennå.</div>';
+      return;
+    }
+
+    const nRes = await fetch(
+      `${SB_URL}/rest/v1/notifications?sender_id=in.(${artistIds.join(',')})&order=created_at.desc&limit=50&select=*`,
+      {headers:sbH(token)}
+    );
+    const notifs = nRes.ok ? await nRes.json() : [];
+
+    const typeLabels = {share_beat:'🎵 Ny sang', share_album:'💿 Nytt album', share_mixtape:'📼 Ny mixtape'};
+
+    const senderIds = [...new Set(notifs.map(n=>n.sender_id).filter(Boolean))];
+    let senderNames = {};
+    if(senderIds.length){
+      const pr = await fetch(`${SB_URL}/rest/v1/profiles?id=in.(${senderIds.join(',')})&select=id,username`, {headers:sbH(token)});
+      if(pr.ok){ const pd = await pr.json(); pd.forEach(p=>senderNames[p.id]=p.username||p.id); }
+    }
+
+    if(!notifs.length){
+      feedEl.innerHTML = '<div style="padding:20px;font-size:13px;color:rgba(255,255,255,.3)">Ingen aktivitet ennå.</div>';
+      return;
+    }
+
+    feedEl.innerHTML = notifs.map(n => {
+      const label = typeLabels[n.type] || '📌 Hendelse';
+      const who = senderNames[n.sender_id] || 'Artist';
+      const when = new Date(n.created_at).toLocaleDateString('no-NO', {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+      return `<div style="padding:14px 0;border-bottom:1px solid rgba(255,255,255,.06);display:flex;gap:12px;align-items:flex-start">
+        <div style="font-size:18px;flex-shrink:0;margin-top:2px">${label.split(' ')[0]}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:700;color:#f4ede4">${label.slice(2)} — ${n.content_name||''}</div>
+          <div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:2px">${who} · ${when}</div>
+        </div>
+      </div>`;
+    }).join('');
+  };
+
+  // ── Avspilling fra label-tab ─────────────────────────────────────────────
+  window.labelPlayBeat = function(beatId){
+    if(typeof playSingleBeat === 'function') playSingleBeat(beatId);
+    else if(typeof window.showToast==='function') window.showToast('Ingen avspiller tilgjengelig');
+  };
+
+  // ── Kommentarer på album ─────────────────────────────────────────────────
+  window.labelOpenComments = async function(albumId, albumName, artistId){
+    let modal = document.getElementById('labelCommentModal');
+    if(!modal){
+      modal = document.createElement('div');
+      modal.id = 'labelCommentModal';
+      modal.style.cssText = 'display:none;position:fixed;inset:0;z-index:9200;background:rgba(0,0,0,.75);align-items:flex-start;justify-content:center;backdrop-filter:blur(4px);padding-top:60px;overflow-y:auto';
+      modal.addEventListener('click', e=>{ if(e.target===modal) modal.style.display='none'; });
+      document.body.appendChild(modal);
+    }
+    modal.style.display = 'flex';
+    modal.innerHTML = `<div style="background:#1a1612;border:1px solid rgba(255,255,255,.12);width:min(560px,92vw);padding:0 0 24px">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:20px 24px;border-bottom:1px solid rgba(255,255,255,.08)">
+        <div>
+          <h2 style="font-size:16px;font-weight:800;margin:0">💬 Kommentarer</h2>
+          <div style="font-size:12px;color:rgba(255,255,255,.4);margin-top:3px">${albumName}</div>
+        </div>
+        <button onclick="document.getElementById('labelCommentModal').style.display='none'" style="background:none;border:none;color:rgba(255,255,255,.5);font-size:20px;cursor:pointer;line-height:1">×</button>
+      </div>
+      <div id="labelCommentList" style="padding:16px 24px;max-height:280px;overflow-y:auto">
+        <div class="label-loading">Laster...</div>
+      </div>
+      <div style="padding:0 24px">
+        <textarea id="labelCommentText" placeholder="Skriv en tilbakemelding..." rows="3"
+          style="width:100%;box-sizing:border-box;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#f4ede4;padding:10px 12px;font-size:13px;font-family:Georgia,serif;outline:none;resize:vertical;margin-bottom:8px"></textarea>
+        <button onclick="window.labelSubmitComment('${albumId}','${artistId}')" style="background:#f4a443;border:none;color:#000;font-size:12px;font-weight:800;padding:9px 20px;cursor:pointer;font-family:system-ui;letter-spacing:.06em;text-transform:uppercase">Send</button>
+        <div id="labelCommentStatus" style="font-size:11px;color:rgba(255,255,255,.4);margin-top:8px;min-height:14px"></div>
+      </div>
+    </div>`;
+    loadLabelComments(albumId);
+  };
+
+  async function loadLabelComments(albumId){
+    const el = document.getElementById('labelCommentList');
+    if(!el) return;
+    const token = await getToken();
+    const res = await fetch(`${SB_URL}/rest/v1/pitch_comments?album_id=eq.${albumId}&order=created_at.asc&select=*`, {headers:sbH(token)});
+    const comments = res.ok ? await res.json() : [];
+    if(!comments.length){ el.innerHTML = '<div style="font-size:12px;color:rgba(255,255,255,.3)">Ingen kommentarer ennå.</div>'; return; }
+    el.innerHTML = comments.map(c=>`
+      <div style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,.06)">
+        <div style="display:flex;gap:8px;margin-bottom:4px">
+          <span style="font-size:12px;font-weight:800;color:#f4a443">${c.author||'Anonym'}</span>
+          <span style="font-size:10px;color:rgba(255,255,255,.3)">${new Date(c.created_at).toLocaleDateString('no-NO')}</span>
+        </div>
+        <div style="font-size:13px;color:rgba(255,255,255,.7);line-height:1.5;white-space:pre-wrap">${c.comment||''}</div>
+      </div>`).join('');
+    el.scrollTop = el.scrollHeight;
+  }
+
+  window.labelSubmitComment = async function(albumId, artistId){
+    const text = document.getElementById('labelCommentText')?.value?.trim();
+    const status = document.getElementById('labelCommentStatus');
+    if(!text){ if(status) status.textContent='Skriv en kommentar'; return; }
+    const token = await getToken();
+    const uid   = await getUid();
+    const prRes = await fetch(`${SB_URL}/rest/v1/profiles?id=eq.${uid}&select=username`, {headers:sbH(token)});
+    const prData = prRes.ok ? await prRes.json() : [];
+    const author = prData[0]?.username || 'Label';
+    await fetch(`${SB_URL}/rest/v1/pitch_comments`, {
+      method:'POST', headers:{...sbH(token),'Prefer':'return=minimal'},
+      body: JSON.stringify({album_id:albumId, author, comment:text, created_at:new Date().toISOString()})
+    });
+    await fetch(`${SB_URL}/rest/v1/notifications`, {
+      method:'POST', headers:{...sbH(token),'Prefer':'return=minimal'},
+      body: JSON.stringify({recipient_id:artistId, sender_id:uid, type:'label_comment', content_id:albumId, content_name:author, role:'label', read:false})
+    });
+    document.getElementById('labelCommentText').value = '';
+    if(status){ status.style.color='#34d399'; status.textContent='✓ Sendt'; setTimeout(()=>status.textContent='',2000); }
+    loadLabelComments(albumId);
+  };
 
   // ── Label-tilhørighet for artister ──────────────────────────────────────
   async function installLabelBanner(labelId){

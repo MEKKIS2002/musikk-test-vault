@@ -1026,7 +1026,8 @@ function openNotifPanel(){
     new_album:     '💿 Nytt album tilgjengelig',
     new_mixtape:   '📼 Ny mixtape tilgjengelig',
     label_invite:  '🏷 Labelinvitasjon',
-    label_left:    '👋 Artist forlot labelen'
+    label_left:    '👋 Artist forlot labelen',
+    label_comment: '💬 Kommentar fra label'
   };
   panel.innerHTML = `
     <div style="padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:space-between">
