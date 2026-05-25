@@ -1036,12 +1036,18 @@ function openNotifPanel(){
       <div style="padding:12px 16px;border-bottom:1px solid rgba(255,255,255,.06);background:${n.read?'transparent':'rgba(244,164,67,.06)'}">
         <div style="font-size:12px;font-weight:700;color:${n.read?'rgba(255,255,255,.5)':'#f4ede4'}">${typeLabels[n.type]||n.type}</div>
         <div style="font-size:13px;color:#f4a443;font-weight:800;margin:3px 0">${n.content_name||n.content_id}</div>
-        <div style="font-size:11px;color:rgba(255,255,255,.35)">${n.role==='editor'?'Redaktørtilgang':'Visningsmodus'} · ${new Date(n.created_at).toLocaleDateString('no-NO')}</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.35);margin-bottom:${n.type==='label_invite'&&!n.read?'8px':'0'}">${n.type==='label_invite'?'Label-invitasjon':n.role==='editor'?'Redaktørtilgang':'Visningsmodus'} · ${new Date(n.created_at).toLocaleDateString('no-NO')}</div>
+        ${n.type==='label_invite'&&!n.read?`<div style="display:flex;gap:8px">
+          <button onclick="window.labelRespondInvite('${n.content_id}','${n.id}',true)" style="background:rgba(52,211,153,.15);border:1px solid rgba(52,211,153,.3);color:#34d399;font-size:11px;font-weight:800;padding:5px 14px;cursor:pointer;font-family:system-ui">✓ Aksepter</button>
+          <button onclick="window.labelRespondInvite('${n.content_id}','${n.id}',false)" style="background:rgba(251,113,133,.1);border:1px solid rgba(251,113,133,.3);color:#fb7185;font-size:11px;font-weight:800;padding:5px 14px;cursor:pointer;font-family:system-ui">✕ Avslå</button>
+        </div>`:''}
       </div>
     `).join('') : `<div style="padding:24px 16px;text-align:center;color:rgba(255,255,255,.3);font-size:13px">Ingen varsler</div>`}
   `;
   panel.style.display = panel.style.display==='none' ? 'block' : (panel.style.display||'block');
-  markAllNotifsRead();
+  // Merk kun ikke-invite varsler som lest
+  const hasUnansweredInvites = notifs.some(n=>n.type==='label_invite'&&!n.read);
+  if(!hasUnansweredInvites) markAllNotifsRead();
 }
 
 window.markAllNotifsRead = async function(){

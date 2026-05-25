@@ -118,7 +118,15 @@ window.applyPackage = function() {
       const activeTab = activeBtn?.dataset?.tab;
       if(!activeTab || !hasTab(activeTab)){
         const firstBtn = document.querySelector(`.tab-btn[data-tab="${pkg.tabs[0]}"]`);
-        if(firstBtn) firstBtn.click();
+        if(firstBtn){
+          firstBtn.click();
+          // Trigger label dashboard render if label is first tab
+          if(pkg.tabs[0] === 'label'){
+            setTimeout(()=>{
+              if(typeof window.labelRenderArtistList === 'function') window.labelRenderArtistList();
+            }, 200);
+          }
+        }
       }
     }
   };

@@ -537,5 +537,6 @@
 
   // Eksponér for å trigges etter innlogging
   window.installLabelDashboard = installLabelTab;
+  window.labelRenderArtistList = renderArtistList;
 
 })();
