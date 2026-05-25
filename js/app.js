@@ -1019,9 +1019,12 @@ function openNotifPanel(){
   }
   const notifs = window._mvNotifications || [];
   const typeLabels = {
-    share_beat:'Beat delt med deg',
-    share_album:'Album delt med deg',
-    share_mixtape:'Mixtape delt med deg'
+    share_beat:    '🎵 Ny sang delt med deg',
+    share_album:   '💿 Nytt album delt med deg',
+    share_mixtape: '📼 Ny mixtape delt med deg',
+    new_beat:      '🎵 Ny sang tilgjengelig',
+    new_album:     '💿 Nytt album tilgjengelig',
+    new_mixtape:   '📼 Ny mixtape tilgjengelig'
   };
   panel.innerHTML = `
     <div style="padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:space-between">
