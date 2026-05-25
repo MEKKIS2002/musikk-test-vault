@@ -349,6 +349,7 @@ async function loginWithUsername(){
     // Anvend pakke-begrensninger
     if(typeof window.setPackage === 'function') window.setPackage(pkg);
     if(typeof window.installLabelDashboard === 'function') window.installLabelDashboard();
+    if(typeof window.installAdminPanel === 'function') window.installAdminPanel();
 
     // Vis label-tab — sett med timeout for å overryde packages.js
     if(pkg === 'label'){
