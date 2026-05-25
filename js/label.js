@@ -311,36 +311,83 @@
     const idx = (window._labelArtists||[]).findIndex(a=>a.artist_id===artistId);
     const col = avatarColor(idx >= 0 ? idx : 0);
 
+    // Hent album_beats for alle albumene
+    const albumBeatMap = {};
+    if(albums.length){
+      const abRes = await fetch(
+        `${SB_URL}/rest/v1/album_beats?album_id=in.(${albums.map(a=>a.id).join(',')})&select=album_id,beat_id`,
+        {headers:sbH(token)}
+      );
+      if(abRes.ok){
+        const abRows = await abRes.json();
+        abRows.forEach(r=>{
+          if(!albumBeatMap[r.album_id]) albumBeatMap[r.album_id] = [];
+          albumBeatMap[r.album_id].push(r.beat_id);
+        });
+      }
+    }
+
+    // Bygg beats-map for oppslag
+    const beatMap = {};
+    beats.forEach(b => { beatMap[b.id] = b; });
+
     // Beregn snitt ferdigstillelse
     const doneVals = beats.map(b => Number((b.metadata||{}).done || 0));
     const avgDone = doneVals.length ? Math.round(doneVals.reduce((a,b)=>a+b,0)/doneVals.length) : 0;
 
-    // Badge per album
     const statusBadge = (status) => {
-      const map = {
-        'Master':'badge-master','Ferdig':'badge-ferdig','Mixing':'badge-mixing',
-        'Innspilling':'badge-mixing','Skriving':'badge-skriving','Idé':'badge-ide'
-      };
+      const map = {'Master':'badge-master','Ferdig':'badge-ferdig','Mixing':'badge-mixing','Innspilling':'badge-mixing','Skriving':'badge-skriving','Idé':'badge-ide'};
       return `<span class="label-badge ${map[status]||'badge-ide'}">${status||'Idé'}</span>`;
     };
 
     const albumRows = albums.map(a => {
       const meta = a.metadata || {};
-      const done = Number(meta.done || 0);
       const status = meta.status || a.status || 'Idé';
       const cover = meta.cover || '';
-      const beatCount = (a.beat_ids || meta.beatIds || []).length;
-      return `<div class="label-album-row">
-        <div class="label-album-cover">${cover ? `<img src="${cover}" style="width:100%;height:100%;object-fit:cover">` : '🎵'}</div>
-        <div style="flex:1;min-width:0">
-          <div class="label-album-name">${a.title || meta.name || 'Untitled'}</div>
-          <div class="label-album-meta">${beatCount} sanger</div>
+      const albumBeatIds = albumBeatMap[a.id] || [];
+      const albumBeats = albumBeatIds.map(id => beatMap[id] || beats.find(b=>b.id===id)).filter(Boolean);
+      const beatCount = albumBeats.length;
+      const done = Number(meta.done || 0);
+      const safeId = a.id.replace(/-/g,'');
+      const albumName = (a.title || meta.name || 'Untitled').replace(/'/g,"\\'");
+
+      const trackRows = albumBeats.map((b,i) => {
+        const bm = b.metadata || {};
+        const bTitle = (b.title || bm.name || 'Untitled').replace(/`/g,'');
+        const bDone = Number(bm.done || 0);
+        const bRating = Number(bm.rating || 0);
+        const stars = '★'.repeat(bRating) + '☆'.repeat(Math.max(0,5-bRating));
+        return `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.04);background:rgba(0,0,0,.2)">
+          <span style="font-size:11px;color:rgba(255,255,255,.25);min-width:20px;font-family:system-ui">${String(i+1).padStart(2,'0')}</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:700;color:#f4ede4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${bTitle}</div>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:2px">
+              <span style="font-size:11px;color:#f4a443;letter-spacing:.05em">${stars}</span>
+              <span style="font-size:10px;color:rgba(255,255,255,.35)">${bDone}% ferdig</span>
+            </div>
+          </div>
+          <button onclick="window.labelPlayBeat('${b.id}')" style="background:#f4a443;border:none;color:#000;font-size:11px;font-weight:900;width:26px;height:26px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;border-radius:50%">▶</button>
+        </div>`;
+      }).join('');
+
+      return `<div style="border:1px solid rgba(255,255,255,.06);margin-bottom:8px">
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;cursor:pointer" onclick="var t=document.getElementById('at${safeId}');var ar=document.getElementById('arr${safeId}');if(t.style.display==='none'){t.style.display='block';ar.textContent='▲';}else{t.style.display='none';ar.textContent='▼';}">
+          <div class="label-album-cover">${cover ? `<img src="${cover}" style="width:100%;height:100%;object-fit:cover">` : '🎵'}</div>
+          <div style="flex:1;min-width:0">
+            <div class="label-album-name">${a.title || meta.name || 'Untitled'}</div>
+            <div class="label-album-meta">${beatCount} sanger</div>
+          </div>
+          <div style="min-width:70px">
+            <div class="label-progress"><div class="label-progress-fill" style="width:${done}%"></div></div>
+            <div style="font-size:10px;color:rgba(255,255,255,.4);margin-top:2px;text-align:right">${done}%</div>
+          </div>
+          ${statusBadge(status)}
+          <button onclick="event.stopPropagation();window.labelOpenComments('${a.id}','${albumName}','${artistId}')" style="background:none;border:1px solid rgba(255,255,255,.12);color:rgba(255,255,255,.5);font-size:11px;padding:3px 8px;cursor:pointer;font-family:system-ui;margin-left:4px">💬</button>
+          <span id="arr${safeId}" style="color:rgba(255,255,255,.3);font-size:11px;margin-left:4px">▼</span>
         </div>
-        <div style="min-width:80px">
-          <div class="label-progress"><div class="label-progress-fill" style="width:${done}%"></div></div>
-          <div style="font-size:10px;color:rgba(255,255,255,.4);margin-top:2px;text-align:right">${done}%</div>
+        <div id="at${safeId}" style="display:none">
+          ${trackRows || '<div style="padding:12px;font-size:12px;color:rgba(255,255,255,.3)">Ingen sanger ennå</div>'}
         </div>
-        ${statusBadge(status)}
       </div>`;
     }).join('');
 
@@ -371,43 +418,7 @@
 
       ${albums.length ? `
       <div class="label-section-hd">Albumer</div>
-      <div style="margin-bottom:20px">${albums.map(a => {
-        const meta = a.metadata || {};
-        const done = Number(meta.done || 0);
-        const status = meta.status || a.status || 'Idé';
-        const cover = meta.cover || '';
-        const beatCount = (a.beat_ids || meta.beatIds || []).length;
-        return `<div class="label-album-row">
-          <div class="label-album-cover">${cover ? `<img src="${cover}" style="width:100%;height:100%;object-fit:cover">` : '🎵'}</div>
-          <div style="flex:1;min-width:0">
-            <div class="label-album-name">${a.title || meta.name || 'Untitled'}</div>
-            <div class="label-album-meta">${beatCount} sanger</div>
-          </div>
-          <div style="min-width:70px">
-            <div class="label-progress"><div class="label-progress-fill" style="width:${done}%"></div></div>
-            <div style="font-size:10px;color:rgba(255,255,255,.4);margin-top:2px;text-align:right">${done}%</div>
-          </div>
-          ${statusBadge(status)}
-          <button onclick="window.labelOpenComments('${a.id}','${(a.title||meta.name||'Album').replace(/'/g,"\\'")}','${artistId}')" style="background:none;border:1px solid rgba(255,255,255,.12);color:rgba(255,255,255,.5);font-size:11px;padding:3px 8px;cursor:pointer;font-family:system-ui;margin-left:4px">💬</button>
-        </div>`;
-      }).join('')}</div>` : '<div style="font-size:12px;color:rgba(255,255,255,.4);margin-bottom:16px">Ingen albumer ennå.</div>'}
-
-      ${beats.length ? `
-      <div class="label-section-hd">Sanger</div>
-      <div>${beats.slice(0,8).map(b => {
-        const meta = b.metadata || {};
-        const title = b.title || meta.name || 'Untitled';
-        const dur = Number(meta.duration||b.duration||0);
-        const dStr = dur > 0 ? Math.floor(dur/60)+':'+String(Math.floor(dur%60)).padStart(2,'0') : '';
-        const audio = meta.audio_url || meta.url || b.audio_url || '';
-        return `<div class="label-album-row" style="padding:8px 0">
-          <div class="label-album-cover" style="font-size:12px">🎵</div>
-          <div class="label-album-name" style="flex:1">${title}</div>
-          ${dStr ? `<span style="font-size:11px;color:rgba(255,255,255,.3);font-family:system-ui;margin-right:8px">${dStr}</span>` : ''}
-          ${audio ? `<button onclick="window.labelPlayBeat('${b.id}','${title.replace(/'/g,"\\'")}','${audio}')" style="background:#f4a443;border:none;color:#000;font-size:11px;font-weight:800;width:28px;height:28px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">▶</button>` : ''}
-        </div>`;
-      }).join('')}
-      ${beats.length > 8 ? `<div style="font-size:11px;color:rgba(255,255,255,.3);padding:8px 0">+ ${beats.length-8} til...</div>` : ''}</div>` : ''}
+      <div style="margin-bottom:20px">${albumRows}</div>` : '<div style="font-size:12px;color:rgba(255,255,255,.4);margin-bottom:16px">Ingen albumer ennå.</div>'}
     `;
   };
 
