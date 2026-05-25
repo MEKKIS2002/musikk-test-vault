@@ -292,6 +292,12 @@ async function loginWithUsername(){
 
     // Anvend pakke-begrensninger
     if(typeof window.setPackage === 'function') window.setPackage(pkg);
+    if(typeof window.installLabelDashboard === 'function') window.installLabelDashboard();
+    // Vis label-tab-knapp for label-brukere
+    if(pkg === 'label'){
+      const labelBtn = document.querySelector('.tab-btn[data-tab="label"]');
+      if(labelBtn) labelBtn.style.display = '';
+    }
 
   } catch(e) {
     if(errEl){errEl.textContent=e.message||'Innlogging feilet.';errEl.style.display='block';}
