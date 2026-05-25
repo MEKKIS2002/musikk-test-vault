@@ -97,8 +97,8 @@
 .adm-stat-n { font-size:24px;font-weight:900;color:#f4ede4;letter-spacing:-.04em;line-height:1 }
 .adm-stat-l { font-size:10px;color:rgba(255,255,255,.4);margin-top:4px;text-transform:uppercase;letter-spacing:.1em }
 .adm-body { display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;align-items:start }
-.adm-col { min-width:0;overflow:hidden }
-.adm-detail-card { background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);padding:16px;width:100%;box-sizing:border-box;overflow:hidden }
+.adm-col { min-width:0 }
+.adm-detail-card { background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);padding:16px;width:100%;box-sizing:border-box }
 .adm-col { min-width:0 }
 .adm-section-hd { font-size:10px;font-weight:800;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.35);padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,.08);margin-bottom:8px;display:flex;align-items:center }
 .adm-list { max-height:340px;overflow-y:auto }
