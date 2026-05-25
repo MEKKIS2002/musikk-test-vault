@@ -97,18 +97,15 @@ function unlockAs(role){
 }
 
 function injectUserCorner(role){
-  // Fjern gammel
   document.getElementById('mvUserCorner')?.remove();
 
   const username = sessionStorage.getItem('mv_username') || role;
   const pkg      = sessionStorage.getItem('mv_package')  || role;
   const isAdmin  = role === 'admin';
-  const isViewer = role === 'viewer';
 
-  // Pakke-label
   const pkgLabels = {
     admin:'Admin', artist:'Artist', producer:'Produsent',
-    lyricist:'Tekstforfatter', label:'Label', viewer:'Lytter', user:'Bruker'
+    lyricist:'Tekstforfatter', label:'Label', viewer:'Lytter', pro:'PRO', user:'Bruker'
   };
   const pkgLabel = pkgLabels[pkg] || pkg;
 
@@ -119,7 +116,6 @@ function injectUserCorner(role){
     display:flex;align-items:center;gap:8px;font-family:system-ui;
   `;
 
-  // Admin-boble: kun for admin
   const adminBubble = isAdmin ? `
     <div style="
       background:linear-gradient(135deg,rgba(244,164,67,.18),rgba(244,164,67,.08));
@@ -128,39 +124,89 @@ function injectUserCorner(role){
       color:#f4a443;text-transform:uppercase;cursor:default
     ">⚡ Admin</div>` : '';
 
-  // Brukernavn + pakke
-  const userLabel = !isViewer ? `
-    <div style="
-      font-size:11px;font-weight:700;color:rgba(255,255,255,.45);
-      white-space:nowrap;
-    ">${username} · ${pkgLabel}</div>` : '';
+  const userLabel = `
+    <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.45);white-space:nowrap">
+      ${username} · ${pkgLabel}
+    </div>`;
 
-  // Logg ut-knapp
-  const logoutBtn = `
-    <button onclick="mvLogout()" title="Logg ut" style="
-      background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);
-      border-radius:8px;padding:5px 11px;color:rgba(255,255,255,.5);
-      font-size:11px;font-weight:800;cursor:pointer;font-family:system-ui;
-      transition:all .15s;white-space:nowrap;letter-spacing:.04em;
-    " onmouseover="this.style.background='rgba(255,255,255,.13)';this.style.color='#f4ede4'"
-       onmouseout="this.style.background='rgba(255,255,255,.07)';this.style.color='rgba(255,255,255,.5)'">
-      Logg ut
-    </button>`;
+  // Tannhjul-knapp
+  const gearBtn = `
+    <div style="position:relative">
+      <button id="mvGearBtn" onclick="mvToggleGearMenu(event)" title="Innstillinger" style="
+        background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);
+        width:30px;height:30px;display:flex;align-items:center;justify-content:center;
+        color:rgba(255,255,255,.5);font-size:14px;cursor:pointer;
+        transition:all .15s;
+      " onmouseover="this.style.background='rgba(255,255,255,.13)';this.style.color='#f4ede4'"
+         onmouseout="this.style.background='rgba(255,255,255,.07)';this.style.color='rgba(255,255,255,.5)'">⚙</button>
+      <div id="mvGearMenu" style="
+        display:none;position:absolute;top:36px;right:0;
+        background:#1a1612;border:1px solid rgba(255,255,255,.12);
+        min-width:180px;z-index:9500;
+        box-shadow:0 12px 32px rgba(0,0,0,.6);
+      ">
+        <div style="padding:8px 0">
+          <div style="padding:6px 14px;font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.25)">${username}</div>
+          <div style="height:1px;background:rgba(255,255,255,.07);margin:4px 0"></div>
+          <div id="mvGearLabelItem" style="display:none">
+            <button onclick="mvGearLeaveLabel()" style="
+              width:100%;text-align:left;background:none;border:none;
+              color:rgba(251,113,133,.7);font-size:13px;padding:9px 14px;
+              cursor:pointer;font-family:system-ui;display:flex;align-items:center;gap:8px;
+            " onmouseover="this.style.background='rgba(251,113,133,.08)'" onmouseout="this.style.background='none'">
+              👋 Forlat label
+            </button>
+          </div>
+          <button onclick="mvLogout()" style="
+            width:100%;text-align:left;background:none;border:none;
+            color:rgba(255,255,255,.6);font-size:13px;padding:9px 14px;
+            cursor:pointer;font-family:system-ui;display:flex;align-items:center;gap:8px;
+          " onmouseover="this.style.background='rgba(255,255,255,.06)'" onmouseout="this.style.background='none'">
+            🚪 Logg ut
+          </button>
+        </div>
+      </div>
+    </div>`;
 
-  corner.innerHTML = adminBubble + userLabel + logoutBtn;
+  corner.innerHTML = adminBubble + userLabel + gearBtn;
   document.body.appendChild(corner);
 
-  // Skjul Supabase admin-panel for ikke-admins
+  // Lukk meny ved klikk utenfor
+  document.addEventListener('click', e => {
+    const menu = document.getElementById('mvGearMenu');
+    const btn  = document.getElementById('mvGearBtn');
+    if(menu && !menu.contains(e.target) && e.target !== btn) menu.style.display='none';
+  });
+
   if(!isAdmin){
     const panel = document.getElementById('supabaseDataSyncPanel');
     if(panel) panel.style.display = 'none';
     const adminLogout = document.getElementById('adminLogoutBox');
     if(adminLogout) adminLogout.style.display = 'none';
-    // Skjul viewerLoginBtn (vi har vår egen knapp nå)
     const vBtn = document.getElementById('viewerLoginBtn');
     if(vBtn) vBtn.style.display = 'none';
   }
 }
+
+window.mvToggleGearMenu = function(e){
+  e.stopPropagation();
+  const menu = document.getElementById('mvGearMenu');
+  if(!menu) return;
+  menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+};
+
+// Oppdater gear-menyen med "Forlat label" hvis artisten er i et label
+window.mvUpdateGearMenu = function(labelId, labelName){
+  const item = document.getElementById('mvGearLabelItem');
+  if(!item) return;
+  item.style.display = 'block';
+  item.querySelector('button').onclick = () => window.leaveLabel(labelId, labelName);
+};
+
+window.mvGearLeaveLabel = function(){
+  // Kalles fra gear-menyen — henter label-info fra banner-data
+  if(window._mvCurrentLabelId) window.leaveLabel(window._mvCurrentLabelId, window._mvCurrentLabelName);
+};
 
 window.mvLogout = async function(){
   // Logg ut fra Supabase

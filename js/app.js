@@ -960,7 +960,7 @@ function installNotificationBell(){
   const bell = document.createElement('div');
   bell.id = 'mvNotifBell';
   bell.style.cssText = `
-    position:fixed;top:10px;right:290px;z-index:8050;
+    position:fixed;top:10px;right:60px;z-index:8050;
     cursor:pointer;font-size:18px;padding:6px 8px;
     border-radius:50%;transition:background .15s;
     display:flex;align-items:center;justify-content:center;

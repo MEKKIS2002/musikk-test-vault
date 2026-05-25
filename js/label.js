@@ -538,35 +538,21 @@
   // (label.js lastes etter app.js, så vi patcher direkte)
   const _origOpenNotif2 = window.openNotifPanel;
 
-  // ── Forlat label ────────────────────────────────────────────────────────
+  // ── Label-tilhørighet for artister ──────────────────────────────────────
   async function installLabelBanner(labelId){
-    if(document.getElementById('mvLabelBanner')) return;
+    // Ikke vis banner — bruk gear-menyen istedenfor
     const token = await getToken();
-    const uid   = await getUid();
-
-    // Hent labelnavn
     const res = await fetch(`${SB_URL}/rest/v1/profiles?id=eq.${labelId}&select=username`, {headers:sbH(token)});
     const data = res.ok ? await res.json() : [];
     const labelName = data[0]?.username || 'Et label';
 
-    const banner = document.createElement('div');
-    banner.id = 'mvLabelBanner';
-    banner.style.cssText = `
-      position:fixed;bottom:70px;left:50%;transform:translateX(-50%);
-      z-index:7500;background:rgba(20,16,12,.95);
-      border:1px solid rgba(244,164,67,.25);
-      padding:8px 16px;display:flex;align-items:center;gap:12px;
-      font-family:system-ui;backdrop-filter:blur(8px);
-    `;
-    banner.innerHTML = `
-      <span style="font-size:12px;color:rgba(255,255,255,.6)">🏷 Del av</span>
-      <span style="font-size:13px;font-weight:800;color:#f4a443">${labelName}</span>
-      <button onclick="window.leaveLabel('${labelId}','${labelName}')" 
-        style="background:none;border:1px solid rgba(251,113,133,.3);color:rgba(251,113,133,.7);font-size:11px;font-weight:700;padding:3px 10px;cursor:pointer;font-family:system-ui;margin-left:8px"
-        onmouseover="this.style.background='rgba(251,113,133,.1)'" onmouseout="this.style.background='none'"
-      >Forlat label</button>
-    `;
-    document.body.appendChild(banner);
+    // Cache for gear-menyen
+    window._mvCurrentLabelId   = labelId;
+    window._mvCurrentLabelName = labelName;
+
+    // Oppdater gear-meny
+    if(typeof window.mvUpdateGearMenu === 'function') window.mvUpdateGearMenu(labelId, labelName);
+    else setTimeout(()=>{ if(typeof window.mvUpdateGearMenu==='function') window.mvUpdateGearMenu(labelId, labelName); }, 1000);
   }
 
   window.leaveLabel = async function(labelId, labelName){
@@ -607,8 +593,11 @@
       })
     });
 
-    // Fjern banner
-    document.getElementById('mvLabelBanner')?.remove();
+    // Fjern "Forlat label" fra gear-menyen
+    const item = document.getElementById('mvGearLabelItem');
+    if(item) item.style.display = 'none';
+    window._mvCurrentLabelId = null;
+    window._mvCurrentLabelName = null;
     if(typeof window.showToast==='function') window.showToast(`Du har forlatt ${labelName}. De beholder visningstilgang i 14 dager.`);
   };
 
