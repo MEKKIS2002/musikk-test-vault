@@ -216,6 +216,7 @@
 
     const accepted = artists.filter(a => a.status === 'accepted');
     const pending  = artists.filter(a => a.status === 'invited' || a.status === 'pending');
+    const left     = artists.filter(a => a.status === 'left' && a.access_expires_at && new Date(a.access_expires_at) > new Date());
 
     let html = '';
 
@@ -235,12 +236,27 @@
     if(pending.length){
       html += `<div class="label-sidebar-hd" style="margin-top:8px">Venter</div>`;
       pending.forEach(a => {
-        const name = a.profile?.username || a.invited_by?.slice(0,8) || 'Ukjent';
+        const name = a.profile?.username || 'Ukjent';
         html += `<div class="label-pending-row">
           <div class="label-avatar" style="background:rgba(255,255,255,.06);color:rgba(255,255,255,.4)">?</div>
           <div style="min-width:0">
             <div class="label-artist-name">${name}</div>
             <div class="label-artist-sub">Invitert</div>
+          </div>
+        </div>`;
+      });
+    }
+
+    if(left.length){
+      html += `<div class="label-sidebar-hd" style="margin-top:8px">Forlatt</div>`;
+      left.forEach(a => {
+        const name = a.profile?.username || 'Ukjent';
+        const daysLeft = Math.ceil((new Date(a.access_expires_at) - new Date()) / (1000*60*60*24));
+        html += `<div class="label-pending-row" style="opacity:.6">
+          <div class="label-avatar" style="background:rgba(251,113,133,.1);color:rgba(251,113,133,.5)">✕</div>
+          <div style="min-width:0">
+            <div class="label-artist-name">${name}</div>
+            <div class="label-artist-sub" style="color:rgba(251,113,133,.5)">${daysLeft}d tilgang igjen</div>
           </div>
         </div>`;
       });
@@ -487,7 +503,6 @@
     const uid   = await getUid();
 
     if(accept){
-      // Oppdater label_artists status
       await fetch(
         `${SB_URL}/rest/v1/label_artists?label_id=eq.${labelId}&artist_id=eq.${uid}`,
         {method:'PATCH', headers:{...sbH(token),'Prefer':'return=minimal'},
@@ -502,20 +517,117 @@
       if(typeof window.showToast==='function') window.showToast('Invitasjon avslått.');
     }
 
-    // Merk varsel som lest
-    await fetch(`${SB_URL}/rest/v1/notifications?id=eq.${notifId}`,
-      {method:'PATCH', headers:{...sbH(token),'Prefer':'return=minimal'}, body: JSON.stringify({read:true})}
+    // Slett varselet etter svar
+    await fetch(`${SB_URL}/rest/v1/notifications?id=eq.${notifId}&recipient_id=eq.${uid}`,
+      {method:'DELETE', headers:{...sbH(token),'Prefer':'return=minimal'}}
     );
 
-    // Lukk panel og oppdater
+    // Oppdater lokal cache og lukk panel
+    if(window._mvNotifications){
+      window._mvNotifications = window._mvNotifications.filter(n=>n.id!=notifId);
+    }
     const panel = document.getElementById('mvNotifPanel');
     if(panel) panel.style.display='none';
     if(typeof window.loadNotifications==='function') window.loadNotifications();
+
+    // Vis "Del av label"-banner for artisten etter aksept
+    if(accept) installLabelBanner(labelId);
   };
 
   // ── Oppdater varsel-typeLabels til å inkludere label_invite ─────────────
   // (label.js lastes etter app.js, så vi patcher direkte)
   const _origOpenNotif2 = window.openNotifPanel;
+
+  // ── Forlat label ────────────────────────────────────────────────────────
+  async function installLabelBanner(labelId){
+    if(document.getElementById('mvLabelBanner')) return;
+    const token = await getToken();
+    const uid   = await getUid();
+
+    // Hent labelnavn
+    const res = await fetch(`${SB_URL}/rest/v1/profiles?id=eq.${labelId}&select=username`, {headers:sbH(token)});
+    const data = res.ok ? await res.json() : [];
+    const labelName = data[0]?.username || 'Et label';
+
+    const banner = document.createElement('div');
+    banner.id = 'mvLabelBanner';
+    banner.style.cssText = `
+      position:fixed;bottom:70px;left:50%;transform:translateX(-50%);
+      z-index:7500;background:rgba(20,16,12,.95);
+      border:1px solid rgba(244,164,67,.25);
+      padding:8px 16px;display:flex;align-items:center;gap:12px;
+      font-family:system-ui;backdrop-filter:blur(8px);
+    `;
+    banner.innerHTML = `
+      <span style="font-size:12px;color:rgba(255,255,255,.6)">🏷 Del av</span>
+      <span style="font-size:13px;font-weight:800;color:#f4a443">${labelName}</span>
+      <button onclick="window.leaveLabel('${labelId}','${labelName}')" 
+        style="background:none;border:1px solid rgba(251,113,133,.3);color:rgba(251,113,133,.7);font-size:11px;font-weight:700;padding:3px 10px;cursor:pointer;font-family:system-ui;margin-left:8px"
+        onmouseover="this.style.background='rgba(251,113,133,.1)'" onmouseout="this.style.background='none'"
+      >Forlat label</button>
+    `;
+    document.body.appendChild(banner);
+  }
+
+  window.leaveLabel = async function(labelId, labelName){
+    if(!confirm(`Forlate ${labelName}?\n\nLabelen vil beholde visningstilgang til innholdet ditt i 14 dager.`)) return;
+
+    const token = await getToken();
+    const uid   = await getUid();
+    const expiresAt = new Date(Date.now() + 14*24*60*60*1000).toISOString();
+
+    // Oppdater label_artists
+    await fetch(
+      `${SB_URL}/rest/v1/label_artists?label_id=eq.${labelId}&artist_id=eq.${uid}`,
+      {method:'PATCH', headers:{...sbH(token),'Prefer':'return=minimal'},
+       body: JSON.stringify({
+         status: 'left',
+         ended_at: new Date().toISOString(),
+         access_expires_at: expiresAt
+       })
+      }
+    );
+
+    // Send varsel til label
+    const prRes = await fetch(`${SB_URL}/rest/v1/profiles?id=eq.${uid}&select=username`, {headers:sbH(token)});
+    const prData = prRes.ok ? await prRes.json() : [];
+    const artistName = prData[0]?.username || 'En artist';
+
+    await fetch(`${SB_URL}/rest/v1/notifications`, {
+      method:'POST',
+      headers:{...sbH(token),'Prefer':'return=minimal'},
+      body: JSON.stringify({
+        recipient_id: labelId,
+        sender_id: uid,
+        type: 'label_left',
+        content_id: uid,
+        content_name: artistName,
+        role: 'artist',
+        read: false
+      })
+    });
+
+    // Fjern banner
+    document.getElementById('mvLabelBanner')?.remove();
+    if(typeof window.showToast==='function') window.showToast(`Du har forlatt ${labelName}. De beholder visningstilgang i 14 dager.`);
+  };
+
+  // Sjekk om bruker allerede er i et label ved innlogging
+  async function checkExistingLabelMembership(){
+    const uid = await getUid();
+    if(!uid) return;
+    const pkg = sessionStorage.getItem('mv_package');
+    if(pkg === 'label') return; // label-bruker trenger ikke banner
+
+    const token = await getToken();
+    const res = await fetch(
+      `${SB_URL}/rest/v1/label_artists?artist_id=eq.${uid}&status=eq.accepted&select=label_id`,
+      {headers:sbH(token)}
+    );
+    if(!res.ok) return;
+    const rows = await res.json();
+    if(rows.length) installLabelBanner(rows[0].label_id);
+  }
 
   // ── Installer når label-tab åpnes ───────────────────────────────────────
   document.addEventListener('click', e => {
@@ -534,6 +646,9 @@
 
   if(document.readyState !== 'loading') setTimeout(tryInstall, 600);
   else document.addEventListener('DOMContentLoaded', ()=>setTimeout(tryInstall, 600));
+
+  // Sjekk eksisterende label-medlemskap for artister
+  setTimeout(checkExistingLabelMembership, 1500);
 
   // Eksponér for å trigges etter innlogging
   window.installLabelDashboard = installLabelTab;
