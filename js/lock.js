@@ -260,9 +260,8 @@ async function loginWithUsername(){
       .maybeSingle();
 
     const role = profile?.role || 'user';
-    // Fallback: bruk brukernavnet som pakke hvis det matcher (f.eks. 'label' → label-pakken)
-    const pkgFromUsername = window.MV_PACKAGES?.[username] ? username : null;
-    const pkg  = profile?.package || pkgFromUsername || (role === 'admin' ? 'admin' : 'viewer');
+    const pkg  = profile?.package || (role === 'admin' ? 'admin' : 'artist');
+    console.log('[Lock] Innlogget:', {role, pkg, profile});
 
     // Cache user ID — MÅ settes før pull så owner_id-filteret virker
     window._mvCurrentUserId = data.user.id;

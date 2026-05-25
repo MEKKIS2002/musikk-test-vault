@@ -24,30 +24,21 @@
 
   // ── Installer label-tab ─────────────────────────────────────────────────
   function installLabelTab(){
-    if(document.getElementById('labelTab')) return;
     const pkg = sessionStorage.getItem('mv_package');
     if(pkg !== 'label' && pkg !== 'admin') return;
 
-    // Tab-knapp
-    const tabBar = document.querySelector('.tab-bar') || document.querySelector('nav.tabs');
-    if(tabBar){
-      const btn = document.createElement('button');
-      btn.className = 'tab-btn';
-      btn.dataset.tab = 'label';
-      btn.textContent = '🏷 Label';
-      tabBar.appendChild(btn);
+    // Vis tab-knappen
+    const tabBtn = document.querySelector('.tab-btn[data-tab="label"]');
+    if(tabBtn) tabBtn.style.display = '';
+
+    // Fyll tab-seksjonen med innhold
+    const section = document.getElementById('labelTab');
+    if(section && !section.querySelector('.label-dashboard')){
+      section.innerHTML = buildDashboardShell();
     }
 
-    // Tab-seksjon
-    const main = document.querySelector('main.app') || document.querySelector('.app') || document.body;
-    const section = document.createElement('section');
-    section.id = 'labelTab';
-    section.className = 'tab-view hidden';
-    section.innerHTML = buildDashboardShell();
-    main.appendChild(section);
-
     installLabelStyles();
-    console.log('[Label] Dashboard installert');
+    console.log('[Label] Dashboard installert for', pkg);
   }
 
   function buildDashboardShell(){
