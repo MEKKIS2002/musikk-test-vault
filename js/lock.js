@@ -126,7 +126,7 @@ function injectUserCorner(role){
 
   const userLabel = `
     <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.45);white-space:nowrap">
-      ${username} · ${pkgLabel}
+      ${username}${!isAdmin ? ' · ' + pkgLabel : ''}
     </div>`;
 
   // Tannhjul-knapp
@@ -168,8 +168,19 @@ function injectUserCorner(role){
       </div>
     </div>`;
 
-  corner.innerHTML = adminBubble + userLabel + gearBtn;
+  corner.innerHTML = adminBubble + userLabel + `<div id="mvNotifBellSlot"></div>` + gearBtn;
   document.body.appendChild(corner);
+
+  // Flytt bjellen inn i slot etter at den er opprettet av app.js
+  const tryMoveBell = () => {
+    const bell = document.getElementById('mvNotifBell');
+    const slot = document.getElementById('mvNotifBellSlot');
+    if(bell && slot && !slot.contains(bell)){
+      bell.style.cssText = 'position:relative;top:auto;right:auto;cursor:pointer;font-size:18px;padding:4px 6px;display:flex;align-items:center;justify-content:center;transition:background .15s;border-radius:50%';
+      slot.appendChild(bell);
+    }
+  };
+  [300,600,1200].forEach(d => setTimeout(tryMoveBell, d));
 
   // Lukk meny ved klikk utenfor
   document.addEventListener('click', e => {
