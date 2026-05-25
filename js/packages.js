@@ -139,10 +139,5 @@ window.applyPackage = function() {
   console.log(`[MV Packages] ${pkgKey} | tabs: ${JSON.stringify(pkg.tabs)}`);
 };
 
-// Kjør applyPackage når DOM er klar
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => window.applyPackage());
-} else {
-  // Liten forsinkelse så tab-knapper er rendret
-  setTimeout(() => window.applyPackage(), 100);
-}
+// Kjør applyPackage kun etter innlogging — ikke ved sidelast
+// (kalles eksplisitt fra lock.js via window.setPackage)
