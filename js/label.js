@@ -327,9 +327,37 @@
       }
     }
 
-    // Bygg beats-map for oppslag
+    // Hent mixtape_beats for alle mixtapene
+    const mixtapeBeatMap = {};
+    if(mixtapes.length){
+      const mbRes = await fetch(
+        `${SB_URL}/rest/v1/mixtape_beats?mixtape_id=in.(${mixtapes.map(m=>m.id).join(',')})&select=mixtape_id,beat_id`,
+        {headers:sbH(token)}
+      );
+      if(mbRes.ok){
+        const mbRows = await mbRes.json();
+        mbRows.forEach(r=>{
+          if(!mixtapeBeatMap[r.mixtape_id]) mixtapeBeatMap[r.mixtape_id] = [];
+          mixtapeBeatMap[r.mixtape_id].push(r.beat_id);
+        });
+      }
+    }
+
+    // Hent alle beats som er i mixtapes (kan mangle i beats-lista)
+    const allMixtapeBeatIds = [...new Set(Object.values(mixtapeBeatMap).flat())];
+    const extraBeatIds = allMixtapeBeatIds.filter(id => !beats.find(b=>b.id===id));
+    let extraBeats = [];
+    if(extraBeatIds.length){
+      const ebRes = await fetch(
+        `${SB_URL}/rest/v1/beats?id=in.(${extraBeatIds.join(',')})&select=*`,
+        {headers:sbH(token)}
+      );
+      if(ebRes.ok) extraBeats = await ebRes.json();
+    }
+
+    // Bygg komplett beats-map
     const beatMap = {};
-    beats.forEach(b => { beatMap[b.id] = b; });
+    [...beats, ...extraBeats].forEach(b => { beatMap[b.id] = b; });
 
     // Beregn snitt ferdigstillelse
     const doneVals = beats.map(b => Number((b.metadata||{}).done || 0));
@@ -351,12 +379,24 @@
       const safeId = a.id.replace(/-/g,'');
       const albumName = (a.title || meta.name || 'Untitled').replace(/'/g,"\\'");
 
+      // Rik albumstatistikk
+      const beatsWithAudio  = albumBeats.filter(b => (b.metadata?.audio_url||b.metadata?.url||b.audio_url));
+      const beatsWithLyrics = albumBeats.filter(b => (b.metadata?.lyrics||(b.metadata?.lyricSections||[]).length > 0));
+      const avgBeatDone     = albumBeats.length ? Math.round(albumBeats.reduce((s,b)=>s+Number((b.metadata||{}).done||0),0)/albumBeats.length) : 0;
+      const totalDur        = albumBeats.reduce((s,b)=>s+Number((b.metadata||{}).duration||b.duration||0),0);
+      const durStr          = totalDur > 0 ? `${Math.floor(totalDur/60)}:${String(Math.floor(totalDur%60)).padStart(2,'0')}` : null;
+      const avgRating       = albumBeats.length ? (albumBeats.reduce((s,b)=>s+Number((b.metadata||{}).rating||0),0)/albumBeats.length).toFixed(1) : null;
+      const beatsDone       = albumBeats.filter(b=>Number((b.metadata||{}).done||0)>=100).length;
+
       const trackRows = albumBeats.map((b,i) => {
         const bm = b.metadata || {};
         const bTitle = (b.title || bm.name || 'Untitled').replace(/`/g,'');
         const bDone = Number(bm.done || 0);
         const bRating = Number(bm.rating || 0);
         const stars = '★'.repeat(bRating) + '☆'.repeat(Math.max(0,5-bRating));
+        const dur = Number(bm.duration||b.duration||0);
+        const dStr = dur>0 ? Math.floor(dur/60)+':'+String(Math.floor(dur%60)).padStart(2,'0') : '';
+        const hasAudio = !!(bm.audio_url||bm.url||b.audio_url);
         return `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.04);background:rgba(0,0,0,.2)">
           <span style="font-size:11px;color:rgba(255,255,255,.25);min-width:20px;font-family:system-ui">${String(i+1).padStart(2,'0')}</span>
           <div style="flex:1;min-width:0">
@@ -364,28 +404,48 @@
             <div style="display:flex;align-items:center;gap:8px;margin-top:2px">
               <span style="font-size:11px;color:#f4a443;letter-spacing:.05em">${stars}</span>
               <span style="font-size:10px;color:rgba(255,255,255,.35)">${bDone}% ferdig</span>
+              ${dStr ? `<span style="font-size:10px;color:rgba(255,255,255,.25)">${dStr}</span>` : ''}
             </div>
           </div>
-          <button onclick="window.labelPlayBeat('${b.id}')" style="background:#f4a443;border:none;color:#000;font-size:11px;font-weight:900;width:26px;height:26px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;border-radius:50%">▶</button>
+          ${hasAudio ? `<button onclick="window.labelPlayBeat('${b.id}')" style="background:#f4a443;border:none;color:#000;font-size:11px;font-weight:900;width:26px;height:26px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;border-radius:50%">▶</button>` : `<div style="width:26px"></div>`}
         </div>`;
       }).join('');
 
-      return `<div style="border:1px solid rgba(255,255,255,.06);margin-bottom:8px">
+      return `<div style="border:1px solid rgba(255,255,255,.06);margin-bottom:10px">
         <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;cursor:pointer" onclick="var t=document.getElementById('at${safeId}');var ar=document.getElementById('arr${safeId}');if(t.style.display==='none'){t.style.display='block';ar.textContent='▲';}else{t.style.display='none';ar.textContent='▼';}">
           <div class="label-album-cover">${cover ? `<img src="${cover}" style="width:100%;height:100%;object-fit:cover">` : '🎵'}</div>
           <div style="flex:1;min-width:0">
             <div class="label-album-name">${a.title || meta.name || 'Untitled'}</div>
-            <div class="label-album-meta">${beatCount} sanger</div>
+            <div class="label-album-meta">${beatCount} sanger${durStr ? ' · '+durStr : ''}</div>
           </div>
           <div style="min-width:70px">
-            <div class="label-progress"><div class="label-progress-fill" style="width:${done}%"></div></div>
-            <div style="font-size:10px;color:rgba(255,255,255,.4);margin-top:2px;text-align:right">${done}%</div>
+            <div class="label-progress"><div class="label-progress-fill" style="width:${avgBeatDone}%"></div></div>
+            <div style="font-size:10px;color:rgba(255,255,255,.4);margin-top:2px;text-align:right">${avgBeatDone}%</div>
           </div>
           ${statusBadge(status)}
           <button onclick="event.stopPropagation();window.labelOpenComments('${a.id}','${albumName}','${artistId}')" style="background:none;border:1px solid rgba(255,255,255,.12);color:rgba(255,255,255,.5);font-size:11px;padding:3px 8px;cursor:pointer;font-family:system-ui;margin-left:4px">💬</button>
           <span id="arr${safeId}" style="color:rgba(255,255,255,.3);font-size:11px;margin-left:4px">▼</span>
         </div>
         <div id="at${safeId}" style="display:none">
+          <!-- Albumstatistikk -->
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:10px 12px;background:rgba(255,255,255,.02);border-bottom:1px solid rgba(255,255,255,.06)">
+            <div style="text-align:center">
+              <div style="font-size:16px;font-weight:900;color:#f4ede4">${beatsDone}/${beatCount}</div>
+              <div style="font-size:9px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.1em;margin-top:2px">Ferdig</div>
+            </div>
+            <div style="text-align:center">
+              <div style="font-size:16px;font-weight:900;color:#f4ede4">${beatsWithAudio.length}</div>
+              <div style="font-size:9px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.1em;margin-top:2px">Har lyd</div>
+            </div>
+            <div style="text-align:center">
+              <div style="font-size:16px;font-weight:900;color:#f4ede4">${beatsWithLyrics.length}</div>
+              <div style="font-size:9px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.1em;margin-top:2px">Har tekst</div>
+            </div>
+            <div style="text-align:center">
+              <div style="font-size:16px;font-weight:900;color:${avgRating>=4?'#f4a443':avgRating>=3?'#f4ede4':'rgba(255,255,255,.5)'}">${avgRating||'—'}</div>
+              <div style="font-size:9px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.1em;margin-top:2px">Snitt ★</div>
+            </div>
+          </div>
           ${trackRows || '<div style="padding:12px;font-size:12px;color:rgba(255,255,255,.3)">Ingen sanger ennå</div>'}
         </div>
       </div>`;
@@ -419,6 +479,35 @@
       ${albums.length ? `
       <div class="label-section-hd">Albumer</div>
       <div style="margin-bottom:20px">${albumRows}</div>` : '<div style="font-size:12px;color:rgba(255,255,255,.4);margin-bottom:16px">Ingen albumer ennå.</div>'}
+
+      ${mixtapes.length ? `
+      <div class="label-section-hd">Mixtapes</div>
+      <div style="margin-bottom:8px">${mixtapes.map(m => {
+        const meta = m.metadata || {};
+        const mBeats = (mixtapeBeatMap[m.id]||[]).map(id=>beatMap[id]).filter(Boolean);
+        const safeId = m.id.replace(/-/g,'');
+        const trackRows = mBeats.map((b,i) => {
+          const bm = b.metadata || {};
+          const bTitle = (b.title || bm.name || 'Untitled').replace(/`/g,'');
+          const hasAudio = !!(bm.audio_url||bm.url||b.audio_url);
+          return `<div style="display:flex;align-items:center;gap:10px;padding:7px 12px;border-bottom:1px solid rgba(255,255,255,.04);background:rgba(0,0,0,.2)">
+            <span style="font-size:11px;color:rgba(255,255,255,.25);min-width:20px;font-family:system-ui">${String(i+1).padStart(2,'0')}</span>
+            <div style="font-size:13px;font-weight:700;color:#f4ede4;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${bTitle}</div>
+            ${hasAudio ? `<button onclick="window.labelPlayBeat('${b.id}')" style="background:#f4a443;border:none;color:#000;font-size:11px;font-weight:900;width:24px;height:24px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;border-radius:50%">▶</button>` : `<div style="width:24px"></div>`}
+          </div>`;
+        }).join('');
+        return `<div style="border:1px solid rgba(255,255,255,.06);margin-bottom:8px">
+          <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;cursor:pointer" onclick="var t=document.getElementById('mt${safeId}');var ar=document.getElementById('mrr${safeId}');if(t.style.display==='none'){t.style.display='block';ar.textContent='▲';}else{t.style.display='none';ar.textContent='▼';}">
+            <div class="label-album-cover">📼</div>
+            <div class="label-album-name" style="flex:1">${m.title||meta.name||'Untitled'}</div>
+            <span style="font-size:11px;color:rgba(255,255,255,.35)">${mBeats.length} sanger</span>
+            <span id="mrr${safeId}" style="color:rgba(255,255,255,.3);font-size:11px;margin-left:6px">▼</span>
+          </div>
+          <div id="mt${safeId}" style="display:none">
+            ${trackRows || '<div style="padding:12px;font-size:12px;color:rgba(255,255,255,.3)">Ingen sanger</div>'}
+          </div>
+        </div>`;
+      }).join('')}</div>` : ''}
     `;
   };
 
