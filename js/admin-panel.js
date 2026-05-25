@@ -97,6 +97,8 @@
 .adm-stat-n { font-size:24px;font-weight:900;color:#f4ede4;letter-spacing:-.04em;line-height:1 }
 .adm-stat-l { font-size:10px;color:rgba(255,255,255,.4);margin-top:4px;text-transform:uppercase;letter-spacing:.1em }
 .adm-body { display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;align-items:start }
+.adm-col { min-width:0;overflow:hidden }
+.adm-detail-card { background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);padding:16px;width:100%;box-sizing:border-box;overflow:hidden }
 .adm-col { min-width:0 }
 .adm-section-hd { font-size:10px;font-weight:800;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.35);padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,.08);margin-bottom:8px;display:flex;align-items:center }
 .adm-list { max-height:340px;overflow-y:auto }
@@ -264,22 +266,26 @@
     const status   = document.getElementById('adminSaveStatus');
     if(!pkg || !username){ if(status) status.textContent='Fyll inn alle felt'; return; }
 
+    if(status){ status.style.color='rgba(255,255,255,.4)'; status.textContent='Lagrer...'; }
+
     const token = await getToken();
     const res = await fetch(`${SB_URL}/rest/v1/profiles?id=eq.${userId}`, {
       method: 'PATCH',
       headers: {...sbH(token), 'Prefer':'return=minimal'},
       body: JSON.stringify({package: pkg, username})
     });
-    if(res.ok){
+
+    if(res.ok || res.status === 204){
       if(status){ status.style.color='#34d399'; status.textContent='✓ Lagret'; }
-      // Oppdater lokal cache
       const u = window._adminUsers.find(u=>u.id===userId);
       if(u){ u.package=pkg; u.username=username; }
       renderUsers(document.getElementById('adminSearch')?.value||'');
       renderStats(window._adminUsers, window._adminCodes||[]);
       setTimeout(()=>{ if(status) status.textContent=''; }, 2000);
     } else {
-      if(status){ status.style.color='#fb7185'; status.textContent='Feil ved lagring'; }
+      const txt = await res.text();
+      if(status){ status.style.color='#fb7185'; status.textContent=`Feil: ${res.status} — sjekk Supabase RLS`; }
+      console.error('Save user error:', res.status, txt);
     }
   };
 
