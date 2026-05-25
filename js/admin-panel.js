@@ -16,27 +16,18 @@
 
   // ── Installer admin-tab ─────────────────────────────────────────────────
   function installAdminTab(){
-    if(document.getElementById('adminPanelTab')) return;
     const role = sessionStorage.getItem('mv_package');
     if(role !== 'admin') return;
 
-    // Tab-knapp
-    const integBtn = document.querySelector('.tab-btn[data-tab="integrations"]');
-    if(integBtn){
-      const btn = document.createElement('button');
-      btn.className = 'tab-btn';
-      btn.dataset.tab = 'adminpanel';
-      btn.textContent = '🛠 Admin';
-      integBtn.parentNode.insertBefore(btn, integBtn);
-    }
+    // Vis tab-knappen
+    const tabBtn = document.querySelector('.tab-btn[data-tab="adminpanel"]');
+    if(tabBtn) tabBtn.style.display = '';
 
-    // Tab-seksjon
-    const section = document.createElement('section');
-    section.id = 'adminPanelTab';
-    section.className = 'tab-view hidden';
-    section.innerHTML = buildAdminShell();
-    const intTab = document.getElementById('integrationsTab');
-    if(intTab) intTab.parentNode.insertBefore(section, intTab);
+    // Fyll seksjonen med innhold
+    const section = document.getElementById('adminPanelTab');
+    if(section && !section.querySelector('.adm-wrap')){
+      section.innerHTML = buildAdminShell();
+    }
 
     installAdminStyles();
     console.log('[Admin Panel] Installert');
