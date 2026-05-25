@@ -52,29 +52,32 @@
       </div>
 
       <div class="adm-body">
+        <!-- Kolonne 1: brukerliste -->
         <div class="adm-col">
-          <div class="adm-section-hd">Brukere
+          <div class="adm-section-hd">
+            Brukere
             <input id="adminSearch" placeholder="Søk..." oninput="window.adminSearch(this.value)"
-              style="margin-left:auto;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#f4ede4;padding:5px 10px;font-size:12px;font-family:system-ui;outline:none;width:140px;border-radius:0">
+              style="margin-left:auto;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#f4ede4;padding:5px 10px;font-size:12px;font-family:system-ui;outline:none;width:130px;border-radius:0">
           </div>
-          <div id="adminUserList" class="adm-list">
-            <div class="adm-loading">Laster brukere...</div>
-          </div>
+          <div id="adminUserList" class="adm-list"></div>
         </div>
 
+        <!-- Kolonne 2: brukerdetalj -->
         <div class="adm-col">
-          <div class="adm-section-hd" style="margin-bottom:8px">Detaljer</div>
+          <div class="adm-section-hd">Detaljer</div>
           <div id="adminUserDetail" class="adm-detail-empty">
             <div style="font-size:28px;margin-bottom:8px">👆</div>
             <div>Velg en bruker</div>
           </div>
-          <div class="adm-section-hd" style="margin-top:24px">
+        </div>
+
+        <!-- Kolonne 3: invitasjonskoder -->
+        <div class="adm-col">
+          <div class="adm-section-hd">
             Invitasjonskoder
             <button class="ghost-btn" style="font-size:11px;padding:4px 10px;margin-left:auto" onclick="window.adminGenCode()">+ Ny kode</button>
           </div>
-          <div id="adminCodeList" class="adm-list">
-            <div class="adm-loading">Laster koder...</div>
-          </div>
+          <div id="adminCodeList" class="adm-list"></div>
         </div>
       </div>
     </div></div>`;
@@ -93,7 +96,7 @@
 .adm-stat { background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);padding:14px;text-align:center }
 .adm-stat-n { font-size:24px;font-weight:900;color:#f4ede4;letter-spacing:-.04em;line-height:1 }
 .adm-stat-l { font-size:10px;color:rgba(255,255,255,.4);margin-top:4px;text-transform:uppercase;letter-spacing:.1em }
-.adm-body { display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start }
+.adm-body { display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;align-items:start }
 .adm-col { min-width:0 }
 .adm-section-hd { font-size:10px;font-weight:800;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.35);padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,.08);margin-bottom:8px;display:flex;align-items:center }
 .adm-list { max-height:340px;overflow-y:auto }
@@ -235,7 +238,7 @@
         <div class="adm-detail-row">
           <span class="adm-label">Pakke</span>
           <select class="adm-select" id="adminPkgSelect">
-            ${['artist','pro','label','admin','viewer'].map(p =>
+            ${['artist','pro','label','admin'].map(p =>
               `<option value="${p}" ${pkgKey===p?'selected':''}>${p}</option>`
             ).join('')}
           </select>
