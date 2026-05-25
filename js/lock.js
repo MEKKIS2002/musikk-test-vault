@@ -408,10 +408,32 @@ window.registerUser = async function() {
     const { data, error } = await window.supabaseClient.auth.signUp({
       email,
       password,
-      options: {
-        data: { username, package: _selectedPkg }
-      }
+      options: { data: { username, package: _selectedPkg } }
     });
+
+    if(error) throw error;
+
+    // Opprett profil-rad manuelt (trigger er fjernet)
+    if(data.user) {
+      const SB_URL = 'https://ylvqkfdvijqnecuqznyr.supabase.co';
+      const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlsdnFrZmR2aWpxbmVjdXF6bnlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzMzA4MzIsImV4cCI6MjA5MzkwNjgzMn0.bYPTaxQK8n7I7w5Ri2DVYW5_LbFHg2IXkuhHsLTDDqc';
+      await fetch(`${SB_URL}/rest/v1/profiles`, {
+        method: 'POST',
+        headers: {
+          'apikey': SB_KEY,
+          'Authorization': `Bearer ${data.session?.access_token || SB_KEY}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'resolution=merge-duplicates'
+        },
+        body: JSON.stringify({
+          id: data.user.id,
+          username,
+          email,
+          role: 'user',
+          package: _selectedPkg
+        })
+      });
+    }
 
     if(error) throw error;
 
