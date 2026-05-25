@@ -292,10 +292,15 @@ async function loginWithUsername(){
     // Anvend pakke-begrensninger
     if(typeof window.setPackage === 'function') window.setPackage(pkg);
     if(typeof window.installLabelDashboard === 'function') window.installLabelDashboard();
-    // Vis label-tab-knapp for label-brukere
+
+    // Vis label-tab — sett med timeout for å overryde packages.js
     if(pkg === 'label'){
-      const labelBtn = document.querySelector('.tab-btn[data-tab="label"]');
-      if(labelBtn) labelBtn.style.display = '';
+      [0, 100, 500].forEach(delay => setTimeout(()=>{
+        const btn = document.querySelector('.tab-btn[data-tab="label"]');
+        if(btn) btn.style.display = '';
+        if(btn) btn.style.removeProperty('display'); // fjern inline style
+        if(btn) btn.style.display = 'inline-flex';
+      }, delay));
     }
 
   } catch(e) {
