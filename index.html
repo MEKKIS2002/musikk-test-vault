@@ -1,10 +1,6 @@
 <!DOCTYPE html>
 <html lang="no">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="icon" type="image/png" sizes="256x256" href="assets/favicon.png">
 <!--
 AI / MARCUS MAINTENANCE NOTES — oppdatert mai 2026
@@ -51,16 +47,20 @@ AKTIVE BRUKERE:
 -->
 
   <!-- Stylesheets -->
-  <link rel="stylesheet" href="css/lyriclab.css?v=202506163300">
-  <link rel="stylesheet" href="css/pipeline.css?v=202506163300">
-  <link rel="stylesheet" href="css/main.css?v=202506163300">
-  <link rel="stylesheet" href="css/ui.css?v=202506163300">
-  <link rel="stylesheet" href="css/track-cards.css?v=202506163300">
-  <link rel="stylesheet" href="css/archive.css?v=202506163300">
-  <link rel="stylesheet" href="css/mixtape.css?v=202506163300">
-  <link rel="stylesheet" href="css/mobile.css?v=202506163300">
+  <link rel="stylesheet" href="css/lyriclab.css?v=202605161400">
+  <link rel="stylesheet" href="css/pipeline.css?v=202605161400">
+  <link rel="stylesheet" href="css/main.css?v=202605161400">
+  <link rel="stylesheet" href="css/ui.css?v=202605161400">
+  <link rel="stylesheet" href="css/track-cards.css?v=202605161400">
+  <link rel="stylesheet" href="css/archive.css?v=202605161400">
+  <link rel="stylesheet" href="css/mixtape.css?v=202605161400">
 </head>
 <body>
+<!-- Viewer mode login shortcut -->
+<button id="viewerLoginBtn" onclick="returnToPasswordScreen()" title="Logg inn som admin" style="display:none;position:fixed;top:14px;right:16px;z-index:8000;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:10px;padding:7px 12px;color:#aaa4bd;font-size:12px;font-weight:800;cursor:pointer;letter-spacing:.04em;gap:6px;align-items:center;font-family:inherit">
+  🔐 Admin
+</button>
+<!-- PASSWORD SCREEN -->
 <!-- Viewer mode login shortcut (legacy, hidden) -->
 <button id="viewerLoginBtn" onclick="returnToPasswordScreen()" style="display:none"></button>
 
@@ -298,8 +298,6 @@ AKTIVE BRUKERE:
           <option value="custom">Sorter: Egen rekkefølge</option>
           <option value="favorite">Favoritter først</option>
           <option value="rating">Høyest rating</option>
-          <option value="lyrics">Mest tekst</option>
-          <option value="duration">Lengst varighet</option>
           <option value="newest">Nyest først</option>
           <option value="name">Navn A–Å</option>
         </select>
@@ -350,7 +348,6 @@ AKTIVE BRUKERE:
         <div class="drop-hint">🎵 Slipp lydfiler her for å legge til beats</div>
       </div>
       <div id="albumBeatList" class="beat-list"></div>
-      <div id="albumComments" style="margin-top:36px;padding-top:28px;border-top:1px solid rgba(255,255,255,.07)"></div>
     </div>
   </div>
 </section>
@@ -366,10 +363,6 @@ AKTIVE BRUKERE:
 </section>
 
 <!-- INTEGRASJONER -->
-<section id="adminPanelTab" class="tab-view hidden"></section>
-
-<section id="labelTab" class="tab-view hidden"></section>
-
 <section id="integrationsTab" class="tab-view hidden">
   <div class="layout">
     <aside class="sidebar glass">
@@ -726,29 +719,30 @@ AKTIVE BRUKERE:
   <script>window.R2_WORKER_URL = 'https://beat-vault.marcus-aas-mekiassen.workers.dev';</script>
 
   <!-- App scripts (load order matters) -->
-  <script src="js/audio-compress.js?v=202506169600"></script>
-  <script src="js/packages.js?v=202506169600"></script>
-  <script src="js/lock.js?v=202506169600"></script>
-  <script src="js/pipeline.js?v=202506169600"></script>
-  <script src="js/lyriclab.js?v=202506169600"></script>
-  <script src="js/db.js?v=202506169600"></script>
-  <script src="js/app.js?v=202506169600"></script>
-  <script src="js/track-cards.js?v=202506169600"></script>
-  <script src="js/r2-storage.js?v=202506169600"></script>
-  <script src="js/archive.js?v=202506169600"></script>
-  <script src="js/mixtape.js?v=202506169600"></script>
-  <script src="js/changelog.js?v=202506169600"></script>
-  <script src="js/beats-tab.js?v=202506169600"></script>
-  <script src="js/supabase.js?v=202506169600"></script>
-  <!-- Mobile overlay — must load last, after all state is ready -->
-  <script src="js/label.js?v=202506169600"></script>
-  <script src="js/admin-panel.js?v=202506169600"></script>
-  <script src="js/mobile.js?v=202506169600"></script>
+  <script src="js/audio-compress.js?v=202605161400"></script>
+  <script src="js/lock.js?v=202605251400"></script>
+  <script src="js/pipeline.js?v=202605161400"></script>
+  <script src="js/lyriclab.js?v=202605161400"></script>
+  <script src="js/db.js?v=202605251400"></script>
+  <script src="js/app.js?v=202605251400"></script>
+  <script src="js/track-cards.js?v=202605161400"></script>
+  <script src="js/r2-storage.js?v=202605161400"></script>
+  <script src="js/archive.js?v=202605161400"></script>
+  <script src="js/mixtape.js?v=202605161400"></script>
+  <script src="js/changelog.js?v=202605251400"></script>
+  <script src="js/beats-tab.js?v=202605251400"></script>
+  <script src="js/supabase.js?v=202605251400"></script>
 
     <!-- LYRIC LAB TAB -->
     <section id="lyriclabTab" class="tab-view hidden">
       <div id="lyricLabContent"></div>
     </section>
 
+  <section id="labelTab" class="tab-view hidden"></section>
+  <section id="adminPanelTab" class="tab-view hidden"></section>
+
+  <script src="js/packages.js?v=202605251400"></script>
+  <script src="js/label.js?v=202605251400"></script>
+  <script src="js/admin-panel.js?v=202605251400"></script>
 </body>
 </html>
