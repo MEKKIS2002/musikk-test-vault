@@ -34,7 +34,7 @@
   }
 
   function buildAdminShell(){
-    return `<div class="adm-wrap">
+    return `<div class="app"><div class="adm-wrap">
       <div class="adm-topbar">
         <div style="display:flex;align-items:center;gap:10px">
           <span style="font-size:18px">🛠</span>
@@ -43,7 +43,6 @@
         <button class="ghost-btn adm-refresh" onclick="window.adminRefresh()">↻ Oppdater</button>
       </div>
 
-      <!-- Stats row -->
       <div class="adm-stats" id="adminStats">
         <div class="adm-stat"><div class="adm-stat-n" id="statUsers">—</div><div class="adm-stat-l">Brukere</div></div>
         <div class="adm-stat"><div class="adm-stat-n" id="statArtist">—</div><div class="adm-stat-l">Artist</div></div>
@@ -53,24 +52,23 @@
       </div>
 
       <div class="adm-body">
-        <!-- Venstre: brukerliste -->
         <div class="adm-col">
           <div class="adm-section-hd">Brukere
             <input id="adminSearch" placeholder="Søk..." oninput="window.adminSearch(this.value)"
-              style="margin-left:auto;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#f4ede4;padding:5px 10px;font-size:12px;font-family:system-ui;outline:none;width:140px">
+              style="margin-left:auto;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#f4ede4;padding:5px 10px;font-size:12px;font-family:system-ui;outline:none;width:140px;border-radius:0">
           </div>
           <div id="adminUserList" class="adm-list">
             <div class="adm-loading">Laster brukere...</div>
           </div>
         </div>
 
-        <!-- Høyre: detalj + invitasjonskoder -->
         <div class="adm-col">
+          <div class="adm-section-hd" style="margin-bottom:8px">Detaljer</div>
           <div id="adminUserDetail" class="adm-detail-empty">
             <div style="font-size:28px;margin-bottom:8px">👆</div>
             <div>Velg en bruker</div>
           </div>
-          <div class="adm-section-hd" style="margin-top:20px">
+          <div class="adm-section-hd" style="margin-top:24px">
             Invitasjonskoder
             <button class="ghost-btn" style="font-size:11px;padding:4px 10px;margin-left:auto" onclick="window.adminGenCode()">+ Ny kode</button>
           </div>
@@ -79,7 +77,7 @@
           </div>
         </div>
       </div>
-    </div>`;
+    </div></div>`;
   }
 
   function installAdminStyles(){
@@ -87,44 +85,46 @@
     const s = document.createElement('style');
     s.id = 'adm-css';
     s.textContent = `
-.adm-wrap { font-family:system-ui; padding:4px 0; }
-.adm-topbar { display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid rgba(255,255,255,.08);margin-bottom:16px }
-.adm-title { font-size:16px;font-weight:800;color:#f4ede4 }
+.adm-wrap { font-family:system-ui; }
+.adm-topbar { display:flex;align-items:center;justify-content:space-between;padding:0 0 16px;border-bottom:1px solid rgba(255,255,255,.08);margin-bottom:20px }
+.adm-title { font-size:18px;font-weight:900;color:#f4ede4;letter-spacing:-.03em }
 .adm-refresh { font-size:12px!important;padding:6px 12px!important }
-.adm-stats { display:grid;grid-template-columns:repeat(5,1fr);gap:8px;padding:0 20px 16px;border-bottom:1px solid rgba(255,255,255,.06);margin-bottom:16px }
-.adm-stat { background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);padding:10px;text-align:center }
-.adm-stat-n { font-size:22px;font-weight:900;color:#f4ede4;letter-spacing:-.04em;line-height:1 }
-.adm-stat-l { font-size:10px;color:rgba(255,255,255,.4);margin-top:3px;text-transform:uppercase;letter-spacing:.1em }
-.adm-body { display:grid;grid-template-columns:1fr 1fr;gap:16px;padding:0 20px }
+.adm-stats { display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:24px }
+.adm-stat { background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);padding:14px;text-align:center }
+.adm-stat-n { font-size:24px;font-weight:900;color:#f4ede4;letter-spacing:-.04em;line-height:1 }
+.adm-stat-l { font-size:10px;color:rgba(255,255,255,.4);margin-top:4px;text-transform:uppercase;letter-spacing:.1em }
+.adm-body { display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start }
 .adm-col { min-width:0 }
-.adm-section-hd { font-size:10px;font-weight:800;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.35);padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,.08);margin-bottom:4px;display:flex;align-items:center }
-.adm-list { max-height:420px;overflow-y:auto }
+.adm-section-hd { font-size:10px;font-weight:800;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.35);padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,.08);margin-bottom:8px;display:flex;align-items:center }
+.adm-list { max-height:340px;overflow-y:auto }
 .adm-loading { padding:16px;font-size:12px;color:rgba(255,255,255,.3);text-align:center }
-.adm-user-row { display:flex;align-items:center;gap:10px;padding:9px 10px;cursor:pointer;transition:background .12s;border-bottom:1px solid rgba(255,255,255,.04) }
+.adm-user-row { display:flex;align-items:center;gap:10px;padding:10px;cursor:pointer;transition:background .12s;border-bottom:1px solid rgba(255,255,255,.04) }
 .adm-user-row:hover { background:rgba(255,255,255,.04) }
 .adm-user-row.active { background:rgba(244,164,67,.08);border-left:3px solid #f4a443 }
-.adm-avatar { width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0 }
+.adm-avatar { width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0 }
 .adm-username { font-size:13px;font-weight:700;color:#f4ede4 }
-.adm-pkg-badge { font-size:10px;font-weight:800;padding:2px 7px;border-radius:999px;margin-left:auto;flex-shrink:0 }
+.adm-useremail { font-size:11px;color:rgba(255,255,255,.35);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px }
+.adm-pkg-badge { font-size:10px;font-weight:800;padding:2px 8px;border-radius:999px;margin-left:auto;flex-shrink:0;white-space:nowrap }
 .pkg-admin    { background:rgba(244,164,67,.18);color:#f4a443 }
 .pkg-artist   { background:rgba(96,165,250,.15);color:#60a5fa }
 .pkg-pro      { background:rgba(168,85,247,.15);color:#a855f7 }
 .pkg-label    { background:rgba(52,211,153,.15);color:#34d399 }
 .pkg-viewer   { background:rgba(255,255,255,.08);color:rgba(255,255,255,.4) }
 .pkg-user     { background:rgba(255,255,255,.08);color:rgba(255,255,255,.4) }
-.adm-detail-empty { display:flex;flex-direction:column;align-items:center;justify-content:center;height:160px;color:rgba(255,255,255,.3);font-size:13px;text-align:center }
-.adm-detail-card { background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);padding:16px;margin-bottom:4px }
-.adm-detail-name { font-size:16px;font-weight:800;color:#f4ede4;margin-bottom:4px }
-.adm-detail-email { font-size:12px;color:rgba(255,255,255,.4);margin-bottom:12px }
-.adm-detail-row { display:flex;align-items:center;gap:8px;margin-bottom:8px }
-.adm-label { font-size:11px;color:rgba(255,255,255,.4);width:70px;flex-shrink:0 }
-.adm-select { background:#1a1612;border:1px solid rgba(255,255,255,.12);color:#f4ede4;padding:5px 8px;font-size:12px;font-family:system-ui;outline:none;flex:1 }
-.adm-save-btn { width:100%;background:linear-gradient(135deg,#f4a443,#cb6e1a);border:none;color:#000;font-size:12px;font-weight:800;padding:9px;cursor:pointer;font-family:system-ui;letter-spacing:.06em;text-transform:uppercase;margin-top:8px }
-.adm-code-row { display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:12px }
-.adm-code { font-family:monospace;color:#f4a443;font-size:11px;flex:1 }
-.adm-code-used { color:rgba(255,255,255,.3)!important;text-decoration:line-through }
-.adm-code-status { font-size:10px;color:rgba(255,255,255,.35);flex-shrink:0 }
-.adm-del-btn { background:none;border:none;color:rgba(251,113,133,.4);cursor:pointer;font-size:13px;padding:2px 4px }
+.adm-detail-empty { display:flex;flex-direction:column;align-items:center;justify-content:center;height:120px;color:rgba(255,255,255,.3);font-size:13px;text-align:center;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06) }
+.adm-detail-card { background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);padding:16px }
+.adm-detail-name { font-size:16px;font-weight:800;color:#f4ede4;margin-bottom:2px }
+.adm-detail-email { font-size:12px;color:rgba(255,255,255,.4);margin-bottom:14px }
+.adm-detail-row { display:flex;align-items:center;gap:10px;margin-bottom:10px }
+.adm-label { font-size:11px;color:rgba(255,255,255,.4);width:80px;flex-shrink:0 }
+.adm-select { background:#1a1612;border:1px solid rgba(255,255,255,.12);color:#f4ede4;padding:6px 8px;font-size:12px;font-family:system-ui;outline:none;flex:1 }
+.adm-input { background:#1a1612;border:1px solid rgba(255,255,255,.12);color:#f4ede4;padding:6px 8px;font-size:12px;font-family:system-ui;outline:none;flex:1 }
+.adm-save-btn { width:100%;background:linear-gradient(135deg,#f4a443,#cb6e1a);border:none;color:#000;font-size:12px;font-weight:800;padding:10px;cursor:pointer;font-family:system-ui;letter-spacing:.06em;text-transform:uppercase;margin-top:10px }
+.adm-code-row { display:flex;align-items:center;gap:8px;padding:8px 4px;border-bottom:1px solid rgba(255,255,255,.05) }
+.adm-code { font-family:monospace;color:#f4a443;font-size:11px;flex:1;letter-spacing:.04em }
+.adm-code-used { color:rgba(255,255,255,.25)!important;text-decoration:line-through }
+.adm-code-status { font-size:10px;color:rgba(255,255,255,.3);flex-shrink:0 }
+.adm-del-btn { background:none;border:none;color:rgba(251,113,133,.35);cursor:pointer;font-size:12px;padding:2px 4px;line-height:1 }
 .adm-del-btn:hover { color:#fb7185 }
     `;
     document.head.appendChild(s);
@@ -221,9 +221,9 @@
 
     detail.innerHTML = `
       <div class="adm-detail-card">
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
-          <div class="adm-avatar" style="width:44px;height:44px;font-size:16px;background:${col}22;color:${col}">${initials}</div>
-          <div>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+          <div class="adm-avatar" style="width:44px;height:44px;font-size:17px;background:${col}22;color:${col}">${initials}</div>
+          <div style="min-width:0;flex:1">
             <div class="adm-detail-name">${user.username || '—'}</div>
             <div class="adm-detail-email">${user.email || ''}</div>
           </div>
@@ -242,14 +242,13 @@
         </div>
         <div class="adm-detail-row">
           <span class="adm-label">Brukernavn</span>
-          <input id="adminUsernameInput" value="${user.username||''}" 
-            style="flex:1;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#f4ede4;padding:5px 8px;font-size:12px;font-family:system-ui;outline:none">
+          <input id="adminUsernameInput" class="adm-input" value="${user.username||''}">
         </div>
         <button class="adm-save-btn" onclick="window.adminSaveUser('${user.id}')">Lagre endringer</button>
         <div id="adminSaveStatus" style="font-size:11px;text-align:center;margin-top:8px;min-height:14px;color:rgba(255,255,255,.4)"></div>
         <div style="margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,.07)">
-          <button onclick="window.adminDeleteUser('${user.id}','${user.username||user.email}')" 
-            style="background:none;border:1px solid rgba(251,113,133,.3);color:rgba(251,113,133,.6);font-size:11px;font-weight:700;padding:5px 12px;cursor:pointer;font-family:system-ui;width:100%">
+          <button onclick="window.adminDeleteUser('${user.id}','${user.username||user.email}')"
+            style="background:none;border:1px solid rgba(251,113,133,.3);color:rgba(251,113,133,.6);font-size:11px;font-weight:700;padding:6px 12px;cursor:pointer;font-family:system-ui;width:100%">
             🗑 Slett bruker
           </button>
         </div>

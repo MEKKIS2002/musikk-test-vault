@@ -42,8 +42,7 @@
   }
 
   function buildDashboardShell(){
-    return `
-    <div class="label-dashboard">
+    return `<div class="app"><div class="label-dashboard">
       <div class="label-topbar">
         <div class="label-topbar-left">
           <span class="label-icon">🏷</span>
@@ -86,7 +85,7 @@
         <button onclick="window.labelSendInvite()" style="width:100%;background:linear-gradient(135deg,#f4a443,#cb6e1a);border:none;color:#000;font-size:14px;font-weight:900;padding:12px;cursor:pointer;font-family:system-ui;letter-spacing:.06em;text-transform:uppercase">Send invitasjon</button>
         <div id="labelInviteStatus" style="font-size:12px;text-align:center;margin-top:10px;min-height:16px;font-family:system-ui;color:rgba(255,255,255,.5)"></div>
       </div>
-    </div>`;
+    </div></div>`;
   }
 
   function installLabelStyles(){
