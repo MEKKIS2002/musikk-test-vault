@@ -101,7 +101,9 @@
 .adm-detail-card { background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);padding:16px;width:100%;box-sizing:border-box;min-height:320px }
 .adm-col { min-width:0 }
 .adm-section-hd { font-size:10px;font-weight:800;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.35);padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,.08);margin-bottom:8px;display:flex;align-items:center }
-.adm-list { max-height:340px;overflow-y:auto }
+.adm-list { }
+#adminUserList { max-height:300px;overflow-y:auto }
+#adminCodeList { max-height:400px;overflow-y:auto }
 .adm-loading { padding:16px;font-size:12px;color:rgba(255,255,255,.3);text-align:center }
 .adm-user-row { display:flex;align-items:center;gap:10px;padding:10px;cursor:pointer;transition:background .12s;border-bottom:1px solid rgba(255,255,255,.04) }
 .adm-user-row:hover { background:rgba(255,255,255,.04) }
