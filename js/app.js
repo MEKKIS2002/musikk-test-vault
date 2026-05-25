@@ -1166,6 +1166,33 @@ window.doShare = async function(contentType, contentId, contentName){
     body: JSON.stringify({recipient_id:granteeId, sender_id:uid, type:typeMap[contentType]||'share_beat', content_id:contentId, content_name:contentName, role, read:false})
   });
 
+  // Del alle beats i samlingen automatisk
+  if(contentType === 'album' || contentType === 'mixtape'){
+    const relTable = contentType === 'album' ? 'album_beats' : 'mixtape_beats';
+    const relCol   = contentType === 'album' ? 'album_id'   : 'mixtape_id';
+    const relRes = await fetch(
+      `${SB_URL}/rest/v1/${relTable}?${relCol}=eq.${contentId}&select=beat_id`,
+      {headers: sbHeaders(token)}
+    );
+    if(relRes.ok){
+      const rows = await relRes.json();
+      if(rows.length){
+        const beatAccessRows = rows.map(r => ({
+          content_type: 'beat',
+          content_id: String(r.beat_id),
+          owner_id: uid,
+          grantee_id: granteeId,
+          role
+        }));
+        await fetch(`${SB_URL}/rest/v1/content_access`, {
+          method: 'POST',
+          headers: {...sbHeaders(token), 'Prefer': 'resolution=merge-duplicates'},
+          body: JSON.stringify(beatAccessRows)
+        });
+      }
+    }
+  }
+
   if(status) status.textContent=`✓ Delt med ${username} som ${role==='editor'?'redaktør':'betrakter'}`;
   document.getElementById('shareUsername').value='';
   showToast(`✓ Delt med ${username}`);
