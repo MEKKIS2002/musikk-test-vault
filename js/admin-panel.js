@@ -97,11 +97,8 @@
 .adm-stat-n { font-size:24px;font-weight:900;color:#f4ede4;letter-spacing:-.04em;line-height:1 }
 .adm-stat-l { font-size:10px;color:rgba(255,255,255,.4);margin-top:4px;text-transform:uppercase;letter-spacing:.1em }
 .adm-body { display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;align-items:start }
-.adm-col { min-width:0;overflow:hidden }
-.adm-detail-card { background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);padding:16px;width:100%;box-sizing:border-box;min-height:320px }
 .adm-col { min-width:0 }
 .adm-section-hd { font-size:10px;font-weight:800;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.35);padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,.08);margin-bottom:8px;display:flex;align-items:center }
-.adm-list { }
 #adminUserList { max-height:300px;overflow-y:auto }
 #adminCodeList { max-height:400px;overflow-y:auto }
 .adm-loading { padding:16px;font-size:12px;color:rgba(255,255,255,.3);text-align:center }
@@ -119,7 +116,7 @@
 .pkg-viewer   { background:rgba(255,255,255,.08);color:rgba(255,255,255,.4) }
 .pkg-user     { background:rgba(255,255,255,.08);color:rgba(255,255,255,.4) }
 .adm-detail-empty { display:flex;flex-direction:column;align-items:center;justify-content:center;height:120px;color:rgba(255,255,255,.3);font-size:13px;text-align:center;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06) }
-.adm-detail-card { background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);padding:16px }
+.adm-detail-card { background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);padding:16px;width:100%;box-sizing:border-box }
 .adm-detail-name { font-size:16px;font-weight:800;color:#f4ede4;margin-bottom:2px }
 .adm-detail-email { font-size:12px;color:rgba(255,255,255,.4);margin-bottom:14px }
 .adm-detail-row { display:flex;align-items:center;gap:10px;margin-bottom:10px }
