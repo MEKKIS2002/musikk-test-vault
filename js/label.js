@@ -508,6 +508,31 @@
         {method:'PATCH', headers:{...sbH(token),'Prefer':'return=minimal'},
          body: JSON.stringify({status:'accepted', accepted_at: new Date().toISOString()})}
       );
+
+      // Del alt artistens innhold med label automatisk
+      const [beatsRes, albumsRes, mixtapesRes] = await Promise.all([
+        fetch(`${SB_URL}/rest/v1/beats?owner_id=eq.${uid}&archived=eq.false&select=id`, {headers:sbH(token)}),
+        fetch(`${SB_URL}/rest/v1/albums?owner_id=eq.${uid}&archived=eq.false&select=id`, {headers:sbH(token)}),
+        fetch(`${SB_URL}/rest/v1/mixtapes?owner_id=eq.${uid}&archived=eq.false&select=id`, {headers:sbH(token)})
+      ]);
+      const beats    = beatsRes.ok    ? await beatsRes.json()    : [];
+      const albums   = albumsRes.ok   ? await albumsRes.json()   : [];
+      const mixtapes = mixtapesRes.ok ? await mixtapesRes.json() : [];
+
+      const accessRows = [
+        ...beats.map(r    => ({content_type:'beat',    content_id:r.id, owner_id:uid, grantee_id:labelId, role:'viewer'})),
+        ...albums.map(r   => ({content_type:'album',   content_id:r.id, owner_id:uid, grantee_id:labelId, role:'viewer'})),
+        ...mixtapes.map(r => ({content_type:'mixtape', content_id:r.id, owner_id:uid, grantee_id:labelId, role:'viewer'}))
+      ];
+
+      if(accessRows.length){
+        await fetch(`${SB_URL}/rest/v1/content_access`, {
+          method:'POST',
+          headers:{...sbH(token),'Prefer':'resolution=merge-duplicates'},
+          body: JSON.stringify(accessRows)
+        });
+      }
+
       if(typeof window.showToast==='function') window.showToast('✓ Du er nå del av labelen!');
     } else {
       await fetch(

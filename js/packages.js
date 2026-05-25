@@ -35,7 +35,7 @@ window.MV_PACKAGES = {
   // ── Label ─────────────────────────────────────────────────────
   label: {
     label: 'Label',
-    tabs: ['label', 'beats', 'mixtapes', 'albums', 'pipeline'],
+    tabs: ['label', 'mixtapes', 'albums', 'pipeline'],
     features: ['upload', 'share_mixtape', 'pitch', 'r2_upload', 'download',
                'multi_artist', 'label_dashboard', 'comments']
   },
