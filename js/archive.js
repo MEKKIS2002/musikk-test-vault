@@ -274,24 +274,13 @@
   function qsa(s,r=document){return Array.from(r.querySelectorAll(s))}
   function stateObj(){window.state=window.state||{};state.settings=state.settings||{};state.beats=state.beats||[];state.albums=state.albums||[];state.mixtapes=state.mixtapes||[];state.settings.archiveCollections=Array.from(new Set(state.settings.archiveCollections||[]));return state;}
   function save(){try{window.saveState&&window.saveState()}catch(e){console.warn('saveState failed',e)}}
-  function leaveArchive(target){
+  function leaveArchive(){
     ARCHIVE_CLASSES.forEach(c=>document.body.classList.remove(c));
-    // Clear style.display='none' set by activate() on ALL tab-views
-    document.querySelectorAll('.tab-view').forEach(v=>{ v.style.display=''; });
+    // Gjøm arkiv-tab — db.js håndterer alt annet
     const archive=qs('#archiveTab');
-    if(archive){archive.classList.add('hidden');archive.style.display='';}
-    qsa('.tab-btn[data-tab],[data-tab]').forEach(btn=>{if(btn.dataset&&btn.dataset.tab)btn.classList.toggle('active',btn.dataset.tab===target)});
-    Object.entries(PANELS).forEach(([key,id])=>{
-      const panel=document.getElementById(id); if(!panel)return;
-      if(key===target){
-        panel.classList.remove('hidden');
-        panel.style.display='';
-        requestAnimationFrame(()=>panel.classList.add('tab-visible'));
-      } else if(key!=='archive'){
-        panel.classList.remove('tab-visible');
-        panel.classList.add('hidden');
-        panel.style.display='';
-      }    });
+    if(archive){ archive.classList.add('hidden'); archive.style.display=''; }
+    // Clear style.display satt av activate() — db.js tar seg av resten
+    document.querySelectorAll('.tab-view').forEach(v=>{ v.style.display=''; });
   }
   function enhanceEmptyCrate(root=document){
     qsa('#archiveTab .fa-empty-art',root).forEach(box=>{
@@ -333,10 +322,8 @@
     if(!trigger||!trigger.dataset)return;
     const tab=trigger.dataset.tab;
     if(!tab || tab==='archive')return;
-    // Bare kjør leaveArchive når arkiv faktisk er aktivt
-    if(!document.body.classList.contains('final-archive-active')) return;
-    setTimeout(()=>leaveArchive(tab),0);
-    setTimeout(()=>leaveArchive(tab),80);
+    // Kjør alltid leaveArchive for å rydde opp archive-state
+    leaveArchive();
   },true);
 
   document.addEventListener('click',function(e){
