@@ -1611,6 +1611,20 @@ document.getElementById('deleteConfirmModal').addEventListener('click',e=>{if(e.
 
 renderAll();
 // Add tab-visible class to initial active tab (no transition needed on first load)
+// Ensure archive is NOT the default active tab at startup
 requestAnimationFrame(()=>{
-  document.querySelectorAll('.tab-view:not(.hidden)').forEach(v=>v.classList.add('tab-visible'));
+  const archiveBtn = document.querySelector('.tab-btn[data-tab="archive"]');
+  const archiveTab = document.getElementById('archiveTab');
+  // If archive is somehow active at startup, switch to mixtapes
+  if(archiveBtn?.classList.contains('active') || (archiveTab && !archiveTab.classList.contains('hidden'))){
+    if(archiveBtn) archiveBtn.classList.remove('active');
+    if(archiveTab){ archiveTab.classList.add('hidden'); archiveTab.style.display=''; }
+    document.body.classList.remove('final-archive-active','clean-archive-active');
+    const mixtapesBtn = document.querySelector('.tab-btn[data-tab="mixtapes"]');
+    const mixtapesTab = document.getElementById('mixtapesTab');
+    if(mixtapesBtn) mixtapesBtn.classList.add('active');
+    if(mixtapesTab){ mixtapesTab.classList.remove('hidden'); mixtapesTab.classList.add('tab-visible'); }
+  } else {
+    document.querySelectorAll('.tab-view:not(.hidden)').forEach(v=>v.classList.add('tab-visible'));
+  }
 });
