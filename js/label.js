@@ -22,7 +22,7 @@
     return window._mvCurrentUserId || sessionStorage.getItem('mv_user_id');
   }
 
-  // ── Installer label-tab ─────────────────────────────────────────────────
+  // ── Installer label-tab ───────────────────────────────────────────────── 
   function installLabelTab(){
     const pkg = sessionStorage.getItem('mv_package');
     if(pkg !== 'label' && pkg !== 'admin') return;
