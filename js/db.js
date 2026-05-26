@@ -1241,6 +1241,8 @@ document.querySelectorAll(".tab-btn").forEach(btn=>btn.addEventListener("click",
   const current = document.querySelector(".tab-view:not(.hidden)");
   const next = document.getElementById(TAB_ID_MAP[btn.dataset.tab] || `${btn.dataset.tab}Tab`);
   if(!next) return;
+  // Clear style.display set by archive.js on all tabs
+  document.querySelectorAll('.tab-view').forEach(v=>{ v.style.display=''; });
   if(current && current !== next){ current.classList.remove("tab-visible"); current.classList.add("hidden"); }
   next.classList.remove("hidden");
   next.classList.remove("tab-visible");
