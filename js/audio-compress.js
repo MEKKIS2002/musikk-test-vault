@@ -1,156 +1,126 @@
 // === audio-compress.js ===
-// DEAKTIVERT — shouldCompress() returnerer alltid false.
-//
-// Lydkomprimering via MediaRecorder fungerer ikke i praksis:
-// MediaRecorder er sanntids-opptak, ikke raskere-enn-sanntid konvertering.
-// En 3-minutters WAV tar 3 minutter å "komprimere" — uakseptabelt for opplasting.
-//
-// For ekte komprimering trenger vi WebAssembly (f.eks. ffmpeg.wasm).
-// Filer lastes nå direkte opp til R2 uansett format og størrelse.
-// Modulen er beholdt slik at fremtidig komprimering kan legges til.
+// Konverterer WAV/AIFF til MP3 før R2-opplasting
+// Bruker lamejs (MP3-encoder i ren JavaScript)
+// Lastes inn via CDN — ingen npm/build-steg
 
-(function () {
+(function(){
   'use strict';
 
-  // ── Config ──────────────────────────────────────────────────────────────
-  const TARGET_BITRATE = 128000; // 128 kbps
-  const SKIP_TYPES = ['audio/mpeg', 'audio/mp3']; // already compressed, skip
-  const SIZE_THRESHOLD_MB = 8; // only compress files larger than this
-  // ───────────────────────────────────────────────────────────────────────
+  // Last lamejs fra CDN
+  const LAME_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/lamejs/1.2.1/lame.min.js';
+  let lameLoaded = false;
+  let lameLoading = null;
 
-  // Check what MediaRecorder supports
-  function getBestMimeType() {
-    const types = [
-      'audio/webm;codecs=opus',
-      'audio/webm',
-      'audio/ogg;codecs=opus',
-      'audio/ogg',
-    ];
-    return types.find(t => MediaRecorder.isTypeSupported(t)) || null;
+  function loadLame(){
+    if(lameLoaded) return Promise.resolve();
+    if(lameLoading) return lameLoading;
+    lameLoading = new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = LAME_CDN;
+      s.onload = () => { lameLoaded = true; resolve(); };
+      s.onerror = reject;
+      document.head.appendChild(s);
+    });
+    return lameLoading;
   }
 
-  function fileSizeMB(file) {
-    return file.size / (1024 * 1024);
-  }
+  // Filtyper som bør komprimeres
+  const COMPRESS_TYPES = ['audio/wav','audio/wave','audio/x-wav','audio/aiff','audio/x-aiff','audio/flac','audio/x-flac'];
+  const COMPRESS_EXTS  = ['.wav','.wave','.aif','.aiff','.flac'];
 
-  function shouldCompress(file) {
-    // MediaRecorder compresses in real-time — a 3-min WAV takes 3 minutes.
-    // Disabled until a faster compression method is available (e.g. WebAssembly ffmpeg).
+  function shouldCompress(file){
+    if(!file) return false;
+    const type = (file.type||'').toLowerCase();
+    const name = (file.name||'').toLowerCase();
+    if(COMPRESS_TYPES.some(t => type.includes(t))) return true;
+    if(COMPRESS_EXTS.some(e => name.endsWith(e))) return true;
+    // Komprimer store filer uansett (>5MB)
+    if(file.size > 5 * 1024 * 1024 && type.startsWith('audio')) return true;
     return false;
   }
 
-  // ── Core compression ────────────────────────────────────────────────────
-  async function compress(file, onProgress) {
-    if (!shouldCompress(file)) return file;
+  async function compress(file, opts = {}){
+    const { kbps = 192, onProgress } = opts;
 
-    const mimeType = getBestMimeType();
-    const ext = mimeType.includes('ogg') ? '.ogg' : '.webm';
-    const originalMB = fileSizeMB(file).toFixed(1);
+    if(typeof showToast === 'function') showToast('🔄 Konverterer til MP3...');
 
-    if (onProgress) onProgress(0, `Konverterer ${originalMB}MB ${file.type.split('/')[1].toUpperCase()}...`);
+    try {
+      await loadLame();
+    } catch(e) {
+      console.warn('[AudioCompress] Kunne ikke laste lamejs, laster opp original:', e);
+      return file;
+    }
 
-    const AudioCtx = window.AudioContext || window.webkitAudioContext;
-    const ctx = new AudioCtx();
-
-    // Decode the audio
+    // Les filen som ArrayBuffer
     const arrayBuffer = await file.arrayBuffer();
+
+    // Dekod med Web Audio API
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     let audioBuffer;
     try {
-      audioBuffer = await ctx.decodeAudioData(arrayBuffer);
-    } catch (e) {
-      console.warn('[Compress] Could not decode audio, uploading original:', e);
-      ctx.close();
+      audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+    } catch(e) {
+      console.warn('[AudioCompress] Klarte ikke dekode lyd, laster opp original:', e);
+      audioCtx.close();
       return file;
     }
+    audioCtx.close();
 
-    if (onProgress) onProgress(20, 'Koder til komprimert format...');
+    const sampleRate  = audioBuffer.sampleRate;
+    const numChannels = Math.min(audioBuffer.numberOfChannels, 2);
+    const leftChannel  = audioBuffer.getChannelData(0);
+    const rightChannel = numChannels > 1 ? audioBuffer.getChannelData(1) : leftChannel;
 
-    // Create offline context to render audio
-    const offlineCtx = new OfflineAudioContext(
-      Math.min(audioBuffer.numberOfChannels, 2), // max stereo
-      audioBuffer.length,
-      audioBuffer.sampleRate
-    );
-
-    const source = offlineCtx.createBufferSource();
-    source.buffer = audioBuffer;
-    source.connect(offlineCtx.destination);
-    source.start(0);
-
-    const renderedBuffer = await offlineCtx.startRendering();
-    ctx.close();
-
-    if (onProgress) onProgress(50, 'Pakker fil...');
-
-    // Convert rendered buffer to MediaRecorder stream
-    const streamCtx = new AudioCtx();
-    const dest = streamCtx.createMediaStreamDestination();
-    const bufferSource = streamCtx.createBufferSource();
-    bufferSource.buffer = renderedBuffer;
-    bufferSource.connect(dest);
-
-    const chunks = [];
-    const recorder = new MediaRecorder(dest.stream, {
-      mimeType,
-      audioBitsPerSecond: TARGET_BITRATE,
-    });
-
-    await new Promise((resolve, reject) => {
-      recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
-      recorder.onstop = resolve;
-      recorder.onerror = reject;
-      recorder.start(100); // collect every 100ms
-      bufferSource.start(0);
-      bufferSource.onended = () => {
-        setTimeout(() => recorder.stop(), 200);
-      };
-    });
-
-    streamCtx.close();
-
-    const compressed = new Blob(chunks, { type: mimeType });
-    const compressedMB = (compressed.size / (1024 * 1024)).toFixed(1);
-    const ratio = Math.round((1 - compressed.size / file.size) * 100);
-
-    if (onProgress) onProgress(90, `${originalMB}MB → ${compressedMB}MB (−${ratio}%)`);
-
-    // Return as File object with new name
-    const newName = file.name.replace(/\.[^/.]+$/, '') + ext;
-    const compressedFile = new File([compressed], newName, { type: mimeType });
-
-    console.log(`[Compress] ${file.name}: ${originalMB}MB → ${compressedMB}MB (${ratio}% smaller)`);
-    return compressedFile;
-  }
-
-  // ── UI toast with progress ──────────────────────────────────────────────
-  async function compressWithToast(file) {
-    if (!shouldCompress(file)) return file;
-
-    const sizeMB = fileSizeMB(file).toFixed(1);
-    if (typeof showToast === 'function') {
-      showToast(`🗜 Komprimerer ${sizeMB}MB fil...`);
+    // Konverter Float32 til Int16
+    function floatTo16bit(floatArr){
+      const int16 = new Int16Array(floatArr.length);
+      for(let i = 0; i < floatArr.length; i++){
+        const s = Math.max(-1, Math.min(1, floatArr[i]));
+        int16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+      }
+      return int16;
     }
 
-    try {
-      const result = await compress(file, (pct, msg) => {
-        if (pct === 90 && typeof showToast === 'function') {
-          showToast(`✓ ${msg}`);
-        }
-      });
-      return result;
-    } catch (e) {
-      console.warn('[Compress] Failed, using original:', e);
-      return file;
+    const leftInt16  = floatTo16bit(leftChannel);
+    const rightInt16 = floatTo16bit(rightChannel);
+
+    // Initialiser lamejs encoder
+    // eslint-disable-next-line no-undef
+    const mp3encoder = new lamejs.Mp3Encoder(numChannels, sampleRate, kbps);
+    const mp3Data = [];
+    const blockSize = 1152; // lamejs chunk size
+    const totalSamples = leftInt16.length;
+
+    for(let i = 0; i < totalSamples; i += blockSize){
+      const leftChunk  = leftInt16.subarray(i, i + blockSize);
+      const rightChunk = rightInt16.subarray(i, i + blockSize);
+      const encoded    = numChannels > 1
+        ? mp3encoder.encodeBuffer(leftChunk, rightChunk)
+        : mp3encoder.encodeBuffer(leftChunk);
+      if(encoded.length > 0) mp3Data.push(encoded);
+      if(onProgress && i % (blockSize * 100) === 0){
+        onProgress(Math.round(i / totalSamples * 100));
+      }
     }
+
+    const flushed = mp3encoder.flush();
+    if(flushed.length > 0) mp3Data.push(flushed);
+
+    // Bygg MP3 Blob
+    const mp3Blob = new Blob(mp3Data, { type: 'audio/mpeg' });
+    const origMB  = (file.size / 1024 / 1024).toFixed(1);
+    const newMB   = (mp3Blob.size / 1024 / 1024).toFixed(1);
+    console.log(`[AudioCompress] ${file.name}: ${origMB}MB WAV → ${newMB}MB MP3 (${kbps}kbps)`);
+
+    if(typeof showToast === 'function') showToast(`✓ Konvertert: ${origMB}MB → ${newMB}MB`);
+
+    // Lag ny File med .mp3 extension
+    const newName = file.name.replace(/\.(wav|wave|aif|aiff|flac)$/i, '.mp3');
+    return new File([mp3Blob], newName, { type: 'audio/mpeg' });
   }
 
-  // ── Expose ────────────────────────────────────────────────────────────
-  window.audioCompress = {
-    compress: compressWithToast,
-    shouldCompress,
-    getBestMimeType,
-    TARGET_BITRATE,
-  };
+  // Eksponér globalt
+  window.audioCompress = { shouldCompress, compress };
+  console.log('[AudioCompress] Klar — WAV/AIFF/FLAC konverteres til MP3 ved opplasting');
 
-  console.log('[AudioCompress] Ready. Supported output:', getBestMimeType() || 'none (will skip compression)');
 })();
