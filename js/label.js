@@ -446,19 +446,29 @@
 
     const token = await getToken();
 
-    // Hent beats, albums, mixtapes for artisten
-    const [beatsRes, albumsRes, mixtapesRes, profileRes] = await Promise.all([
+    // Hent beats, albums, mixtapes for artisten + label-data
+    const uid = await getUid();
+    const [beatsRes, albumsRes, mixtapesRes, profileRes, labAlbumRes, notesRes] = await Promise.all([
       fetch(`${SB_URL}/rest/v1/beats?owner_id=eq.${artistId}&archived=eq.false&select=id,title,metadata`, {headers:sbH(token)}),
       fetch(`${SB_URL}/rest/v1/albums?owner_id=eq.${artistId}&archived=eq.false&select=*`, {headers:sbH(token)}),
       fetch(`${SB_URL}/rest/v1/mixtapes?owner_id=eq.${artistId}&archived=eq.false&select=id,title,metadata`, {headers:sbH(token)}),
-      fetch(`${SB_URL}/rest/v1/profiles?id=eq.${artistId}&select=id,username,email,package`, {headers:sbH(token)})
+      fetch(`${SB_URL}/rest/v1/profiles?id=eq.${artistId}&select=id,username,email,package`, {headers:sbH(token)}),
+      fetch(`${SB_URL}/rest/v1/label_album_data?label_id=eq.${uid}&select=*`, {headers:sbH(token)}),
+      fetch(`${SB_URL}/rest/v1/label_artist_notes?label_id=eq.${uid}&artist_id=eq.${artistId}&select=notes`, {headers:sbH(token)})
     ]);
 
-    const beats    = beatsRes.ok    ? await beatsRes.json()    : [];
-    const albums   = albumsRes.ok   ? await albumsRes.json()   : [];
-    const mixtapes = mixtapesRes.ok ? await mixtapesRes.json() : [];
-    const profiles = profileRes.ok  ? await profileRes.json()  : [];
-    const profile  = profiles[0] || {};
+    const beats       = beatsRes.ok    ? await beatsRes.json()    : [];
+    const albums      = albumsRes.ok   ? await albumsRes.json()   : [];
+    const mixtapes    = mixtapesRes.ok ? await mixtapesRes.json() : [];
+    const profiles    = profileRes.ok  ? await profileRes.json()  : [];
+    const labAlbums   = labAlbumRes.ok ? await labAlbumRes.json() : [];
+    const notesRows   = notesRes.ok    ? await notesRes.json()    : [];
+    const profile     = profiles[0] || {};
+    const artistNotes = notesRows[0]?.notes || '';
+
+    // Map label album data by album_id
+    const labAlbumMap = {};
+    labAlbums.forEach(r => { labAlbumMap[r.album_id] = r; });
 
     const name = profile.username || artistId.slice(0,8);
     const initials = name.slice(0,2).toUpperCase();
@@ -522,6 +532,8 @@
       return `<span class="label-badge ${map[status]||'badge-ide'}">${status||'Idé'}</span>`;
     };
 
+    const STATUSES = ['Idé','Skriving','Innspilling','Mixing','Master','Ferdig'];
+
     const albumRows = albums.map(a => {
       const meta = a.metadata || {};
       const status = meta.status || a.status || 'Idé';
@@ -529,18 +541,20 @@
       const albumBeatIds = albumBeatMap[a.id] || [];
       const albumBeats = albumBeatIds.map(id => beatMap[id] || beats.find(b=>b.id===id)).filter(Boolean);
       const beatCount = albumBeats.length;
-      const done = Number(meta.done || 0);
       const safeId = a.id.replace(/-/g,'');
-      const albumName = (a.title || meta.name || 'Untitled').replace(/'/g,"\\'");
+      const albumName = (a.title || meta.name || 'Untitled').replace(/'/g,"\'");
+      const labData    = labAlbumMap[a.id] || {};
+      const isPriority = !!labData.priority;
+      const releaseDate= labData.release_date || '';
 
-      // Rik albumstatistikk
       const beatsWithAudio  = albumBeats.filter(b => (b.metadata?.audio_url||b.metadata?.url||b.audio_url));
       const beatsWithLyrics = albumBeats.filter(b => (b.metadata?.lyrics||(b.metadata?.lyricSections||[]).length > 0));
-      const avgBeatDone     = albumBeats.length ? Math.round(albumBeats.reduce((s,b)=>s+Number((b.metadata||{}).done||0),0)/albumBeats.length) : 0;
-      const totalDur        = albumBeats.reduce((s,b)=>s+Number((b.metadata||{}).duration||b.duration||0),0);
-      const durStr          = totalDur > 0 ? `${Math.floor(totalDur/60)}:${String(Math.floor(totalDur%60)).padStart(2,'0')}` : null;
-      const avgRating       = albumBeats.length ? (albumBeats.reduce((s,b)=>s+Number((b.metadata||{}).rating||0),0)/albumBeats.length).toFixed(1) : null;
-      const beatsDone       = albumBeats.filter(b=>Number((b.metadata||{}).done||0)>=100).length;
+      const avgBeatDone = albumBeats.length ? Math.round(albumBeats.reduce((s,b)=>s+Number((b.metadata||{}).done||0),0)/albumBeats.length) : 0;
+      const totalDur    = albumBeats.reduce((s,b)=>s+Number((b.metadata||{}).duration||b.duration||0),0);
+      const durStr      = totalDur > 0 ? Math.floor(totalDur/60)+':'+String(Math.floor(totalDur%60)).padStart(2,'0') : null;
+      const avgRating   = albumBeats.length ? (albumBeats.reduce((s,b)=>s+Number((b.metadata||{}).rating||0),0)/albumBeats.length).toFixed(1) : null;
+      const beatsDone   = albumBeats.filter(b=>Number((b.metadata||{}).done||0)>=100).length;
+      const relDateStr  = releaseDate ? new Date(releaseDate+'T00:00:00').toLocaleDateString('no-NO',{day:'numeric',month:'short',year:'numeric'}) : '';
 
       const trackRows = albumBeats.map((b,i) => {
         const bm = b.metadata || {};
@@ -551,59 +565,50 @@
         const dur = Number(bm.duration||b.duration||0);
         const dStr = dur>0 ? Math.floor(dur/60)+':'+String(Math.floor(dur%60)).padStart(2,'0') : '';
         const hasAudio = !!(bm.audio_url||bm.url||b.audio_url);
-        return `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.04);background:rgba(0,0,0,.2)">
-          <span style="font-size:11px;color:rgba(255,255,255,.25);min-width:20px;font-family:system-ui">${String(i+1).padStart(2,'0')}</span>
-          <div style="flex:1;min-width:0">
-            <div style="font-size:13px;font-weight:700;color:#f4ede4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${bTitle}</div>
-            <div style="display:flex;align-items:center;gap:8px;margin-top:2px">
-              <span style="font-size:11px;color:#f4a443;letter-spacing:.05em">${stars}</span>
-              <span style="font-size:10px;color:rgba(255,255,255,.35)">${bDone}% ferdig</span>
-              ${dStr ? `<span style="font-size:10px;color:rgba(255,255,255,.25)">${dStr}</span>` : ''}
-            </div>
-          </div>
-          ${hasAudio ? '<button onclick="window.labelPlayBeat(\'' + b.id + '\')" style="background:#f4a443;border:none;color:#000;font-size:11px;font-weight:900;width:26px;height:26px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;border-radius:50%">▶</button>' : '<div style="width:26px"></div>'}
-        </div>`;
+        return '<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.04);background:rgba(0,0,0,.2)">'
+          + '<span style="font-size:11px;color:rgba(255,255,255,.25);min-width:20px;font-family:system-ui">'+String(i+1).padStart(2,'0')+'</span>'
+          + '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:700;color:#f4ede4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+bTitle+'</div>'
+          + '<div style="display:flex;align-items:center;gap:8px;margin-top:2px"><span style="font-size:11px;color:#f4a443">'+stars+'</span><span style="font-size:10px;color:rgba(255,255,255,.35)">'+bDone+'% ferdig</span>'+(dStr?'<span style="font-size:10px;color:rgba(255,255,255,.25)">'+dStr+'</span>':'')+'</div></div>'
+          + (hasAudio ? '<button onclick="window.labelPlayBeat(\''+b.id+'\')" style="background:#f4a443;border:none;color:#000;font-size:11px;font-weight:900;width:26px;height:26px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;border-radius:50%">▶</button>' : '<div style="width:26px"></div>')
+          + '</div>';
       }).join('');
 
-      return `<div style="border:1px solid rgba(255,255,255,.06);margin-bottom:10px">
-        <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;cursor:pointer" onclick="var t=document.getElementById('at${safeId}');var ar=document.getElementById('arr${safeId}');if(t.style.display==='none'){t.style.display='block';ar.textContent='▲';}else{t.style.display='none';ar.textContent='▼';}">
-          <div class="label-album-cover">${cover ? `<img src="${cover}" style="width:100%;height:100%;object-fit:cover">` : '🎵'}</div>
-          <div style="flex:1;min-width:0">
-            <div class="label-album-name">${a.title || meta.name || 'Untitled'}</div>
-            <div class="label-album-meta">${beatCount} sanger${durStr ? ' · '+durStr : ''}</div>
-          </div>
-          <div style="min-width:70px">
-            <div class="label-progress"><div class="label-progress-fill" style="width:${avgBeatDone}%"></div></div>
-            <div style="font-size:10px;color:rgba(255,255,255,.4);margin-top:2px;text-align:right">${avgBeatDone}%</div>
-          </div>
-          ${statusBadge(status)}
-          <button onclick="event.stopPropagation();window.labelOpenComments('${a.id}','${albumName}','${artistId}')" style="background:none;border:1px solid rgba(255,255,255,.12);color:rgba(255,255,255,.5);font-size:11px;padding:3px 8px;cursor:pointer;font-family:system-ui;margin-left:4px">💬</button>
-          <span id="arr${safeId}" style="color:rgba(255,255,255,.3);font-size:11px;margin-left:4px">▼</span>
-        </div>
-        <div id="at${safeId}" style="display:none">
-          <!-- Albumstatistikk -->
-          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:10px 12px;background:rgba(255,255,255,.02);border-bottom:1px solid rgba(255,255,255,.06)">
-            <div style="text-align:center">
-              <div style="font-size:16px;font-weight:900;color:#f4ede4">${beatsDone}/${beatCount}</div>
-              <div style="font-size:9px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.1em;margin-top:2px">Ferdig</div>
-            </div>
-            <div style="text-align:center">
-              <div style="font-size:16px;font-weight:900;color:#f4ede4">${beatsWithAudio.length}</div>
-              <div style="font-size:9px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.1em;margin-top:2px">Har lyd</div>
-            </div>
-            <div style="text-align:center">
-              <div style="font-size:16px;font-weight:900;color:#f4ede4">${beatsWithLyrics.length}</div>
-              <div style="font-size:9px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.1em;margin-top:2px">Har tekst</div>
-            </div>
-            <div style="text-align:center">
-              <div style="font-size:16px;font-weight:900;color:${avgRating>=4?'#f4a443':avgRating>=3?'#f4ede4':'rgba(255,255,255,.5)'}">${avgRating||'—'}</div>
-              <div style="font-size:9px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.1em;margin-top:2px">Snitt ★</div>
-            </div>
-          </div>
-          ${trackRows || '<div style="padding:12px;font-size:12px;color:rgba(255,255,255,.3)">Ingen sanger ennå</div>'}
-        </div>
-      </div>`;
+      const statusOpts = STATUSES.map(s => '<option value="'+s+'"'+(s===status?' selected':'')+'>'+s+'</option>').join('');
+      const borderCol  = isPriority ? 'rgba(244,164,67,.35)' : 'rgba(255,255,255,.06)';
+      const bgStr      = isPriority ? ';background:rgba(244,164,67,.02)' : '';
+      const priBtnBg   = isPriority ? 'rgba(244,164,67,.2)' : 'rgba(255,255,255,.06)';
+      const priBtnBd   = isPriority ? 'rgba(244,164,67,.4)' : 'rgba(255,255,255,.1)';
+      const priBtnCol  = isPriority ? '#f4a443' : 'rgba(255,255,255,.4)';
+      const priLabel   = isPriority ? 'Prioritert' : 'Prioriter';
+      const datCol     = releaseDate ? '#60a5fa' : 'rgba(255,255,255,.35)';
+      const ratCol     = Number(avgRating)>=4 ? '#f4a443' : Number(avgRating)>=3 ? '#f4ede4' : 'rgba(255,255,255,.5)';
+
+      return '<div style="border:1px solid '+borderCol+';margin-bottom:10px'+bgStr+'">'
+        + '<div style="display:flex;align-items:center;gap:8px;padding:10px 12px;cursor:pointer" onclick="var t=document.getElementById(\'at'+safeId+'\');var ar=document.getElementById(\'arr'+safeId+'\');if(t.style.display===\'none\'){t.style.display=\'block\';ar.textContent=\'▲\';}else{t.style.display=\'none\';ar.textContent=\'▼\';}">'
+          + '<div class="label-album-cover">'+(cover?'<img src="'+cover+'" style="width:100%;height:100%;object-fit:cover">':'🎵')+'</div>'
+          + '<div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:6px">'+(isPriority?'<span style="font-size:12px">🔥</span>':'')+'<div class="label-album-name">'+albumName+'</div></div>'
+          + '<div style="display:flex;align-items:center;gap:8px;margin-top:2px"><span class="label-album-meta">'+beatCount+' sanger'+(durStr?' · '+durStr:'')+'</span>'+(releaseDate?'<span style="font-size:10px;color:#60a5fa">📅 '+relDateStr+'</span>':'')+'</div></div>'
+          + '<div style="min-width:60px"><div class="label-progress"><div class="label-progress-fill" style="width:'+avgBeatDone+'%"></div></div><div style="font-size:10px;color:rgba(255,255,255,.4);margin-top:2px;text-align:right">'+avgBeatDone+'%</div></div>'
+          + '<span id="arr'+safeId+'" style="color:rgba(255,255,255,.3);font-size:11px">▼</span>'
+        + '</div>'
+        + '<div style="display:flex;align-items:center;gap:8px;padding:6px 12px;border-top:1px solid rgba(255,255,255,.05);background:rgba(0,0,0,.15);flex-wrap:wrap" onclick="event.stopPropagation()">'
+          + '<select onchange="window.labelSetAlbumStatus(\''+a.id+'\',\''+artistId+'\',this.value)" style="background:#1a1612;border:1px solid rgba(255,255,255,.12);color:#f4ede4;padding:4px 6px;font-size:11px;font-family:system-ui;outline:none;cursor:pointer">'+statusOpts+'</select>'
+          + '<button onclick="window.labelTogglePriority(\''+a.id+'\',\''+artistId+'\','+(!isPriority)+')" style="background:'+priBtnBg+';border:1px solid '+priBtnBd+';color:'+priBtnCol+';font-size:11px;padding:4px 10px;cursor:pointer;font-family:system-ui">🔥 '+priLabel+'</button>'
+          + '<input type="date" value="'+releaseDate+'" onchange="window.labelSetRelease(\''+a.id+'\',\''+artistId+'\',this.value)" style="background:#1a1612;border:1px solid rgba(255,255,255,.12);color:'+datCol+';padding:4px 6px;font-size:11px;font-family:system-ui;outline:none;cursor:pointer" title="Release-dato">'
+          + '<button onclick="event.stopPropagation();window.labelOpenComments(\''+a.id+'\',\''+albumName+'\',\''+artistId+'\')" style="margin-left:auto;background:none;border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.4);font-size:11px;padding:4px 8px;cursor:pointer;font-family:system-ui">💬</button>'
+        + '</div>'
+        + '<div id="at'+safeId+'" style="display:none">'
+          + '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:10px 12px;background:rgba(255,255,255,.02);border-bottom:1px solid rgba(255,255,255,.06)">'
+            + '<div style="text-align:center"><div style="font-size:16px;font-weight:900;color:#f4ede4">'+beatsDone+'/'+beatCount+'</div><div style="font-size:9px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.1em;margin-top:2px">Ferdig</div></div>'
+            + '<div style="text-align:center"><div style="font-size:16px;font-weight:900;color:#f4ede4">'+beatsWithAudio.length+'</div><div style="font-size:9px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.1em;margin-top:2px">Har lyd</div></div>'
+            + '<div style="text-align:center"><div style="font-size:16px;font-weight:900;color:#f4ede4">'+beatsWithLyrics.length+'</div><div style="font-size:9px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.1em;margin-top:2px">Har tekst</div></div>'
+            + '<div style="text-align:center"><div style="font-size:16px;font-weight:900;color:'+ratCol+'">'+( avgRating||'—')+'</div><div style="font-size:9px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.1em;margin-top:2px">Snitt ★</div></div>'
+          + '</div>'
+          + (trackRows || '<div style="padding:12px;font-size:12px;color:rgba(255,255,255,.3)">Ingen sanger ennå</div>')
+        + '</div>'
+      + '</div>';
     }).join('');
+
 
     detail.innerHTML = `
       <div class="label-detail-header">
@@ -662,7 +667,193 @@
           </div>
         </div>`;
       }).join('')}</div>` : ''}
+
+      <!-- Interne notater (kun label ser dette) -->
+      <div class="label-section-hd" style="margin-top:20px">🔒 Interne notater</div>
+      <textarea id="labelNotesArea" placeholder="Private merknader om artisten — artisten ser ikke dette..." rows="4"
+        style="width:100%;box-sizing:border-box;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:#f4ede4;padding:10px 12px;font-size:13px;font-family:Georgia,serif;outline:none;resize:vertical;margin-bottom:6px"
+        oninput="window.labelNoteDirty=true">${artistNotes.replace(/</g,'&lt;')}</textarea>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button onclick="window.labelSaveNotes('${artistId}')" style="background:#f4a443;border:none;color:#000;font-size:11px;font-weight:800;padding:6px 14px;cursor:pointer;font-family:system-ui;letter-spacing:.06em;text-transform:uppercase">Lagre notater</button>
+        <span id="labelNoteStatus" style="font-size:11px;color:rgba(255,255,255,.35)"></span>
+      </div>
+
+      <!-- Verktøylinje -->
+      <div style="display:flex;gap:8px;margin-top:20px;padding-top:16px;border-top:1px solid rgba(255,255,255,.07)">
+        <button onclick="window.labelCompareArtist('${artistId}','${name}')" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.6);font-size:12px;padding:7px 14px;cursor:pointer;font-family:system-ui">⚖️ Sammenlign</button>
+        <button onclick="window.labelExportArtist('${artistId}','${name}')" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.6);font-size:12px;padding:7px 14px;cursor:pointer;font-family:system-ui">📊 Eksporter CSV</button>
+      </div>
     `;
+  };
+
+  // ── Album-kontroller ─────────────────────────────────────────────────────
+  async function upsertLabelAlbumData(albumId, patch){
+    const token = await getToken();
+    const uid   = await getUid();
+    await fetch(`${SB_URL}/rest/v1/label_album_data`, {
+      method:'POST',
+      headers:{...sbH(token),'Prefer':'resolution=merge-duplicates'},
+      body: JSON.stringify({label_id:uid, album_id:albumId, ...patch})
+    });
+  }
+
+  window.labelSetAlbumStatus = async function(albumId, artistId, status){
+    const token = await getToken();
+    // Oppdater albums-tabellen direkte
+    await fetch(`${SB_URL}/rest/v1/albums?id=eq.${albumId}`, {
+      method:'PATCH',
+      headers:{...sbH(token),'Prefer':'return=minimal'},
+      body: JSON.stringify({status})
+    });
+    if(typeof window.showToast==='function') window.showToast('Status oppdatert: '+status);
+  };
+
+  window.labelTogglePriority = async function(albumId, artistId, priority){
+    await upsertLabelAlbumData(albumId, {priority});
+    // Send varsel til artisten hvis prioritert
+    if(priority){
+      const token = await getToken();
+      const uid   = await getUid();
+      const prRes = await fetch(`${SB_URL}/rest/v1/profiles?id=eq.${uid}&select=username`,{headers:sbH(token)});
+      const prData = prRes.ok ? await prRes.json() : [];
+      const labelName = prData[0]?.username || 'Labelen';
+      // Hent albumnavn
+      const aRes = await fetch(`${SB_URL}/rest/v1/albums?id=eq.${albumId}&select=title`,{headers:sbH(token)});
+      const aData = aRes.ok ? await aRes.json() : [];
+      const aTitle = aData[0]?.title || 'album';
+      await fetch(`${SB_URL}/rest/v1/notifications`,{
+        method:'POST', headers:{...sbH(token),'Prefer':'return=minimal'},
+        body:JSON.stringify({recipient_id:artistId,sender_id:uid,type:'label_comment',content_id:albumId,content_name:'🔥 '+labelName+' har prioritert: '+aTitle,role:'label',read:false})
+      });
+    }
+    window.labelSelectArtist(artistId);
+  };
+
+  window.labelSetRelease = async function(albumId, artistId, date){
+    await upsertLabelAlbumData(albumId, {release_date: date || null});
+    if(typeof window.showToast==='function') window.showToast(date ? 'Release satt: '+date : 'Release-dato fjernet');
+    window.labelSelectArtist(artistId);
+  };
+
+  // ── Notater ───────────────────────────────────────────────────────────────
+  window.labelSaveNotes = async function(artistId){
+    const text = document.getElementById('labelNotesArea')?.value || '';
+    const status = document.getElementById('labelNoteStatus');
+    const token = await getToken();
+    const uid   = await getUid();
+    await fetch(`${SB_URL}/rest/v1/label_artist_notes`, {
+      method:'POST',
+      headers:{...sbH(token),'Prefer':'resolution=merge-duplicates'},
+      body: JSON.stringify({label_id:uid, artist_id:artistId, notes:text, updated_at:new Date().toISOString()})
+    });
+    if(status){ status.style.color='#34d399'; status.textContent='✓ Lagret'; setTimeout(()=>status.textContent='',2000); }
+    window.labelNoteDirty = false;
+  };
+
+  // ── Sammenlign artister ───────────────────────────────────────────────────
+  window.labelCompareArtist = async function(artistId, name){
+    const artists = (window._labelArtists||[]).filter(a=>a.status==='accepted' && a.artist_id!==artistId);
+    if(!artists.length){ if(typeof window.showToast==='function') window.showToast('Ingen andre artister å sammenligne med'); return; }
+
+    let modal = document.getElementById('labelCompareModal');
+    if(!modal){
+      modal = document.createElement('div');
+      modal.id = 'labelCompareModal';
+      modal.style.cssText='display:none;position:fixed;inset:0;z-index:9300;background:rgba(0,0,0,.8);align-items:flex-start;justify-content:center;backdrop-filter:blur(4px);padding-top:40px;overflow-y:auto';
+      modal.addEventListener('click',e=>{if(e.target===modal)modal.style.display='none';});
+      document.body.appendChild(modal);
+    }
+    modal.style.display='flex';
+    modal.innerHTML='<div style="background:#1a1612;border:1px solid rgba(255,255,255,.12);width:min(800px,96vw);padding:0 0 24px">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;padding:20px 24px;border-bottom:1px solid rgba(255,255,255,.08)">'
+        +'<h2 style="font-size:16px;font-weight:800;margin:0">⚖️ Sammenlign artist</h2>'
+        +'<button onclick="document.getElementById(\'labelCompareModal\').style.display=\'none\'" style="background:none;border:none;color:rgba(255,255,255,.5);font-size:20px;cursor:pointer">×</button>'
+      +'</div>'
+      +'<div style="padding:20px 24px">'
+        +'<p style="font-size:13px;color:rgba(255,255,255,.5);margin-bottom:16px">Velg artist å sammenligne med <strong style="color:#f4a443">'+name+'</strong>:</p>'
+        +'<div style="display:flex;flex-wrap:wrap;gap:8px">'
+        +artists.map(a=>'<button onclick="window.labelDoCompare(\''+artistId+'\',\''+a.artist_id+'\')" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#f4ede4;padding:8px 16px;cursor:pointer;font-family:system-ui;font-size:13px">'+(a.profile?.username||a.artist_id.slice(0,8))+'</button>').join('')
+        +'</div>'
+        +'<div id="labelCompareContent" style="margin-top:20px"></div>'
+      +'</div>'
+    +'</div>';
+  };
+
+  window.labelDoCompare = async function(idA, idB){
+    const el = document.getElementById('labelCompareContent');
+    if(el) el.innerHTML='<div class="label-loading">Henter data...</div>';
+    const token = await getToken();
+
+    const [bA,aA,mA,pA, bB,aB,mB,pB] = await Promise.all([
+      fetch(`${SB_URL}/rest/v1/beats?owner_id=eq.${idA}&archived=eq.false&select=id,metadata`,{headers:sbH(token)}),
+      fetch(`${SB_URL}/rest/v1/albums?owner_id=eq.${idA}&archived=eq.false&select=id`,{headers:sbH(token)}),
+      fetch(`${SB_URL}/rest/v1/mixtapes?owner_id=eq.${idA}&archived=eq.false&select=id`,{headers:sbH(token)}),
+      fetch(`${SB_URL}/rest/v1/profiles?id=eq.${idA}&select=username`,{headers:sbH(token)}),
+      fetch(`${SB_URL}/rest/v1/beats?owner_id=eq.${idB}&archived=eq.false&select=id,metadata`,{headers:sbH(token)}),
+      fetch(`${SB_URL}/rest/v1/albums?owner_id=eq.${idB}&archived=eq.false&select=id`,{headers:sbH(token)}),
+      fetch(`${SB_URL}/rest/v1/mixtapes?owner_id=eq.${idB}&archived=eq.false&select=id`,{headers:sbH(token)}),
+      fetch(`${SB_URL}/rest/v1/profiles?id=eq.${idB}&select=username`,{headers:sbH(token)}),
+    ]);
+
+    const beatsA = bA.ok?await bA.json():[], albumsA = aA.ok?await aA.json():[], mixA = mA.ok?await mA.json():[];
+    const beatsB = bB.ok?await bB.json():[], albumsB = aB.ok?await aB.json():[], mixB = mB.ok?await mB.json():[];
+    const profA = pA.ok?await pA.json():[], profB = pB.ok?await pB.json():[];
+    const nameA = profA[0]?.username||idA.slice(0,8), nameB = profB[0]?.username||idB.slice(0,8);
+
+    const avgDoneA = beatsA.length?Math.round(beatsA.reduce((s,b)=>s+Number((b.metadata||{}).done||0),0)/beatsA.length):0;
+    const avgDoneB = beatsB.length?Math.round(beatsB.reduce((s,b)=>s+Number((b.metadata||{}).done||0),0)/beatsB.length):0;
+    const avgRatA  = beatsA.length?(beatsA.reduce((s,b)=>s+Number((b.metadata||{}).rating||0),0)/beatsA.length).toFixed(1):0;
+    const avgRatB  = beatsB.length?(beatsB.reduce((s,b)=>s+Number((b.metadata||{}).rating||0),0)/beatsB.length).toFixed(1):0;
+
+    const row = (label,vA,vB,higherIsBetter=true) => {
+      const aWins = higherIsBetter ? Number(vA)>Number(vB) : Number(vA)<Number(vB);
+      const bWins = higherIsBetter ? Number(vB)>Number(vA) : Number(vB)<Number(vA);
+      return '<div style="display:grid;grid-template-columns:1fr 120px 1fr;gap:8px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05);align-items:center">'
+        +'<div style="text-align:right;font-size:14px;font-weight:'+(aWins?'900':'400')+';color:'+(aWins?'#f4a443':'#f4ede4')+'">'+vA+'</div>'
+        +'<div style="text-align:center;font-size:10px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.1em">'+label+'</div>'
+        +'<div style="font-size:14px;font-weight:'+(bWins?'900':'400')+';color:'+(bWins?'#f4a443':'#f4ede4')+'">'+vB+'</div>'
+      +'</div>';
+    };
+
+    if(el) el.innerHTML = '<div style="display:grid;grid-template-columns:1fr 120px 1fr;gap:8px;margin-bottom:12px">'
+      +'<div style="font-size:13px;font-weight:800;color:#f4a443;text-align:right">'+nameA+'</div>'
+      +'<div></div>'
+      +'<div style="font-size:13px;font-weight:800;color:#60a5fa">'+nameB+'</div>'
+    +'</div>'
+    + row('Sanger',beatsA.length,beatsB.length)
+    + row('Albumer',albumsA.length,albumsB.length)
+    + row('Mixtapes',mixA.length,mixB.length)
+    + row('Snitt ferdig',avgDoneA+'%',avgDoneB+'%')
+    + row('Snitt ★',avgRatA,avgRatB);
+  };
+
+  // ── Eksporter CSV ─────────────────────────────────────────────────────────
+  window.labelExportArtist = async function(artistId, name){
+    const token = await getToken();
+    const [bRes,aRes] = await Promise.all([
+      fetch(`${SB_URL}/rest/v1/beats?owner_id=eq.${artistId}&archived=eq.false&select=id,title,metadata`,{headers:sbH(token)}),
+      fetch(`${SB_URL}/rest/v1/albums?owner_id=eq.${artistId}&archived=eq.false&select=id,title,metadata,status`,{headers:sbH(token)}),
+    ]);
+    const beats  = bRes.ok?await bRes.json():[];
+    const albums = aRes.ok?await aRes.json():[];
+
+    let csv = 'Type,Navn,Status,Ferdig %,Rating\n';
+    albums.forEach(a=>{
+      const m=a.metadata||{};
+      csv += 'Album,"'+(a.title||m.name||'Untitled').replace(/"/g,'""')+'","'+(m.status||a.status||'Idé')+'",'+Number(m.done||0)+'%,\n';
+    });
+    beats.forEach(b=>{
+      const m=b.metadata||{};
+      csv += 'Sang,"'+(b.title||m.name||'Untitled').replace(/"/g,'""')+'","'+(m.status||'')+'",'+Number(m.done||0)+'%,'+Number(m.rating||0)+'\n';
+    });
+
+    const blob = new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url; link.download = name+'_rapport.csv';
+    link.click();
+    URL.revokeObjectURL(url);
+    if(typeof window.showToast==='function') window.showToast('📊 CSV lastet ned');
   };
 
   // ── Inviter artist ──────────────────────────────────────────────────────
