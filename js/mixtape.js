@@ -5,7 +5,7 @@
   let timer=null;
   let raf=null;
   let lastMixtapeId='';
-  let textCache=new Map();
+  let textCache=new Map(); 
 
   function qs(s,r=document){return r.querySelector(s)}
   function qsa(s,r=document){return Array.from(r.querySelectorAll(s))}
