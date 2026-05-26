@@ -333,6 +333,8 @@
     if(!trigger||!trigger.dataset)return;
     const tab=trigger.dataset.tab;
     if(!tab || tab==='archive')return;
+    // Bare kjør leaveArchive når arkiv faktisk er aktivt
+    if(!document.body.classList.contains('final-archive-active')) return;
     setTimeout(()=>leaveArchive(tab),0);
     setTimeout(()=>leaveArchive(tab),80);
   },true);
