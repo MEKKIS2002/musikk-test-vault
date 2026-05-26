@@ -324,6 +324,20 @@ async function loginWithUsername(){
     window._mvCurrentUserId = data.user.id;
     sessionStorage.setItem('mv_user_id', data.user.id);
 
+    // Last bruker-spesifikk state fra localStorage
+    const userKey = 'musicVault.v4.' + data.user.id;
+    const userRaw = localStorage.getItem(userKey);
+    if(userRaw && window.state){
+      try{
+        const userData = JSON.parse(userRaw);
+        if((userData.beats||[]).length > 0){
+          if(typeof migrate === 'function') Object.assign(window.state, migrate(userData));
+          else Object.assign(window.state, userData);
+          if(typeof renderAll === 'function') renderAll();
+        }
+      } catch(e){ console.warn('[Lock] State load feilet:', e); }
+    }
+
     // Lagre i sessionStorage
     sessionStorage.setItem('mv_username', username);
     sessionStorage.setItem('mv_package', pkg);

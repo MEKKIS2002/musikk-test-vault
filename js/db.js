@@ -267,8 +267,9 @@ function migrate(s){
   n.albums=n.albums||[];n.mixtapes=(n.mixtapes||[]).map(m=>({...m,cover:m.cover||null,color:m.color||null,beatIds:m.beatIds||[]}));n.versions=n.versions||[];n.settings={...base.settings,...(n.settings||{})};
   return n;
 }
-function loadState(){try{const r=localStorage.getItem(SK);const s=r?JSON.parse(r):null;return s?migrate(s):defaultState();}catch{return defaultState();}}
-function saveState(){try{localStorage.setItem(SK,JSON.stringify(state));}catch(e){console.warn('saveState failed:',e);}markDirty();renderStats();if(typeof window.mvSupabaseSync?.schedulePush==='function')window.mvSupabaseSync.schedulePush();}
+function getUserSK(){ const uid=sessionStorage.getItem('mv_user_id'); return uid ? SK+'.'+uid : SK; }
+function loadState(){try{const uid=sessionStorage.getItem('mv_user_id');const key=uid?SK+'.'+uid:SK;const r=localStorage.getItem(key)||(uid?localStorage.getItem(SK):null);const s=r?JSON.parse(r):null;return s?migrate(s):defaultState();}catch{return defaultState();}}
+function saveState(){try{localStorage.setItem(getUserSK(),JSON.stringify(state));}catch(e){console.warn('saveState failed:',e);}markDirty();renderStats();if(typeof window.mvSupabaseSync?.schedulePush==='function')window.mvSupabaseSync.schedulePush();}
 function isAdmin(){return sessionStorage.getItem('mv_role')==='admin';}
 
 function setupSel(el,opts){el.innerHTML=opts;}
@@ -1416,112 +1417,7 @@ async function uploadBeatToR2(beat, file) {
     showToast('⚠ R2 feilet — lydfil lagret lokalt');
   }
 }
-// ── WAV → MP3 batch converter ─────────────────────────────────────────────
-window.convertAllWavBeats = async function(){
-  if(!window.audioCompress){ showToast('⚠ audio-compress.js ikke lastet'); return; }
-  if(!window.r2Storage?.ready()){ showToast('⚠ R2 ikke klar'); return; }
-
-  // Finn alle beats med WAV-URL
-  const wavBeats = state.beats.filter(b => {
-    const url = b.audio_url || '';
-    return !b.archived && url.includes('worker') &&
-      (url.toLowerCase().includes('.wav') || b._wavPending);
-  });
-
-  // Finn også beats der vi ikke vet formatet — sjekk via HEAD
-  const unknownBeats = state.beats.filter(b => {
-    const url = b.audio_url || '';
-    return !b.archived && url.includes('worker') &&
-      !url.toLowerCase().includes('.mp3') &&
-      !url.toLowerCase().includes('.wav') &&
-      !wavBeats.includes(b);
-  });
-
-  // Sjekk Content-Type for ukjente
-  const toConvert = [...wavBeats];
-  for(const b of unknownBeats){
-    try{
-      const r = await fetch(b.audio_url, {method:'HEAD'});
-      const ct = r.headers.get('content-type')||'';
-      if(ct.includes('wav') || ct.includes('wave')) toConvert.push(b);
-    } catch(e){}
-  }
-
-  if(!toConvert.length){
-    showToast('✓ Ingen WAV-beats funnet — alt er allerede MP3');
-    return;
-  }
-
-  const modal = document.createElement('div');
-  modal.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px)';
-  modal.innerHTML = `
-    <div style="background:#1a1612;border:1px solid rgba(255,255,255,.12);width:min(460px,92vw);padding:28px;font-family:system-ui">
-      <h2 style="font-size:16px;font-weight:800;margin:0 0 8px;color:#f4ede4">🔄 Konverter WAV til MP3</h2>
-      <p style="font-size:13px;color:rgba(255,255,255,.5);margin:0 0 20px">Fant <strong style="color:#f4a443">${toConvert.length}</strong> beat${toConvert.length>1?'s':''} som kan konverteres.</p>
-      <div id="wavConvertList" style="max-height:200px;overflow-y:auto;margin-bottom:16px">
-        ${toConvert.map(b=>`<div id="wcRow_${b.id}" style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.06)">
-          <span style="font-size:13px;color:#f4ede4;flex:1">${b.name||b.title||b.id.slice(0,8)}</span>
-          <span id="wcStatus_${b.id}" style="font-size:11px;color:rgba(255,255,255,.35)">Venter</span>
-        </div>`).join('')}
-      </div>
-      <div style="background:rgba(255,255,255,.06);height:6px;margin-bottom:16px"><div id="wavConvertBar" style="height:100%;background:#f4a443;width:0;transition:width .3s"></div></div>
-      <div style="display:flex;gap:10px">
-        <button id="wavConvertBtn" onclick="window._runWavConvert()" style="flex:1;background:linear-gradient(135deg,#f4a443,#cb6e1a);border:none;color:#000;font-size:13px;font-weight:800;padding:11px;cursor:pointer;letter-spacing:.06em;text-transform:uppercase">Start konvertering</button>
-        <button onclick="this.closest('div[style*=fixed]').remove()" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.5);font-size:13px;padding:11px 16px;cursor:pointer">Avbryt</button>
-      </div>
-    </div>`;
-  document.body.appendChild(modal);
-
-  window._runWavConvert = async function(){
-    const btn = document.getElementById('wavConvertBtn');
-    if(btn){ btn.disabled=true; btn.textContent='Konverterer...'; }
-
-    let done = 0;
-    for(const beat of toConvert){
-      const statusEl = document.getElementById('wcStatus_'+beat.id);
-      if(statusEl){ statusEl.style.color='#60a5fa'; statusEl.textContent='Henter...'; }
-
-      try{
-        // Hent lydfilen fra R2
-        const res = await fetch(beat.audio_url);
-        if(!res.ok) throw new Error('HTTP '+res.status);
-        const blob = await res.blob();
-        const origName = (beat.name||beat.title||beat.id)+'.wav';
-        const wavFile = new File([blob], origName, {type: blob.type||'audio/wav'});
-
-        if(statusEl){ statusEl.style.color='#a855f7'; statusEl.textContent='Konverterer...'; }
-
-        // Konverter til MP3
-        const mp3File = await window.audioCompress.compress(wavFile);
-
-        if(statusEl){ statusEl.style.color='#f4a443'; statusEl.textContent='Laster opp...'; }
-
-        // Last opp til R2
-        const url = await window.r2Storage.upload(beat.id, mp3File, !!beat.archived);
-        beat.audio_url = url;
-        saveState();
-
-        if(statusEl){ statusEl.style.color='#34d399'; statusEl.textContent='✓ Ferdig'; }
-
-      } catch(e) {
-        console.error('[WAV Convert] Feilet for', beat.id, e);
-        if(statusEl){ statusEl.style.color='#fb7185'; statusEl.textContent='✕ Feilet'; }
-      }
-
-      done++;
-      const bar = document.getElementById('wavConvertBar');
-      if(bar) bar.style.width = Math.round(done/toConvert.length*100)+'%';
-    }
-
-    // Synkroniser til Supabase
-    if(typeof window.pushToSupabase === 'function') window.pushToSupabase();
-
-    if(btn){ btn.textContent='Ferdig! ✓'; }
-    showToast(`✓ Konvertert ${done} beat${done>1?'s':''} til MP3`);
-  };
-};
-
-
+async function handleMixtapeDrop(e){
   e.preventDefault();document.getElementById("mixtapeDrop").classList.remove("drag-over");
   const files=[...e.dataTransfer.files].filter(f=>f.type.startsWith("audio")||/\.(mp3|wav|flac|m4a|ogg|aac)$/i.test(f.name));
   if(!files.length){showToast("Ingen lydfiler funnet");return;}
