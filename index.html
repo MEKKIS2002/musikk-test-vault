@@ -428,6 +428,16 @@ AKTIVE BRUKERE:
           <button class="ghost-btn admin-only-btn" id="pushAllBtn" onclick="window.pushToSupabase?.()">☁ Push alt til Supabase</button>
         </div>
       </div>
+
+      <div class="settings-card" id="wavConvertCard">
+        <h2>🔄 WAV → MP3 konvertering</h2>
+        <p class="hint">Konverterer WAV-beats til MP3 for bedre støtte på mobil og inkognito. WAV-filer er store og spilles ikke av overalt.</p>
+        <div style="margin-top:12px">
+          <button class="ghost-btn" onclick="window.convertAllWavBeats()" style="display:flex;align-items:center;gap:8px">
+            🔄 Konverter WAV-beats til MP3
+          </button>
+        </div>
+      </div>
     </section>
   </div>
 </section>
