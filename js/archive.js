@@ -276,12 +276,13 @@
   function save(){try{window.saveState&&window.saveState()}catch(e){console.warn('saveState failed',e)}}
   function leaveArchive(target){
     ARCHIVE_CLASSES.forEach(c=>document.body.classList.remove(c));
+    // Clear style.display='none' set by activate() on ALL tab-views
+    document.querySelectorAll('.tab-view').forEach(v=>{ v.style.display=''; });
     const archive=qs('#archiveTab');
     if(archive){archive.classList.add('hidden');archive.style.display='';}
     qsa('.tab-btn[data-tab],[data-tab]').forEach(btn=>{if(btn.dataset&&btn.dataset.tab)btn.classList.toggle('active',btn.dataset.tab===target)});
     Object.entries(PANELS).forEach(([key,id])=>{
       const panel=document.getElementById(id); if(!panel)return;
-      // FIX: use style.display='' instead of 'none' so tab-view CSS controls visibility
       if(key===target){panel.classList.remove('hidden');panel.style.display='';}
       else if(key!=='archive'){panel.classList.add('hidden');panel.style.display='';}
     });
