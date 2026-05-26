@@ -215,6 +215,7 @@ async function createBeatFromFileIDB(file){
 const STAGES=["Idé","Hook","Vers","Innspilt","Mix","Master","Klar"];
 const SK="musicVault.v4";
 const state=loadState();
+window.state = state; // eksponér globalt for audio-compress.js og andre
 let currentAlbumId=null;
 let modalRating=0;
 let newAlbumCoverBase64=null;
