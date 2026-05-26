@@ -268,7 +268,8 @@
 (function(){
   'use strict';
   const ARCHIVE_CLASSES=['final-archive-active','clean-archive-active','mv-archive-v4-active','marcus-archive-safe-active'];
-  const PANELS={mixtapes:'mixtapesTab',albums:'albumsTab',beats:'beatsTab',pipeline:'pipelineTab',integrations:'integrationsTab',archive:'archiveTab'};
+  // FIX: Added label and adminpanel to PANELS so leaveArchive restores them correctly
+  const PANELS={mixtapes:'mixtapesTab',albums:'albumsTab',beats:'beatsTab',pipeline:'pipelineTab',integrations:'integrationsTab',archive:'archiveTab',label:'labelTab',adminpanel:'adminPanelTab'};
   function qs(s,r=document){return r.querySelector(s)}
   function qsa(s,r=document){return Array.from(r.querySelectorAll(s))}
   function stateObj(){window.state=window.state||{};state.settings=state.settings||{};state.beats=state.beats||[];state.albums=state.albums||[];state.mixtapes=state.mixtapes||[];state.settings.archiveCollections=Array.from(new Set(state.settings.archiveCollections||[]));return state;}
@@ -276,12 +277,13 @@
   function leaveArchive(target){
     ARCHIVE_CLASSES.forEach(c=>document.body.classList.remove(c));
     const archive=qs('#archiveTab');
-    if(archive){archive.classList.add('hidden');archive.style.display='none';}
+    if(archive){archive.classList.add('hidden');archive.style.display='';}
     qsa('.tab-btn[data-tab],[data-tab]').forEach(btn=>{if(btn.dataset&&btn.dataset.tab)btn.classList.toggle('active',btn.dataset.tab===target)});
     Object.entries(PANELS).forEach(([key,id])=>{
       const panel=document.getElementById(id); if(!panel)return;
+      // FIX: use style.display='' instead of 'none' so tab-view CSS controls visibility
       if(key===target){panel.classList.remove('hidden');panel.style.display='';}
-      else if(key!=='archive'){panel.classList.add('hidden');panel.style.display='none';}
+      else if(key!=='archive'){panel.classList.add('hidden');panel.style.display='';}
     });
   }
   function enhanceEmptyCrate(root=document){
@@ -310,8 +312,6 @@
     const used=['beats','albums','mixtapes'].reduce((n,k)=>n+(st[k]||[]).filter(x=>(x.archiveCollection||'')===name).length,0);
     const ok=confirm(used?`Slette samlingen «${name}» og fjerne taggen fra ${used} elementer?`:`Slette samlingen «${name}»?`);
     if(!ok)return;
-    // MARCUS NOTE: Persist deletion of archive collections, including the seeded defaults.
-    // Without this, older archive code re-adds default collections such as Gamle demoer / 2024 beats.
     st.settings.deletedArchiveCollections=Array.from(new Set([...(st.settings.deletedArchiveCollections||[]),name]));
     st.settings.archiveCollections=(st.settings.archiveCollections||[]).filter(c=>c!==name);
     ['beats','albums','mixtapes'].forEach(k=>(st[k]||[]).forEach(x=>{if(x.archiveCollection===name)x.archiveCollection=''}));
@@ -321,7 +321,6 @@
     setTimeout(()=>enhanceArchive(),30);
   }
 
-  // Capture non-archive tab clicks AFTER older archive handlers have run, then restore normal app navigation.
   document.addEventListener('click',function(e){
     const trigger=e.target&&e.target.closest&&e.target.closest('.tab-btn[data-tab], [data-tab]');
     if(!trigger||!trigger.dataset)return;
@@ -331,7 +330,6 @@
     setTimeout(()=>leaveArchive(tab),80);
   },true);
 
-  // Do not let delete-button click select the collection first.
   document.addEventListener('click',function(e){
     const del=e.target&&e.target.closest&&e.target.closest('[data-marcus-delete-collection]');
     if(!del)return;
@@ -339,7 +337,6 @@
     deleteCollection(del.getAttribute('data-marcus-delete-collection'));
   },true);
 
-  // Enhance archive after it renders, without replacing the renderer.
   const mo=new MutationObserver(muts=>{
     for(const m of muts){
       if(m.target&&((m.target.id==='archiveTab')||(m.target.closest&&m.target.closest('#archiveTab')))){enhanceArchive();break;}
@@ -448,282 +445,82 @@
 // === marcus-collection-cover-inheritance-js ===
 (function(){
   'use strict';
-
-  function appState(){
-    try{ if(typeof state !== 'undefined') return state; }catch(e){}
-    return window.state || null;
-  }
-
-  function getCurrentAlbumId(){
-    try{ if(typeof currentAlbumId !== 'undefined') return currentAlbumId; }catch(e){}
-    return window.currentAlbumId;
-  }
-
-  function getCurrentMixtapeId(){
-    try{ if(typeof currentMixtapeId !== 'undefined') return currentMixtapeId; }catch(e){}
-    return window.currentMixtapeId;
-  }
-
-  function beatById(id){
-    const st = appState();
-    return (st && Array.isArray(st.beats)) ? st.beats.find(b => String(b.id) === String(id)) : null;
-  }
-
-  function hasCover(beat){
-    return !!(beat && typeof beat.cover === 'string' && beat.cover.trim());
-  }
-
+  function appState(){ try{ if(typeof state !== 'undefined') return state; }catch(e){} return window.state || null; }
+  function getCurrentAlbumId(){ try{ if(typeof currentAlbumId !== 'undefined') return currentAlbumId; }catch(e){} return window.currentAlbumId; }
+  function getCurrentMixtapeId(){ try{ if(typeof currentMixtapeId !== 'undefined') return currentMixtapeId; }catch(e){} return window.currentMixtapeId; }
+  function beatById(id){ const st = appState(); return (st && Array.isArray(st.beats)) ? st.beats.find(b => String(b.id) === String(id)) : null; }
+  function hasCover(beat){ return !!(beat && typeof beat.cover === 'string' && beat.cover.trim()); }
   function inheritCoverFromCollection(collection, collectionType){
     if(!collection || !collection.cover || !Array.isArray(collection.beatIds)) return false;
     let changed = false;
     collection.beatIds.forEach(id => {
       const beat = beatById(id);
-      if(beat && !hasCover(beat)){
-        beat.cover = collection.cover;
-        beat.coverInheritedFrom = collectionType || 'collection';
-        beat.coverInheritedAt = Date.now();
-        changed = true;
-      }
+      if(beat && !hasCover(beat)){ beat.cover = collection.cover; beat.coverInheritedFrom = collectionType || 'collection'; beat.coverInheritedAt = Date.now(); changed = true; }
     });
-    if(changed){
-      try{ if(typeof saveState === 'function') saveState(); else window.saveState && window.saveState(); }
-      catch(e){ console.warn('Cover inheritance save failed', e); }
-    }
+    if(changed){ try{ if(typeof saveState === 'function') saveState(); else window.saveState && window.saveState(); }catch(e){ console.warn('Cover inheritance save failed', e); } }
     return changed;
   }
-
-  function inheritCurrentAlbumCover(){
-    const st = appState();
-    if(!st || !Array.isArray(st.albums)) return false;
-    const albumId = getCurrentAlbumId();
-    const album = st.albums.find(a => String(a.id) === String(albumId));
-    return inheritCoverFromCollection(album, 'album');
-  }
-
-  function inheritCurrentMixtapeCover(){
-    const st = appState();
-    if(!st || !Array.isArray(st.mixtapes)) return false;
-    const mixtapeId = getCurrentMixtapeId();
-    const mt = st.mixtapes.find(m => String(m.id) === String(mixtapeId));
-    return inheritCoverFromCollection(mt, 'mixtape');
-  }
-
-  function rerenderAlbumSoon(){
-    setTimeout(function(){ try{ if(typeof renderAlbumDetail === 'function') renderAlbumDetail(); }catch(e){} }, 0);
-  }
-
-  function rerenderMixtapeSoon(){
-    setTimeout(function(){ try{ if(typeof renderMixtapeDetail === 'function') renderMixtapeDetail(); }catch(e){} }, 0);
-  }
-
-  // Keep inheritance in sync whenever a collection detail view is rendered.
-  // This also handles adding new beats to a collection that already has a cover.
+  function inheritCurrentAlbumCover(){ const st = appState(); if(!st || !Array.isArray(st.albums)) return false; const albumId = getCurrentAlbumId(); const album = st.albums.find(a => String(a.id) === String(albumId)); return inheritCoverFromCollection(album, 'album'); }
+  function inheritCurrentMixtapeCover(){ const st = appState(); if(!st || !Array.isArray(st.mixtapes)) return false; const mixtapeId = getCurrentMixtapeId(); const mt = st.mixtapes.find(m => String(m.id) === String(mixtapeId)); return inheritCoverFromCollection(mt, 'mixtape'); }
+  function rerenderAlbumSoon(){ setTimeout(function(){ try{ if(typeof renderAlbumDetail === 'function') renderAlbumDetail(); }catch(e){} }, 0); }
+  function rerenderMixtapeSoon(){ setTimeout(function(){ try{ if(typeof renderMixtapeDetail === 'function') renderMixtapeDetail(); }catch(e){} }, 0); }
   const originalRenderAlbumDetail = window.renderAlbumDetail;
-  if(typeof originalRenderAlbumDetail === 'function'){
-    window.renderAlbumDetail = function(){
-      inheritCurrentAlbumCover();
-      return originalRenderAlbumDetail.apply(this, arguments);
-    };
-  }
-
+  if(typeof originalRenderAlbumDetail === 'function'){ window.renderAlbumDetail = function(){ inheritCurrentAlbumCover(); return originalRenderAlbumDetail.apply(this, arguments); }; }
   const originalRenderMixtapeDetail = window.renderMixtapeDetail;
-  if(typeof originalRenderMixtapeDetail === 'function'){
-    window.renderMixtapeDetail = function(){
-      inheritCurrentMixtapeCover();
-      return originalRenderMixtapeDetail.apply(this, arguments);
-    };
-  }
-
-  // Extra safety after direct cover upload controls finish their async FileReader work.
+  if(typeof originalRenderMixtapeDetail === 'function'){ window.renderMixtapeDetail = function(){ inheritCurrentMixtapeCover(); return originalRenderMixtapeDetail.apply(this, arguments); }; }
   document.addEventListener('change', function(e){
-    const t = e.target;
-    if(!t || !t.matches) return;
-    if(t.matches('#albumCoverInput, input[onchange^="setAlbumCover"]')){
-      setTimeout(function(){ if(inheritCurrentAlbumCover()) rerenderAlbumSoon(); }, 500);
-    }
-    if(t.matches('#mixtapeCoverInput')){
-      setTimeout(function(){ if(inheritCurrentMixtapeCover()) rerenderMixtapeSoon(); }, 500);
-    }
+    const t = e.target; if(!t || !t.matches) return;
+    if(t.matches('#albumCoverInput, input[onchange^="setAlbumCover"]')){ setTimeout(function(){ if(inheritCurrentAlbumCover()) rerenderAlbumSoon(); }, 500); }
+    if(t.matches('#mixtapeCoverInput')){ setTimeout(function(){ if(inheritCurrentMixtapeCover()) rerenderMixtapeSoon(); }, 500); }
   }, true);
-
-  // Public helper for debugging/manual use in console.
-  window.inheritCollectionCoverToEmptySongs = function(type, id){
-    const st = appState();
-    if(!st) return false;
-    if(type === 'album') return inheritCoverFromCollection((st.albums||[]).find(a => String(a.id) === String(id)), 'album');
-    if(type === 'mixtape') return inheritCoverFromCollection((st.mixtapes||[]).find(m => String(m.id) === String(id)), 'mixtape');
-    return false;
-  };
+  window.inheritCollectionCoverToEmptySongs = function(type, id){ const st = appState(); if(!st) return false; if(type === 'album') return inheritCoverFromCollection((st.albums||[]).find(a => String(a.id) === String(id)), 'album'); if(type === 'mixtape') return inheritCoverFromCollection((st.mixtapes||[]).find(m => String(m.id) === String(id)), 'mixtape'); return false; };
 })();
 
 // === marcus-cover-inheritance-tracking-js ===
 (function(){
   'use strict';
-
-  function st(){
-    try{ if(typeof state !== 'undefined') return state; }catch(e){}
-    return window.state || null;
-  }
-  function save(){
-    try{ if(typeof saveState === 'function') saveState(); else window.saveState && window.saveState(); }
-    catch(e){ console.warn('Cover inheritance tracking save failed', e); }
-  }
+  function st(){ try{ if(typeof state !== 'undefined') return state; }catch(e){} return window.state || null; }
+  function save(){ try{ if(typeof saveState === 'function') saveState(); else window.saveState && window.saveState(); }catch(e){ console.warn('Cover inheritance tracking save failed', e); } }
   function byId(arr,id){ return (arr||[]).find(x=>String(x.id)===String(id)) || null; }
   function beatById(id){ const s=st(); return s && byId(s.beats,id); }
   function hasCover(b){ return !!(b && typeof b.cover === 'string' && b.cover.trim()); }
-  function isInheritedFrom(b,type,id){
-    if(!b) return false;
-    if(b.coverInherited === true && String(b.coverInheritedFromType||'') === String(type) && String(b.coverInheritedFromId||'') === String(id)) return true;
-    // Legacy support from the previous simple inheritance patch.
-    if(b.coverInheritedFrom && !b.coverInheritedFromId && String(b.coverInheritedFrom) === String(type)) return true;
-    return false;
-  }
-  function markInherited(b,type,id){
-    b.coverInherited = true;
-    b.coverInheritedFromType = type;
-    b.coverInheritedFromId = id;
-    b.coverInheritedFrom = type; // legacy-friendly field for older patches/debugging
-    b.coverInheritedAt = Date.now();
-    delete b.coverManual;
-  }
-  function markManual(b){
-    if(!b) return;
-    b.coverInherited = false;
-    delete b.coverInheritedFromType;
-    delete b.coverInheritedFromId;
-    delete b.coverInheritedFrom;
-    delete b.coverInheritedAt;
-    b.coverManual = true;
-  }
-
+  function isInheritedFrom(b,type,id){ if(!b) return false; if(b.coverInherited === true && String(b.coverInheritedFromType||'') === String(type) && String(b.coverInheritedFromId||'') === String(id)) return true; if(b.coverInheritedFrom && !b.coverInheritedFromId && String(b.coverInheritedFrom) === String(type)) return true; return false; }
+  function markInherited(b,type,id){ b.coverInherited = true; b.coverInheritedFromType = type; b.coverInheritedFromId = id; b.coverInheritedFrom = type; b.coverInheritedAt = Date.now(); delete b.coverManual; }
+  function markManual(b){ if(!b) return; b.coverInherited = false; delete b.coverInheritedFromType; delete b.coverInheritedFromId; delete b.coverInheritedFrom; delete b.coverInheritedAt; b.coverManual = true; }
   function syncCollectionCover(type,id,oldCover){
-    const s=st();
-    if(!s) return false;
+    const s=st(); if(!s) return false;
     const col = type === 'album' ? byId(s.albums,id) : byId(s.mixtapes,id);
     if(!col || !col.cover || !Array.isArray(col.beatIds)) return false;
     let changed=false;
-
-    col.beatIds.forEach(beatId=>{
-      const b=beatById(beatId);
-      if(!b) return;
-
-      const inheritedHere = isInheritedFrom(b,type,col.id);
-      const wasLegacyInheritedHere = !!(b.coverInheritedFrom && !b.coverInheritedFromId && String(b.coverInheritedFrom)===String(type));
-      const matchesOldInheritedCover = oldCover && b.cover === oldCover;
-      const empty = !hasCover(b);
-
-      // Update if it was already inherited from this collection, or if it was empty.
-      // Also migrate legacy inherited covers when the old cover matches.
-      if(inheritedHere || empty || (wasLegacyInheritedHere && matchesOldInheritedCover)){
-        if(b.cover !== col.cover){ b.cover = col.cover; changed = true; }
-        const before = JSON.stringify([b.coverInherited,b.coverInheritedFromType,b.coverInheritedFromId,b.coverInheritedFrom]);
-        markInherited(b,type,col.id);
-        const after = JSON.stringify([b.coverInherited,b.coverInheritedFromType,b.coverInheritedFromId,b.coverInheritedFrom]);
-        if(before !== after) changed = true;
-      }
-    });
-
+    col.beatIds.forEach(beatId=>{ const b=beatById(beatId); if(!b) return; const inheritedHere = isInheritedFrom(b,type,col.id); const wasLegacyInheritedHere = !!(b.coverInheritedFrom && !b.coverInheritedFromId && String(b.coverInheritedFrom)===String(type)); const matchesOldInheritedCover = oldCover && b.cover === oldCover; const empty = !hasCover(b); if(inheritedHere || empty || (wasLegacyInheritedHere && matchesOldInheritedCover)){ if(b.cover !== col.cover){ b.cover = col.cover; changed = true; } const before = JSON.stringify([b.coverInherited,b.coverInheritedFromType,b.coverInheritedFromId,b.coverInheritedFrom]); markInherited(b,type,col.id); const after = JSON.stringify([b.coverInherited,b.coverInheritedFromType,b.coverInheritedFromId,b.coverInheritedFrom]); if(before !== after) changed = true; } });
     if(changed) save();
     return changed;
   }
-
   function currentAlbumId(){ try{ if(typeof currentAlbumId !== 'undefined') return currentAlbumId; }catch(e){} return window.currentAlbumId; }
   function currentMixtapeId(){ try{ if(typeof currentMixtapeId !== 'undefined') return currentMixtapeId; }catch(e){} return window.currentMixtapeId; }
   function syncCurrentAlbum(oldCover){ const id=currentAlbumId(); return id ? syncCollectionCover('album',id,oldCover) : false; }
   function syncCurrentMixtape(oldCover){ const id=currentMixtapeId(); return id ? syncCollectionCover('mixtape',id,oldCover) : false; }
-
   function rerenderAlbum(){ setTimeout(()=>{ try{ if(typeof renderAlbumDetail==='function') renderAlbumDetail(); if(typeof renderAlbums==='function') renderAlbums(); }catch(e){} },0); }
   function rerenderMixtape(){ setTimeout(()=>{ try{ if(typeof renderMixtapeDetail==='function') renderMixtapeDetail(); if(typeof renderMixtapes==='function') renderMixtapes(); }catch(e){} },0); }
-
-  // Wrap collection-cover functions that use explicit IDs.
   const oldSetAlbumCover = window.setAlbumCover;
-  if(typeof oldSetAlbumCover === 'function'){
-    window.setAlbumCover = function(id,file){
-      const s=st(); const album=s && byId(s.albums,id); const oldCover=album && album.cover;
-      const result = oldSetAlbumCover.apply(this, arguments);
-      setTimeout(()=>{ if(syncCollectionCover('album',id,oldCover)) rerenderAlbum(); },650);
-      return result;
-    };
-  }
-
+  if(typeof oldSetAlbumCover === 'function'){ window.setAlbumCover = function(id,file){ const s=st(); const album=s && byId(s.albums,id); const oldCover=album && album.cover; const result = oldSetAlbumCover.apply(this, arguments); setTimeout(()=>{ if(syncCollectionCover('album',id,oldCover)) rerenderAlbum(); },650); return result; }; }
   const oldCassetteCropUpload = window.cassetteCropUpload;
-  if(typeof oldCassetteCropUpload === 'function'){
-    window.cassetteCropUpload = function(id,file){
-      const s=st(); const mt=s && byId(s.mixtapes,id); const oldCover=mt && mt.cover;
-      const result = oldCassetteCropUpload.apply(this, arguments);
-      setTimeout(()=>{ if(syncCollectionCover('mixtape',id,oldCover)) rerenderMixtape(); },650);
-      return result;
-    };
-  }
-
-  // Manual song/beat cover upload should break inheritance for that beat.
+  if(typeof oldCassetteCropUpload === 'function'){ window.cassetteCropUpload = function(id,file){ const s=st(); const mt=s && byId(s.mixtapes,id); const oldCover=mt && mt.cover; const result = oldCassetteCropUpload.apply(this, arguments); setTimeout(()=>{ if(syncCollectionCover('mixtape',id,oldCover)) rerenderMixtape(); },650); return result; }; }
   const oldSetAlbumBeatCover = window.setAlbumBeatCover;
-  if(typeof oldSetAlbumBeatCover === 'function'){
-    window.setAlbumBeatCover = function(id,input){
-      const b=beatById(id);
-      if(b){ markManual(b); save(); }
-      return oldSetAlbumBeatCover.apply(this, arguments);
-    };
-  }
-
-  // Capture old collection cover before built-in input handlers replace it.
+  if(typeof oldSetAlbumBeatCover === 'function'){ window.setAlbumBeatCover = function(id,input){ const b=beatById(id); if(b){ markManual(b); save(); } return oldSetAlbumBeatCover.apply(this, arguments); }; }
   document.addEventListener('change', function(e){
-    const t=e.target;
-    if(!t || !t.matches) return;
-    const s=st();
-    if(!s) return;
-
-    if(t.matches('#albumCoverInput')){
-      const album=byId(s.albums,currentAlbumId());
-      const oldCover=album && album.cover;
-      setTimeout(()=>{ if(syncCurrentAlbum(oldCover)) rerenderAlbum(); },700);
-    }
-    if(t.matches('#mixtapeCoverInput')){
-      const mt=byId(s.mixtapes,currentMixtapeId());
-      const oldCover=mt && mt.cover;
-      setTimeout(()=>{ if(syncCurrentMixtape(oldCover)) rerenderMixtape(); },700);
-    }
-    if(t.matches('input[onchange*="setAlbumBeatCover"]')){
-      const m=(t.getAttribute('onchange')||'').match(/setAlbumBeatCover\(['"]([^'"]+)/);
-      if(m){ const b=beatById(m[1]); if(b){ markManual(b); save(); } }
-    }
+    const t=e.target; if(!t || !t.matches) return; const s=st(); if(!s) return;
+    if(t.matches('#albumCoverInput')){ const album=byId(s.albums,currentAlbumId()); const oldCover=album && album.cover; setTimeout(()=>{ if(syncCurrentAlbum(oldCover)) rerenderAlbum(); },700); }
+    if(t.matches('#mixtapeCoverInput')){ const mt=byId(s.mixtapes,currentMixtapeId()); const oldCover=mt && mt.cover; setTimeout(()=>{ if(syncCurrentMixtape(oldCover)) rerenderMixtape(); },700); }
+    if(t.matches('input[onchange*="setAlbumBeatCover"]')){ const m=(t.getAttribute('onchange')||'').match(/setAlbumBeatCover\(['"]([^'"]+)/); if(m){ const b=beatById(m[1]); if(b){ markManual(b); save(); } } }
   }, true);
-
-  // Keep newly-added songs synced whenever collection detail views are rendered.
   const previousRenderAlbumDetail = window.renderAlbumDetail;
-  if(typeof previousRenderAlbumDetail === 'function'){
-    window.renderAlbumDetail = function(){
-      const old = syncCurrentAlbum();
-      const result = previousRenderAlbumDetail.apply(this, arguments);
-      setTimeout(markVisibleInheritedCards,0);
-      return result;
-    };
-  }
+  if(typeof previousRenderAlbumDetail === 'function'){ window.renderAlbumDetail = function(){ const old = syncCurrentAlbum(); const result = previousRenderAlbumDetail.apply(this, arguments); setTimeout(markVisibleInheritedCards,0); return result; }; }
   const previousRenderMixtapeDetail = window.renderMixtapeDetail;
-  if(typeof previousRenderMixtapeDetail === 'function'){
-    window.renderMixtapeDetail = function(){
-      syncCurrentMixtape();
-      const result = previousRenderMixtapeDetail.apply(this, arguments);
-      setTimeout(markVisibleInheritedCards,0);
-      return result;
-    };
-  }
-
-  function markVisibleInheritedCards(){
-    document.querySelectorAll('.album-beat-card[data-beat-id], [id^="abi-"]').forEach(card=>{
-      const id=card.getAttribute('data-beat-id') || String(card.id||'').replace(/^abi-/,'');
-      const b=beatById(id);
-      card.setAttribute('data-cover-inherited', b && b.coverInherited === true ? 'true' : 'false');
-      if(b && b.coverInherited === true){
-        card.title = card.title || 'Coveret er arvet fra album/mixtape';
-      }
-    });
-  }
-
-  // Public helpers for future debugging/manual sync.
+  if(typeof previousRenderMixtapeDetail === 'function'){ window.renderMixtapeDetail = function(){ syncCurrentMixtape(); const result = previousRenderMixtapeDetail.apply(this, arguments); setTimeout(markVisibleInheritedCards,0); return result; }; }
+  function markVisibleInheritedCards(){ document.querySelectorAll('.album-beat-card[data-beat-id], [id^="abi-"]').forEach(card=>{ const id=card.getAttribute('data-beat-id') || String(card.id||'').replace(/^abi-/,''); const b=beatById(id); card.setAttribute('data-cover-inherited', b && b.coverInherited === true ? 'true' : 'false'); if(b && b.coverInherited === true){ card.title = card.title || 'Coveret er arvet fra album/mixtape'; } }); }
   window.syncCollectionCoverInheritance = syncCollectionCover;
   window.markBeatCoverManual = function(id){ const b=beatById(id); if(b){ markManual(b); save(); markVisibleInheritedCards(); return true; } return false; };
-
   document.addEventListener('DOMContentLoaded',()=>setTimeout(markVisibleInheritedCards,150));
   const mo=new MutationObserver(()=>{ requestAnimationFrame(markVisibleInheritedCards); });
   if(document.body) mo.observe(document.body,{childList:true,subtree:true});
@@ -733,44 +530,12 @@
 (function(){
   'use strict';
   const DEFAULTS = ['Gamle demoer','2024 beats','Ikke brukt','Klassikere'];
-  function st(){
-    window.state = window.state || {};
-    state.settings = state.settings || {};
-    state.settings.archiveCollections = state.settings.archiveCollections || [];
-    state.settings.deletedArchiveCollections = state.settings.deletedArchiveCollections || [];
-    return state;
-  }
-  function sanitizeArchiveCollections(){
-    const s = st();
-    const deleted = new Set(s.settings.deletedArchiveCollections || []);
-    s.settings.archiveCollections = Array.from(new Set(s.settings.archiveCollections || [])).filter(c => c && !deleted.has(c));
-    ['beats','albums','mixtapes'].forEach(k => (s[k] || []).forEach(item => {
-      if(item && deleted.has(item.archiveCollection)) item.archiveCollection = '';
-    }));
-  }
-  function rememberDeletedCollection(name){
-    if(!name || name === 'all') return;
-    const s = st();
-    s.settings.deletedArchiveCollections = Array.from(new Set([...(s.settings.deletedArchiveCollections || []), name]));
-    sanitizeArchiveCollections();
-    try{ window.saveState && window.saveState(); }catch(e){}
-  }
-  document.addEventListener('click', function(e){
-    const del = e.target && e.target.closest && e.target.closest('[data-marcus-delete-collection], .fa-chip-delete');
-    if(!del) return;
-    const name = del.getAttribute('data-marcus-delete-collection') || del.closest('[data-fa-col]')?.getAttribute('data-fa-col');
-    setTimeout(() => rememberDeletedCollection(name), 0);
-    setTimeout(() => { sanitizeArchiveCollections(); if(document.body.classList.contains('final-archive-active') && window.renderArchiveView) window.renderArchiveView(); }, 80);
-  }, true);
+  function st(){ window.state = window.state || {}; state.settings = state.settings || {}; state.settings.archiveCollections = state.settings.archiveCollections || []; state.settings.deletedArchiveCollections = state.settings.deletedArchiveCollections || []; return state; }
+  function sanitizeArchiveCollections(){ const s = st(); const deleted = new Set(s.settings.deletedArchiveCollections || []); s.settings.archiveCollections = Array.from(new Set(s.settings.archiveCollections || [])).filter(c => c && !deleted.has(c)); ['beats','albums','mixtapes'].forEach(k => (s[k] || []).forEach(item => { if(item && deleted.has(item.archiveCollection)) item.archiveCollection = ''; })); }
+  function rememberDeletedCollection(name){ if(!name || name === 'all') return; const s = st(); s.settings.deletedArchiveCollections = Array.from(new Set([...(s.settings.deletedArchiveCollections || []), name])); sanitizeArchiveCollections(); try{ window.saveState && window.saveState(); }catch(e){} }
+  document.addEventListener('click', function(e){ const del = e.target && e.target.closest && e.target.closest('[data-marcus-delete-collection], .fa-chip-delete'); if(!del) return; const name = del.getAttribute('data-marcus-delete-collection') || del.closest('[data-fa-col]')?.getAttribute('data-fa-col'); setTimeout(() => rememberDeletedCollection(name), 0); setTimeout(() => { sanitizeArchiveCollections(); if(document.body.classList.contains('final-archive-active') && window.renderArchiveView) window.renderArchiveView(); }, 80); }, true);
   const oldRender = window.renderArchiveView;
-  if(typeof oldRender === 'function'){
-    window.renderArchiveView = function(){
-      sanitizeArchiveCollections();
-      const result = oldRender.apply(this, arguments);
-      sanitizeArchiveCollections();
-      return result;
-    };
-  }
+  if(typeof oldRender === 'function'){ window.renderArchiveView = function(){ sanitizeArchiveCollections(); const result = oldRender.apply(this, arguments); sanitizeArchiveCollections(); return result; }; }
   document.addEventListener('DOMContentLoaded', sanitizeArchiveCollections);
   if(document.readyState !== 'loading') sanitizeArchiveCollections();
 })();
@@ -783,16 +548,11 @@
     const integrations = document.querySelector('.tab-btn[data-tab="integrations"], [data-tab="integrations"]');
     if(!archive || !integrations || !integrations.parentElement) return;
     if(archive.parentElement !== integrations.parentElement) return;
-    if(!(archive.compareDocumentPosition(integrations) & Node.DOCUMENT_POSITION_FOLLOWING)){
-      integrations.parentElement.insertBefore(archive, integrations);
-    }
+    if(!(archive.compareDocumentPosition(integrations) & Node.DOCUMENT_POSITION_FOLLOWING)){ integrations.parentElement.insertBefore(archive, integrations); }
     mo.disconnect();
   }
   function reorderAndMaybeStop(){ reorderTabs(); }
   const mo = new MutationObserver(reorderAndMaybeStop);
-  document.addEventListener('DOMContentLoaded', function(){
-    reorderTabs();
-    mo.observe(document.querySelector('.tabs')||document.body, { childList:true, subtree:true });
-  });
+  document.addEventListener('DOMContentLoaded', function(){ reorderTabs(); mo.observe(document.querySelector('.tabs')||document.body, { childList:true, subtree:true }); });
   if(document.readyState !== 'loading') reorderTabs();
 })();
