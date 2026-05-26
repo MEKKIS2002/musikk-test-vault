@@ -22,7 +22,7 @@
     return window._mvCurrentUserId || sessionStorage.getItem('mv_user_id');
   }
 
-  // ── Installer label-tab ───────────────────────────────────────────────── 
+  // ── Installer label-tab ─────────────────────────────────────────────────
   function installLabelTab(){
     const pkg = sessionStorage.getItem('mv_package');
     if(pkg !== 'label' && pkg !== 'admin') return;
@@ -561,7 +561,7 @@
               ${dStr ? `<span style="font-size:10px;color:rgba(255,255,255,.25)">${dStr}</span>` : ''}
             </div>
           </div>
-          ${hasAudio ? `<button onclick="window.labelPlayBeat('${b.id}')" style="background:#f4a443;border:none;color:#000;font-size:11px;font-weight:900;width:26px;height:26px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;border-radius:50%">▶</button>` : `<div style="width:26px"></div>`}
+          ${hasAudio ? '<button onclick="window.labelPlayBeat(\'' + b.id + '\')" style="background:#f4a443;border:none;color:#000;font-size:11px;font-weight:900;width:26px;height:26px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;border-radius:50%">▶</button>' : '<div style="width:26px"></div>'}
         </div>`;
       }).join('');
 
@@ -647,7 +647,7 @@
           return `<div style="display:flex;align-items:center;gap:10px;padding:7px 12px;border-bottom:1px solid rgba(255,255,255,.04);background:rgba(0,0,0,.2)">
             <span style="font-size:11px;color:rgba(255,255,255,.25);min-width:20px;font-family:system-ui">${String(i+1).padStart(2,'0')}</span>
             <div style="font-size:13px;font-weight:700;color:#f4ede4;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${bTitle}</div>
-            ${hasAudio ? `<button onclick="window.labelPlayBeat('${b.id}')" style="background:#f4a443;border:none;color:#000;font-size:11px;font-weight:900;width:24px;height:24px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;border-radius:50%">▶</button>` : `<div style="width:24px"></div>`}
+            ${hasAudio ? '<button onclick="window.labelPlayBeat(\'' + b.id + '\')" style="background:#f4a443;border:none;color:#000;font-size:11px;font-weight:900;width:24px;height:24px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;border-radius:50%">▶</button>' : '<div style="width:24px"></div>'}
           </div>`;
         }).join('');
         return `<div style="border:1px solid rgba(255,255,255,.06);margin-bottom:8px">
