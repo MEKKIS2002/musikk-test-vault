@@ -283,9 +283,15 @@
     qsa('.tab-btn[data-tab],[data-tab]').forEach(btn=>{if(btn.dataset&&btn.dataset.tab)btn.classList.toggle('active',btn.dataset.tab===target)});
     Object.entries(PANELS).forEach(([key,id])=>{
       const panel=document.getElementById(id); if(!panel)return;
-      if(key===target){panel.classList.remove('hidden');panel.style.display='';}
-      else if(key!=='archive'){panel.classList.add('hidden');panel.style.display='';}
-    });
+      if(key===target){
+        panel.classList.remove('hidden');
+        panel.style.display='';
+        requestAnimationFrame(()=>panel.classList.add('tab-visible'));
+      } else if(key!=='archive'){
+        panel.classList.remove('tab-visible');
+        panel.classList.add('hidden');
+        panel.style.display='';
+      }    });
   }
   function enhanceEmptyCrate(root=document){
     qsa('#archiveTab .fa-empty-art',root).forEach(box=>{
