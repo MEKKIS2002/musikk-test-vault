@@ -1237,8 +1237,9 @@ document.querySelectorAll(".tab-btn").forEach(btn=>btn.addEventListener("click",
     return;
   }
 
+  const TAB_ID_MAP = { adminpanel: 'adminPanelTab', label: 'labelTab' };
   const current = document.querySelector(".tab-view:not(.hidden)");
-  const next = document.getElementById(`${btn.dataset.tab}Tab`);
+  const next = document.getElementById(TAB_ID_MAP[btn.dataset.tab] || `${btn.dataset.tab}Tab`);
   if(!next) return;
   if(current && current !== next){ current.classList.remove("tab-visible"); current.classList.add("hidden"); }
   next.classList.remove("hidden");
