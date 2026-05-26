@@ -48,7 +48,8 @@
           <span class="label-icon">🏷</span>
           <span id="labelName" class="label-title">Label</span>
         </div>
-        <div style="display:flex;gap:8px">
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="ghost-btn label-invite-btn" onclick="window.labelShowOverview()" id="labelOverviewBtn">← Oversikt</button>
           <button class="ghost-btn label-invite-btn" onclick="window.labelShowFeed()">📋 Aktivitet</button>
           <button class="ghost-btn label-invite-btn" onclick="window.labelOpenInvite()">+ Inviter artist</button>
         </div>
@@ -57,16 +58,22 @@
       <div class="label-body">
         <!-- Sidebar -->
         <div class="label-sidebar" id="labelSidebar">
-          <div class="label-sidebar-hd">Artister</div>
+          <div style="padding:10px 12px">
+            <input id="labelArtistSearch" placeholder="Søk artist..." oninput="window.labelFilterArtists(this.value)"
+              style="width:100%;box-sizing:border-box;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#f4ede4;padding:7px 10px;font-size:12px;font-family:system-ui;outline:none;border-radius:0">
+          </div>
+          <div class="label-sidebar-hd" style="padding-top:4px">Artister</div>
           <div id="labelArtistList"><div class="label-loading">Laster...</div></div>
         </div>
 
-        <!-- Detail pane -->
+        <!-- Main: oversikt eller artist-detalj -->
         <div class="label-detail" id="labelDetail">
-          <div class="label-detail-empty">
-            <div style="font-size:32px;margin-bottom:8px">👈</div>
-            <div>Velg en artist fra listen</div>
+          <!-- Oversikt -->
+          <div id="labelOverviewPane">
+            <div id="labelOverviewContent"><div class="label-loading">Laster oversikt...</div></div>
           </div>
+          <!-- Artistdetalj -->
+          <div id="labelArtistPane" style="display:none"></div>
         </div>
       </div>
     </div>
@@ -105,7 +112,7 @@
     const s = document.createElement('style');
     s.id = 'label-css';
     s.textContent = `
-.label-dashboard { display:flex;flex-direction:column;height:100%;min-height:600px;font-family:system-ui }
+.label-dashboard { display:flex;flex-direction:column;min-height:600px;font-family:system-ui }
 .label-topbar { display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid rgba(255,255,255,.08) }
 .label-topbar-left { display:flex;align-items:center;gap:10px }
 .label-icon { font-size:18px }
@@ -114,9 +121,9 @@
 .label-body { display:flex;flex:1;min-height:0 }
 
 /* Sidebar */
-.label-sidebar { width:200px;flex-shrink:0;border-right:1px solid rgba(255,255,255,.08);overflow-y:auto }
-.label-sidebar-hd { font-size:10px;font-weight:800;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.35);padding:14px 16px 8px }
-.label-artist-row { display:flex;align-items:center;gap:10px;padding:9px 16px;cursor:pointer;transition:background .12s;border-left:3px solid transparent }
+.label-sidebar { width:210px;flex-shrink:0;border-right:1px solid rgba(255,255,255,.08);overflow-y:auto }
+.label-sidebar-hd { font-size:10px;font-weight:800;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.35);padding:8px 16px 6px }
+.label-artist-row { display:flex;align-items:center;gap:10px;padding:9px 14px;cursor:pointer;transition:background .12s;border-left:3px solid transparent }
 .label-artist-row:hover { background:rgba(255,255,255,.04) }
 .label-artist-row.active { background:rgba(244,164,67,.08);border-left-color:#f4a443 }
 .label-avatar { width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0 }
@@ -138,7 +145,7 @@
 .label-section-hd { font-size:10px;font-weight:800;letter-spacing:.15em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:10px }
 .label-album-row { display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.05) }
 .label-album-row:last-child { border-bottom:none }
-.label-album-cover { width:38px;height:38px;flex-shrink:0;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center;font-size:16px }
+.label-album-cover { width:38px;height:38px;flex-shrink:0;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center;font-size:16px;overflow:hidden }
 .label-album-name { font-size:13px;font-weight:700;color:#f4ede4;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis }
 .label-album-meta { font-size:11px;color:rgba(255,255,255,.4);margin-top:1px }
 .label-progress { height:3px;background:rgba(255,255,255,.1);overflow:hidden;min-width:60px }
@@ -151,9 +158,149 @@
 .badge-mixing { background:rgba(249,115,22,.15);color:#f97316 }
 .label-loading { padding:20px 16px;font-size:12px;color:rgba(255,255,255,.4);text-align:center }
 .label-empty { padding:20px 16px;font-size:12px;color:rgba(255,255,255,.4);text-align:center }
+
+/* Oversiktskort */
+.lov-grid { display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:24px }
+.lov-card { background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);padding:16px;text-align:center }
+.lov-n { font-size:28px;font-weight:900;color:#f4ede4;letter-spacing:-.06em;line-height:1 }
+.lov-l { font-size:10px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.12em;margin-top:4px }
+.lov-artist-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px }
+.lov-artist-card { background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);padding:16px;cursor:pointer;transition:all .15s }
+.lov-artist-card:hover { background:rgba(255,255,255,.07);border-color:rgba(244,164,67,.3) }
     `;
     document.head.appendChild(s);
   }
+
+  // ── Vis oversikt (landing) ───────────────────────────────────────────────
+  window.labelShowOverview = function(){
+    document.getElementById('labelOverviewPane').style.display = 'block';
+    document.getElementById('labelArtistPane').style.display  = 'none';
+    document.querySelectorAll('.label-artist-row').forEach(r=>r.classList.remove('active'));
+    const btn = document.getElementById('labelOverviewBtn');
+    if(btn) btn.style.display = 'none';
+  };
+
+  async function renderOverview(artists){
+    const el = document.getElementById('labelOverviewContent');
+    if(!el) return;
+
+    const token = await getToken();
+    const accepted = artists.filter(a=>a.status==='accepted');
+    const pending  = artists.filter(a=>a.status==='invited'||a.status==='pending');
+
+    // Hent stats for alle artister parallelt
+    const artistIds = accepted.map(a=>a.artist_id).filter(Boolean);
+    let allAlbums=[], allBeats=[], allMixtapes=[];
+    if(artistIds.length){
+      const [ar,br,mr] = await Promise.all([
+        fetch(`${SB_URL}/rest/v1/albums?owner_id=in.(${artistIds.join(',')})&archived=eq.false&select=id,owner_id,metadata,status`,{headers:sbH(token)}),
+        fetch(`${SB_URL}/rest/v1/beats?owner_id=in.(${artistIds.join(',')})&archived=eq.false&select=id,owner_id,metadata`,{headers:sbH(token)}),
+        fetch(`${SB_URL}/rest/v1/mixtapes?owner_id=in.(${artistIds.join(',')})&archived=eq.false&select=id,owner_id,metadata`,{headers:sbH(token)})
+      ]);
+      allAlbums   = ar.ok  ? await ar.json()  : [];
+      allBeats    = br.ok  ? await br.json()  : [];
+      allMixtapes = mr.ok  ? await mr.json()  : [];
+    }
+
+    // Globale stats
+    const totalBeats   = allBeats.length;
+    const totalAlbums  = allAlbums.length;
+    const doneVals     = allBeats.map(b=>Number((b.metadata||{}).done||0));
+    const avgDone      = doneVals.length ? Math.round(doneVals.reduce((a,b)=>a+b,0)/doneVals.length) : 0;
+    const nearDone     = allAlbums.filter(a=>Number((a.metadata||{}).done||0)>=80).length;
+
+    // Bygg profiler-map
+    const profMap = {};
+    accepted.forEach(a=>{ if(a.profile) profMap[a.artist_id]=a.profile; });
+
+    // Artistkort
+    const artistCards = accepted.map((a,i) => {
+      const prof    = profMap[a.artist_id] || {};
+      const name    = prof.username || a.artist_id?.slice(0,8) || '?';
+      const initials= name.slice(0,2).toUpperCase();
+      const col     = avatarColor(i);
+      const aBeats  = allBeats.filter(b=>b.owner_id===a.artist_id);
+      const aAlbums = allAlbums.filter(b=>b.owner_id===a.artist_id);
+      const aMixes  = allMixtapes.filter(b=>b.owner_id===a.artist_id);
+      const aDone   = aBeats.length ? Math.round(aBeats.reduce((s,b)=>s+Number((b.metadata||{}).done||0),0)/aBeats.length) : 0;
+      return `<div class="lov-artist-card" onclick="window.labelSelectArtist('${a.artist_id}')">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+          <div class="label-avatar" style="width:40px;height:40px;font-size:15px;background:${col.bg};color:${col.color};flex-shrink:0">${initials}</div>
+          <div style="min-width:0">
+            <div style="font-size:14px;font-weight:800;color:#f4ede4">${name}</div>
+            <div style="font-size:11px;color:rgba(255,255,255,.35)">${prof.email||''}</div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:10px">
+          <div style="background:rgba(255,255,255,.04);padding:8px;text-align:center">
+            <div style="font-size:16px;font-weight:800;color:#f4ede4">${aAlbums.length}</div>
+            <div style="font-size:9px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.1em">Albumer</div>
+          </div>
+          <div style="background:rgba(255,255,255,.04);padding:8px;text-align:center">
+            <div style="font-size:16px;font-weight:800;color:#f4ede4">${aMixes.length}</div>
+            <div style="font-size:9px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.1em">Mixtapes</div>
+          </div>
+          <div style="background:rgba(255,255,255,.04);padding:8px;text-align:center">
+            <div style="font-size:16px;font-weight:800;color:#f4ede4">${aBeats.length}</div>
+            <div style="font-size:9px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.1em">Sanger</div>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+          <span style="font-size:10px;color:rgba(255,255,255,.35)">Ferdigstillelse</span>
+          <span style="font-size:10px;color:#f4a443;font-weight:800">${aDone}%</span>
+        </div>
+        <div class="label-progress" style="height:4px"><div class="label-progress-fill" style="width:${aDone}%"></div></div>
+      </div>`;
+    }).join('');
+
+    el.innerHTML = `
+      <div class="lov-grid">
+        <div class="lov-card">
+          <div class="lov-n">${accepted.length}</div>
+          <div class="lov-l">Aktive artister</div>
+        </div>
+        <div class="lov-card">
+          <div class="lov-n">${totalAlbums}</div>
+          <div class="lov-l">Albumer totalt</div>
+        </div>
+        <div class="lov-card">
+          <div class="lov-n" style="color:#f4a443">${avgDone}%</div>
+          <div class="lov-l">Snitt ferdig</div>
+        </div>
+        <div class="lov-card">
+          <div class="lov-n" style="color:#34d399">${nearDone}</div>
+          <div class="lov-l">Nær ferdig (80%+)</div>
+        </div>
+      </div>
+
+      ${pending.length ? `<div style="background:rgba(244,164,67,.06);border:1px solid rgba(244,164,67,.15);padding:10px 14px;margin-bottom:20px;font-size:12px;color:rgba(244,164,67,.8)">
+        ⏳ ${pending.length} invitasjon${pending.length>1?'er':''} venter på svar
+      </div>` : ''}
+
+      <div class="label-section-hd" style="margin-bottom:12px">Artister</div>
+      ${accepted.length ? `<div class="lov-artist-grid">${artistCards}</div>` :
+        `<div style="font-size:13px;color:rgba(255,255,255,.3);padding:20px 0">Ingen artister ennå — inviter din første artist.</div>`}
+    `;
+  }
+
+  // ── Søk/filter artister i sidebar ───────────────────────────────────────
+  window.labelFilterArtists = function(val){
+    const query = val.toLowerCase();
+    document.querySelectorAll('.label-artist-row[data-id]').forEach(row => {
+      const name = (row.dataset.name||'').toLowerCase();
+      row.style.display = (!query || name.includes(query)) ? '' : 'none';
+    });
+    document.querySelectorAll('.label-pending-row').forEach(row => {
+      const name = (row.dataset.name||'').toLowerCase();
+      row.style.display = (!query || name.includes(query)) ? '' : 'none';
+    });
+    // Skjul seksjonsoverskrifter hvis alle under er skjult
+    document.querySelectorAll('.label-sidebar-hd').forEach(hd => {
+      const next = hd.nextElementSibling;
+      if(next && next.id==='labelArtistList') return;
+      hd.style.display = '';
+    });
+  };
 
   // ── Hent og render artistliste ──────────────────────────────────────────
   async function loadArtists(){
@@ -235,7 +382,7 @@
       const name = a.profile?.username || a.artist_id?.slice(0,8) || '?';
       const initials = name.slice(0,2).toUpperCase();
       const col = avatarColor(i);
-      html += `<div class="label-artist-row" data-id="${a.artist_id}" onclick="window.labelSelectArtist('${a.artist_id}')">
+      html += `<div class="label-artist-row" data-id="${a.artist_id}" data-name="${name}" onclick="window.labelSelectArtist('${a.artist_id}')">
         <div class="label-avatar" style="background:${col.bg};color:${col.color}">${initials}</div>
         <div style="min-width:0">
           <div class="label-artist-name">${name}</div>
@@ -248,7 +395,7 @@
       html += `<div class="label-sidebar-hd" style="margin-top:8px">Venter</div>`;
       pending.forEach(a => {
         const name = a.profile?.username || 'Ukjent';
-        html += `<div class="label-pending-row">
+        html += `<div class="label-pending-row" data-name="${name}">
           <div class="label-avatar" style="background:rgba(255,255,255,.06);color:rgba(255,255,255,.4)">?</div>
           <div style="min-width:0">
             <div class="label-artist-name">${name}</div>
@@ -275,18 +422,25 @@
 
     list.innerHTML = html;
 
-    // Auto-velg første accepted artist
-    if(accepted.length) window.labelSelectArtist(accepted[0].artist_id);
+    // Vis oversikt ved første innlasting
+    renderOverview(artists);
+    window.labelShowOverview();
   }
 
   // ── Artistdetalj ────────────────────────────────────────────────────────
   window.labelSelectArtist = async function(artistId){
+    // Bytt til artist-pane
+    document.getElementById('labelOverviewPane').style.display = 'none';
+    document.getElementById('labelArtistPane').style.display   = 'block';
+    const btn = document.getElementById('labelOverviewBtn');
+    if(btn) btn.style.display = '';
+
     // Marker aktiv i sidebar
     document.querySelectorAll('.label-artist-row').forEach(r => {
       r.classList.toggle('active', r.dataset.id === artistId);
     });
 
-    const detail = document.getElementById('labelDetail');
+    const detail = document.getElementById('labelArtistPane');
     if(!detail) return;
     detail.innerHTML = '<div class="label-detail-empty"><div class="label-loading">Laster artistdata...</div></div>';
 
@@ -593,7 +747,7 @@
     );
     if(typeof window.showToast==='function') window.showToast(`✓ ${name} fjernet fra labelen`);
     renderArtistList();
-    const detail = document.getElementById('labelDetail');
+    const detail = document.getElementById('labelArtistPane');
     if(detail) detail.innerHTML = '<div class="label-detail-empty"><div>Velg en artist fra listen</div></div>';
   };
 
