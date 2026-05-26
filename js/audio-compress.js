@@ -126,10 +126,11 @@
   // ── Batch-konverter alle WAV-beats ──────────────────────────────────────
   window.convertAllWavBeats = async function(){
     if(!window.r2Storage?.ready()){ if(typeof showToast==='function') showToast('⚠ R2 ikke klar'); return; }
-    if(!window.state?.beats){ if(typeof showToast==='function') showToast('⚠ State ikke klar'); return; }
+    const appState = window.state || (typeof state !== 'undefined' ? state : null);
+    if(!appState?.beats){ if(typeof showToast==='function') showToast('⚠ State ikke klar'); return; }
 
     // Finn beats med audio_url som kan være WAV
-    const candidates = window.state.beats.filter(b =>
+    const candidates = appState.beats.filter(b =>
       !b.archived && (b.audio_url||'').includes('worker')
     );
 
