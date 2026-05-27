@@ -156,10 +156,13 @@
     document.querySelectorAll('.pipeline-beat-row').forEach(row=>{const ok=(!q||row.textContent.toLowerCase().includes(q))&&(!st||row.dataset.status===st)&&(!pr||row.dataset.priority===pr);row.style.display=ok?'flex':'none';});
   }
 
+  // Register redesign for db.js to call after its own renderAlbumDetail
+  window._redesignAlbumDetail = redesignAlbumDetail;
+  // Also wrap in case script order changes in future
   const _oldRenderAlbumDetail=window.renderAlbumDetail;
   window.renderAlbumDetail=function(){
     if(typeof _oldRenderAlbumDetail==='function')_oldRenderAlbumDetail();
-    redesignAlbumDetail();
+    else redesignAlbumDetail();
   };
 
   function redesignAlbumDetail(){
@@ -1091,7 +1094,14 @@ window.markAllNotifsRead = async function(){
 
 // ── Del-modal ─────────────────────────────────────────────────────────────
 window.openShareModal = async function(contentType, contentId, contentName){
-  const uid = window._mvCurrentUserId;
+  let uid = window._mvCurrentUserId;
+  if(!uid) {
+    try {
+      const { data: { session } } = await window.supabaseClient.auth.getSession();
+      uid = session?.user?.id;
+      if(uid) window._mvCurrentUserId = uid;
+    } catch(e) {}
+  }
   if(!uid){ showToast('Logg inn for å dele'); return; }
 
   // Hent eksisterende tilganger

@@ -546,14 +546,20 @@ function renderAlbumDetail(){
       <span>${(()=>{const n=(album.beatIds||[]).filter(id=>{const b=state.beats.find(x=>x.id===id);return b&&!b.archived;}).length;return n+' beat'+(n===1?'':'s');})()}</span>
       <div id="albumNowPlaying" class="hint" style="margin-top:8px"></div>
     </div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <div class="album-hd-actions">
       <button class="primary-btn" id="playAlbumBtn" onclick="playAlbumFromStart('${album.id}')">▶ Spill fra start</button>
+      ${isAdmin()?`<label class="ghost-btn" style="cursor:pointer">🖼️ Bytt bilde<input type="file" accept="image/*" hidden onchange="setAlbumCover('${album.id}',this.files[0])"></label>`:''}
+      <button class="ghost-btn" onclick="albumToggleABSide('${album.id}')" id="abSideBtn">💿 A/B-side</button>
+      ${isAdmin()?`<button class="ghost-btn" onclick="window.albumPitchMode && window.albumPitchMode('${album.id}')" title="Artist one-pager">📄 Pitch</button>`:''}
+      ${!album._shared?`<button class="ghost-btn" onclick="openShareDirect('album','${esc(album.id)}','${esc(album.name)}')">👤 Del med bruker</button>`:''}
       <button class="small-btn danger hidden" id="stopAlbumBtn" onclick="stopCollectionPlayback()">⏹ Stopp</button>
     </div>`;
   const beats=beatsFromIds(album.beatIds);
   renderAlbumBeats(beats);
   updateCollectionPlayerUI();
   updateArchiveToolbarButtons?.();
+  // Apply any post-render enhancement from app.js
+  if(typeof window._redesignAlbumDetail==='function') setTimeout(window._redesignAlbumDetail, 0);
 }
 
 let collectionDrag={beatId:null,mode:null};
@@ -768,6 +774,50 @@ window.openShareDirect = function(type, id, name) {
     },200);
   }
 };
+// ── openShareDirect — robust share opener ─────────────────────────────────────
+window.openShareDirect = function(type, id, name) {
+  const fn = window.openShareModal;
+  if(typeof fn === 'function') { fn(type, id, name||id); return; }
+  setTimeout(function(){
+    if(typeof window.openShareModal==='function') window.openShareModal(type,id,name||id);
+    else if(typeof showToast==='function') showToast('⚠ Last inn siden på nytt og prøv igjen');
+  }, 300);
+};
+
+// ── downloadBeat ──────────────────────────────────────────────────────────────
+window.downloadBeat = function(id) {
+  const b=(typeof state!=='undefined'?state:window.state)?.beats?.find(x=>x.id===id);
+  const url=b?.audio_url||b?.url||b?.driveUrl||b?.drive_url;
+  if(!url){if(typeof showToast==='function')showToast('⚠ Ingen lydfil å laste ned');return;}
+  const a=document.createElement('a');
+  a.href=url; a.download=(b.name||'beat').replace(/[^a-z0-9 ._-]/gi,'_')+'.mp3';
+  a.target='_blank'; document.body.appendChild(a); a.click(); setTimeout(()=>a.remove(),300);
+};
+
+// ── renameBeatInline ──────────────────────────────────────────────────────────
+window.renameBeatInline = function(id) {
+  const titleEl = document.getElementById('abt-' + id);
+  if (!titleEl) return;
+  const b=(typeof state!=='undefined'?state:window.state).beats.find(x=>x.id===id);
+  if (!b) return;
+  const old = b.name||'';
+  const inp = document.createElement('input');
+  inp.type='text'; inp.value=old;
+  inp.style.cssText='background:rgba(255,255,255,.08);border:1px solid rgba(244,164,67,.5);color:#f4ede4;font-size:inherit;font-weight:inherit;font-family:inherit;padding:2px 8px;border-radius:6px;outline:none;min-width:120px;max-width:240px';
+  titleEl.replaceWith(inp); inp.focus(); inp.select();
+  function commit(){
+    const n=inp.value.trim();
+    if(n&&n!==old){b.name=n;saveState();if(typeof showToast==='function')showToast('✓ Navn lagret');}
+    const mixV=document.getElementById('mixtapeDetailView');
+    const albV=document.getElementById('albumDetailView');
+    if(mixV&&!mixV.classList.contains('hidden')){if(typeof renderMixtapeDetail==='function')renderMixtapeDetail();}
+    else if(albV&&!albV.classList.contains('hidden')){if(typeof renderAlbumDetail==='function')renderAlbumDetail();}
+    else{const d=document.createElement('div');d.id='abt-'+id;d.className='ab-title';d.textContent=n||old;inp.replaceWith(d);}
+  }
+  inp.addEventListener('blur',commit);
+  inp.addEventListener('keydown',e=>{if(e.key==='Enter')inp.blur();if(e.key==='Escape'){inp.value=old;inp.blur();}});
+};
+
 function toggleAlbumBeat(id){
   // Mount inline editors that appear when card expands
   requestAnimationFrame(()=>{
