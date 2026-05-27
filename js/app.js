@@ -156,9 +156,7 @@
     document.querySelectorAll('.pipeline-beat-row').forEach(row=>{const ok=(!q||row.textContent.toLowerCase().includes(q))&&(!st||row.dataset.status===st)&&(!pr||row.dataset.priority===pr);row.style.display=ok?'flex':'none';});
   }
 
-  // Register redesign for db.js to call after its own renderAlbumDetail
   window._redesignAlbumDetail = redesignAlbumDetail;
-  // Also wrap in case script order changes in future
   const _oldRenderAlbumDetail=window.renderAlbumDetail;
   window.renderAlbumDetail=function(){
     if(typeof _oldRenderAlbumDetail==='function')_oldRenderAlbumDetail();
@@ -201,10 +199,10 @@
           </p>
           <div class="album-detail-actions">
             <button class="primary-btn" id="playAlbumBtn" onclick="playAlbumFromStart('${album.id}');document.getElementById('albumDetailHd')?.classList.add('vinyl-spinning')">▶ Spill fra start</button>
-            ${window.isAdminMode ? `<label class="ghost-btn" style="cursor:pointer">🖼️ Bytt albumbilde<input type="file" accept="image/*" hidden onchange="setAlbumCover('${album.id}',this.files[0])"></label>` : ''}
+            ${(typeof isAdmin==='function'?isAdmin():window.isAdminMode) ? `<label class="ghost-btn" style="cursor:pointer">🖼️ Bytt albumbilde<input type="file" accept="image/*" hidden onchange="setAlbumCover('${album.id}',this.files[0])"></label>` : ''}
             <button class="ghost-btn" onclick="albumToggleABSide('${album.id}')" id="abSideBtn" title="A/B-side visning">💿 A/B-side</button>
-            ${window.isAdminMode ? `<button class="ghost-btn" onclick="window.albumPitchMode('${album.id}')" title="Artist one-pager">📄 Pitch</button>` : ''}
-            ${!album._shared ? `<button class="ghost-btn" onclick="openShareDirect('album','${esc(album.id)}','${esc(album.name)}')">👤 Del med bruker</button>` : ''}
+            ${(typeof isAdmin==='function'?isAdmin():window.isAdminMode) ? `<button class="ghost-btn" onclick="window.albumPitchMode('${album.id}')" title="Artist one-pager">📄 Pitch</button>` : ''}
+            ${!album._shared ? `<button class="ghost-btn" onclick="window.openShareModal('album','${esc(album.id)}','${esc(album.name)}')">👤 Del med bruker</button>` : ''}
             <button class="small-btn danger hidden" id="stopAlbumBtn" onclick="stopCollectionPlayback()">⏹ Stopp</button>
           </div>
         </div>
@@ -1094,14 +1092,11 @@ window.markAllNotifsRead = async function(){
 
 // ── Del-modal ─────────────────────────────────────────────────────────────
 window.openShareModal = async function(contentType, contentId, contentName){
-  let uid = window._mvCurrentUserId;
-  if(!uid) {
-    try {
-      const { data: { session } } = await window.supabaseClient.auth.getSession();
-      uid = session?.user?.id;
-      if(uid) window._mvCurrentUserId = uid;
-    } catch(e) {}
-  }
+  // uid kan mangle om session restored async — hent fra sessionStorage som fallback
+  const uid = window._mvCurrentUserId
+    || sessionStorage.getItem('mv_user_id')
+    || (await window.supabaseClient?.auth?.getSession().catch(()=>({})))?.data?.session?.user?.id;
+  if(uid && !window._mvCurrentUserId) window._mvCurrentUserId = uid;
   if(!uid){ showToast('Logg inn for å dele'); return; }
 
   // Hent eksisterende tilganger

@@ -414,72 +414,89 @@
   window._llSavedRange = null;
   window._llSavedEditor = null;
 
-  // Track selection using selectionchange (most reliable cross-browser)
-  document.addEventListener('selectionchange', () => {
-    const sel = window.getSelection();
-    if (!sel || sel.isCollapsed || sel.rangeCount === 0) return;
-    const anchor = sel.anchorNode;
-    if (!anchor) return;
-    const node = anchor.nodeType === 3 ? anchor.parentElement : anchor;
-    const editor = node?.closest?.('.ll-highlight-editor');
-    if (editor) {
-      window._llSavedRange  = sel.getRangeAt(0).cloneRange();
-      window._llSavedEditor = editor;
+  // ── Textarea selection tracking ──────────────────────────────────────────────
+  // window.getSelection() does NOT capture <textarea> selections.
+  // We use the 'select' + 'mouseup' + 'keyup' events on each textarea instead.
+  function _llBindTextarea(ta) {
+    if (!ta || ta.dataset.llColorBound) return;
+    ta.dataset.llColorBound = '1';
+    function onSel() {
+      if (ta.selectionStart === ta.selectionEnd) return; // collapsed — keep last
+      window._llSavedEditor = ta;
+      window._llSavedRange  = { start: ta.selectionStart, end: ta.selectionEnd, isTA: true };
       const hint = document.getElementById('llColorHint');
-      if (hint) {
-        const secId = editor.dataset.sectionId;
-        const beat  = getBeat(window.currentLyricLabBeatId);
-        const sec   = (getSections(beat||{})||[]).find(s=>s.id===secId);
-        hint.textContent = sec ? '✓ ' + sec.title + ' — klikk farge' : '✓ Klikk farge';
-        hint.style.color = '#f4a443';
-      }
+      if (hint) { hint.textContent = '\u2713 Klikk farge'; hint.style.color = '#f4a443'; }
     }
-  });
+    ta.addEventListener('select', onSel);
+    ta.addEventListener('mouseup', onSel);
+    ta.addEventListener('keyup', onSel);
+  }
+
+  // Bind all current and future ll-textareas
+  function _llBindAllTextareas() {
+    document.querySelectorAll('.ll-textarea').forEach(_llBindTextarea);
+  }
+  document.addEventListener('click', () => setTimeout(_llBindAllTextareas, 80));
+  setTimeout(_llBindAllTextareas, 500);
+
 
   window.llApplyColorActive = function(color) {
     const editor = window._llSavedEditor;
     const range  = window._llSavedRange;
 
     if (!editor || !range) {
-      if(typeof showToast==='function') showToast('Marker tekst i en seksjon først');
+      if(typeof showToast==='function') showToast('Marker tekst i en seksjon f\u00f8rst');
       return;
     }
 
     try {
-      if (color) {
-        // Remove any existing mark elements inside the range first
-        _unwrapMarks(range);
-        // Create a fresh clone of the range (unwrapMarks may have changed DOM)
-        const freshRange = window._llSavedRange;
-        if (!freshRange || freshRange.collapsed) {
-          if(typeof showToast==='function') showToast('Marker tekst på nytt');
-          return;
+      // ── Textarea (index-based) approach ──────────────────────────────────────
+      if (editor.tagName === 'TEXTAREA' || range.isTA) {
+        const ta = editor;
+        // Re-read current selection in case it was updated since we saved
+        const start = (ta.selectionStart !== ta.selectionEnd) ? ta.selectionStart : range.start;
+        const end   = (ta.selectionStart !== ta.selectionEnd) ? ta.selectionEnd   : range.end;
+        if (start === end) { if(typeof showToast==='function') showToast('Marker tekst p\u00e5 nytt'); return; }
+        const val     = ta.value;
+        const selected = val.slice(start, end);
+        let newVal;
+        if (color) {
+          // Strip any existing color markers inside the selection first
+          const stripped = selected.replace(/%%COLOR:[^%]+%%([\s\S]*?)%%ENDCOLOR%%/g, '$1');
+          newVal = val.slice(0, start) + '%%COLOR:' + color + '%%' + stripped + '%%ENDCOLOR%%' + val.slice(end);
+        } else {
+          // Remove all color markers in the whole section
+          newVal = val.replace(/%%COLOR:[^%]+%%([\s\S]*?)%%ENDCOLOR%%/g, '$1');
         }
-        // Wrap with <mark>
-        const mark = document.createElement('mark');
-        mark.style.cssText = 'background:' + color + ';border-radius:3px;padding:0 2px;';
-        try {
-          freshRange.surroundContents(mark);
-        } catch(e) {
-          // Selection spans elements — extract and wrap
-          const frag = freshRange.extractContents();
-          mark.appendChild(frag);
-          freshRange.insertNode(mark);
-        }
-      } else {
-        // Clear — replace marks with plain text
-        _unwrapMarks(range);
+        ta.value = newVal;
+        const secId = ta.dataset.sectionId;
+        if (secId && typeof llHighlightInput === 'function') llHighlightInput(ta, secId);
+        window._llSavedRange  = null;
+        window._llSavedEditor = null;
+        const hint = document.getElementById('llColorHint');
+        if (hint) { hint.textContent = 'Marker tekst i editoren, klikk s\u00e5 farge'; hint.style.color = ''; }
+        if(typeof showToast==='function') showToast(color ? '\u2713 Farge brukt' : '\u2713 Farge fjernet');
+        return;
       }
 
-      // Trigger save
+      // ── contenteditable (Range-based) fallback ───────────────────────────────
+      if (color) {
+        _unwrapMarks(range);
+        const freshRange = window._llSavedRange;
+        if (!freshRange || freshRange.collapsed) { if(typeof showToast==='function') showToast('Marker tekst p\u00e5 nytt'); return; }
+        const mark = document.createElement('mark');
+        mark.style.cssText = 'background:' + color + ';border-radius:3px;padding:0 2px;';
+        try { freshRange.surroundContents(mark); }
+        catch(e) { const frag=freshRange.extractContents(); mark.appendChild(frag); freshRange.insertNode(mark); }
+      } else {
+        _unwrapMarks(range);
+      }
       const secId = editor.dataset.sectionId;
-      if (secId) llHighlightInput(editor, secId);
-
-      // Reset saved range after applying
+      if (secId && typeof llHighlightInput === 'function') llHighlightInput(editor, secId);
       window._llSavedRange  = null;
       window._llSavedEditor = null;
       const hint = document.getElementById('llColorHint');
-      if (hint) { hint.textContent = 'Marker tekst i editoren, klikk så farge'; hint.style.color = ''; }
+      if (hint) { hint.textContent = 'Marker tekst i editoren, klikk s\u00e5 farge'; hint.style.color = ''; }
 
     } catch(e) {
       console.warn('[LyricLab] Color apply error:', e);
