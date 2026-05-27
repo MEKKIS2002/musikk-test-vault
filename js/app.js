@@ -202,7 +202,7 @@
             ${(typeof isAdmin==='function'?isAdmin():window.isAdminMode) ? `<label class="ghost-btn" style="cursor:pointer">🖼️ Bytt albumbilde<input type="file" accept="image/*" hidden onchange="setAlbumCover('${album.id}',this.files[0])"></label>` : ''}
             <button class="ghost-btn" onclick="albumToggleABSide('${album.id}')" id="abSideBtn" title="A/B-side visning">💿 A/B-side</button>
             ${(typeof isAdmin==='function'?isAdmin():window.isAdminMode) ? `<button class="ghost-btn" onclick="window.albumPitchMode('${album.id}')" title="Artist one-pager">📄 Pitch</button>` : ''}
-            ${!album._shared ? `<button class="ghost-btn" onclick="window.openShareModal('album','${esc(album.id)}','${esc(album.name)}')">👤 Del med bruker</button>` : ''}
+            ${!album._shared ? `<button class="ghost-btn" onclick="window.openShareModal('album','${album.id}','${album.name.replace(/'/g,"\\'")}')">👤 Del med bruker</button>` : ''}
             <button class="small-btn danger hidden" id="stopAlbumBtn" onclick="stopCollectionPlayback()">⏹ Stopp</button>
           </div>
         </div>
@@ -1092,12 +1092,9 @@ window.markAllNotifsRead = async function(){
 
 // ── Del-modal ─────────────────────────────────────────────────────────────
 window.openShareModal = async function(contentType, contentId, contentName){
-  // uid kan mangle om session restored async — hent fra sessionStorage som fallback
-  const uid = window._mvCurrentUserId
-    || sessionStorage.getItem('mv_user_id')
-    || (await window.supabaseClient?.auth?.getSession().catch(()=>({})))?.data?.session?.user?.id;
+  const uid = window._mvCurrentUserId || sessionStorage.getItem('mv_user_id');
   if(uid && !window._mvCurrentUserId) window._mvCurrentUserId = uid;
-  if(!uid){ showToast('Logg inn for å dele'); return; }
+  if(!uid){ showToast('Logg inn for \u00e5 dele'); return; }
 
   // Hent eksisterende tilganger
   const {data:{session}} = await window.supabaseClient.auth.getSession();

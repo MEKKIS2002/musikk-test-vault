@@ -548,9 +548,9 @@ function renderAlbumDetail(){
     </div>
     <div class="album-hd-actions">
       <button class="primary-btn" id="playAlbumBtn" onclick="playAlbumFromStart('${album.id}')">▶ Spill fra start</button>
-      ${isAdmin()?`<label class="ghost-btn" style="cursor:pointer">🖼️ Bytt bilde<input type="file" accept="image/*" hidden onchange="setAlbumCover('${album.id}',this.files[0])"></label>`:''}
+      ${isAdmin()?'<label class="ghost-btn" style="cursor:pointer">🖼️ Bytt bilde<input type="file" accept="image/*" hidden onchange="setAlbumCover(\''+album.id+'\',this.files[0])"></label>':''}
       <button class="ghost-btn" onclick="albumToggleABSide('${album.id}')" id="abSideBtn">💿 A/B-side</button>
-      ${isAdmin()?`<button class="ghost-btn" onclick="window.albumPitchMode && window.albumPitchMode('${album.id}')" title="Artist one-pager">📄 Pitch</button>`:''}
+      ${isAdmin()?'<button class="ghost-btn" onclick="window.albumPitchMode&&window.albumPitchMode(\''+album.id+'\')" title="Pitch">📄 Pitch</button>':''}
       <button class="ghost-btn" onclick="window.openShareModal('album','${esc(album.id)}','${esc(album.name)}')">👤 Del med bruker</button>
       <button class="small-btn danger hidden" id="stopAlbumBtn" onclick="stopCollectionPlayback()">⏹ Stopp</button>
     </div>`;
@@ -711,33 +711,23 @@ function renderAlbumBeats(beats,mode,customEl){
     </div>`;
   }).join("");
 }
-// ── openShareDirect wrapper ────────────────────────────────────────────────────
-window.openShareDirect = function(type, id, name) {
-  if(typeof window.openShareModal==='function') window.openShareModal(type,id,name||id);
-  else if(typeof showToast==='function') showToast('\u26a0 Last inn siden p\u00e5 nytt');
-};
-
-// ── downloadBeat ──────────────────────────────────────────────────────────────
+// ── downloadBeat / renameBeatInline ─────────────────────────────────────────
 window.downloadBeat = function(id) {
   const b=(typeof state!=='undefined'?state:window.state)?.beats?.find(x=>x.id===id);
   const url=b?.audio_url||b?.url||b?.driveUrl||b?.drive_url;
-  if(!url){if(typeof showToast==='function')showToast('\u26a0 Ingen lydfil \u00e5 laste ned');return;}
-  const a=document.createElement('a');
-  a.href=url; a.download=(b.name||'beat').replace(/[^a-z0-9 ._-]/gi,'_')+'.mp3';
-  a.target='_blank'; document.body.appendChild(a); a.click(); setTimeout(()=>a.remove(),300);
+  if(!url){if(typeof showToast==='function')showToast('\u26a0 Ingen lydfil');return;}
+  const a=document.createElement('a');a.href=url;a.download=(b.name||'beat').replace(/[^a-z0-9 ._-]/gi,'_')+'.mp3';
+  a.target='_blank';document.body.appendChild(a);a.click();setTimeout(()=>a.remove(),300);
 };
-
-// ── renameBeatInline ──────────────────────────────────────────────────────────
 window.renameBeatInline = function(id) {
-  const titleEl=document.getElementById('abt-'+id); if(!titleEl)return;
-  const b=(typeof state!=='undefined'?state:window.state).beats.find(x=>x.id===id); if(!b)return;
+  const titleEl=document.getElementById('abt-'+id);if(!titleEl)return;
+  const b=(typeof state!=='undefined'?state:window.state).beats.find(x=>x.id===id);if(!b)return;
   const old=b.name||'';
-  const inp=document.createElement('input'); inp.type='text'; inp.value=old;
+  const inp=document.createElement('input');inp.type='text';inp.value=old;
   inp.style.cssText='background:rgba(255,255,255,.08);border:1px solid rgba(244,164,67,.5);color:#f4ede4;font-size:inherit;font-weight:inherit;font-family:inherit;padding:2px 8px;border-radius:6px;outline:none;min-width:120px;max-width:240px';
-  titleEl.replaceWith(inp); inp.focus(); inp.select();
-  function commit(){
-    const n=inp.value.trim(); if(n&&n!==old){b.name=n;saveState();if(typeof showToast==='function')showToast('\u2713 Navn lagret');}
-    const mixV=document.getElementById('mixtapeDetailView'), albV=document.getElementById('albumDetailView');
+  titleEl.replaceWith(inp);inp.focus();inp.select();
+  function commit(){const n=inp.value.trim();if(n&&n!==old){b.name=n;saveState();if(typeof showToast==='function')showToast('\u2713 Navn lagret');}
+    const mixV=document.getElementById('mixtapeDetailView'),albV=document.getElementById('albumDetailView');
     if(mixV&&!mixV.classList.contains('hidden')){if(typeof renderMixtapeDetail==='function')renderMixtapeDetail();}
     else if(albV&&!albV.classList.contains('hidden')){if(typeof renderAlbumDetail==='function')renderAlbumDetail();}
     else{const d=document.createElement('div');d.id='abt-'+id;d.className='ab-title';d.textContent=n||old;inp.replaceWith(d);}
@@ -1085,8 +1075,8 @@ function renderMixtapeDetail(){
       </div>
       <div class="mixtape-detail-actions">
         <button class="primary-btn" id="playMixtapeBtn" onclick="playMixtapeFromStart('${mt.id}')">▶ Spill fra start</button>
-        ${!mt._shared?`<button class="ghost-btn" onclick="window.openShareModal('mixtape','${esc(mt.id)}','${esc(mt.name)}')">👤 Del med bruker</button>`:''}
-        ${isAdmin()?`<button class="ghost-btn" onclick="window.mixtapeShareMode && window.mixtapeShareMode('${esc(mt.id)}')">📄 Pitch</button>`:''}
+        <button class="ghost-btn" onclick="window.openShareModal('mixtape','${esc(mt.id)}','${esc(mt.name)}')">👤 Del med bruker</button>
+        <button class="ghost-btn" onclick="window.mixtapeShareMode&&window.mixtapeShareMode('${esc(mt.id)}')">📄 Pitch</button>
         <button class="small-btn danger hidden" id="stopMixtapeBtn" onclick="stopCollectionPlayback()">⏹ Stopp</button>
       </div>
     </div>
