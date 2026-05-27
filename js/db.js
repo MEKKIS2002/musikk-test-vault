@@ -663,46 +663,55 @@ function renderAlbumBeats(beats,mode,customEl){
         </div>
       </div>`;
     }
-    const stars=Array.from({length:10},(_,i)=>`<button class="${i<(b.rating||0)?"on":""}" onclick="setAlbumBeatRating('${b.id}',${i+1})">★</button>`).join("");
+    const stars=Array.from({length:10},(_,i)=>`<button class="${i<(b.rating||0)?"on":""}" onclick="setAlbumBeatRating('${b.id}',${i+1})">\u2605</button>`).join("");
     const dragAttrs=canDrag?`draggable="true" ondragstart="startCollectionDrag(event,'${b.id}','${listMode}')" ondragend="endCollectionDrag()" ondragover="dragBeatOver(event,'${b.id}')" ondragleave="dragBeatLeave(event,'${b.id}')" ondrop="dropCollectionBeat(event,'${b.id}','${listMode}')"`:"";
+    const noAudio=!(b.audio_url||b.url);
+    const noLyric=!(b.lyrics||(b.lyricSections||[]).some(s=>s.text?.trim()));
+    const pct=Number(b.done||0);
+    const pctCol=pct>=70?'#34d399':pct>=40?'#f97316':'#fb7185';
     return`<div${songBorderAttrs(b.id,listMode)} id="abi-${b.id}" data-beat-id="${b.id}" ${dragAttrs}>
       <div class="ab-top">
         <div class="ab-cover-wrap" onclick="toggleAlbumBeat('${b.id}')">
           ${coverHtml}
         </div>
         <div class="ab-body">
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
-            <div style="display:flex;align-items:center;gap:8px;min-width:0">
-              <span style="font-size:11px;color:rgba(255,255,255,.25);font-variant-numeric:tabular-nums;font-weight:700;flex-shrink:0">${String(idx+1).padStart(2,'0')}</span>
-              <div class="ab-title" id="abt-${b.id}" style="min-width:0">${esc(b.name)}</div>
-              <button onclick="event.stopPropagation();renameBeatInline('${b.id}')" title="Gi nytt navn" class="ab-rename-btn" style="background:none;border:none;cursor:pointer;color:rgba(255,255,255,.2);font-size:11px;padding:1px 3px;flex-shrink:0;opacity:0;transition:opacity .15s">✏️</button>
-              ${b.uploadedBy?`<span style="font-size:10px;font-weight:700;letter-spacing:.06em;color:var(--mv-amber,#ff8a1f);opacity:.8;white-space:nowrap">👤 ${esc(b.uploadedBy)}</span>`:''}
+          <div class="ab-row-top">
+            <div class="ab-row-left">
+              <span class="ab-num">${String(idx+1).padStart(2,'0')}</span>
+              <div class="ab-title" id="abt-${b.id}">${esc(b.name)}</div>
+              <button class="ab-rename-btn" onclick="event.stopPropagation();renameBeatInline('${b.id}')" title="Gi nytt navn">✏️</button>
+              ${b.uploadedBy?`<span class="ab-uploader">\u{1F464} ${esc(b.uploadedBy)}</span>`:''}
             </div>
-            <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
-              <button class="ab-inline-play" onclick="event.stopPropagation();playSingleBeat('${b.id}')" title="Spill sang" style="width:30px;height:30px;border-radius:50%;background:rgba(244,164,67,.15);border:1px solid rgba(244,164,67,.3);color:#f4a443;font-size:13px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:background .12s">▶</button>
-              <button class="star-btn${b.favorite?" active":""}" data-fav-id="${b.id}" onclick="event.stopPropagation();toggleFav('${b.id}',this)" style="font-size:20px;padding:0;flex-shrink:0">★</button>
-            ${(()=>{ const noAudio=!(b.audio_url||b.url); const noLyric=!(b.lyrics||(b.lyricSections||[]).some(s=>s.text?.trim())); if(noAudio) return '<span title="Mangler lydfil" style="width:7px;height:7px;border-radius:50%;background:#fb7185;flex-shrink:0;display:inline-block;margin-top:2px"></span>'; if(noLyric) return '<span title="Mangler tekst" style="width:7px;height:7px;border-radius:50%;background:#f97316;flex-shrink:0;display:inline-block;margin-top:2px"></span>'; return ''; })()}
+            <div class="ab-row-right">
+              <button class="ab-play-pill" onclick="event.stopPropagation();playSingleBeat('${b.id}')" title="Spill sang">\u25B6</button>
+              <button class="star-btn${b.favorite?" active":""}" data-fav-id="${b.id}" onclick="event.stopPropagation();toggleFav('${b.id}',this)">\u2605</button>
+              ${noAudio?'<span class="ab-status-dot red" title="Mangler lydfil"></span>':''}
+            </div>
           </div>
           <div class="ab-stars" onclick="event.stopPropagation()">${stars}</div>
           ${listMode==="album"?`<div class="progress-wrap" onclick="event.stopPropagation()">
-            <div class="progress-label"><span>Ferdig</span><strong id="abidone-${b.id}">${b.done||0}%</strong></div>
-            <div class="progress-bar"><div id="abibar-${b.id}" style="width:${b.done||0}%"></div></div>
-            <input type="range" min="0" max="100" value="${b.done||0}" style="padding:0;border:none;background:transparent;accent-color:var(--accent);cursor:pointer;width:100%;margin-top:4px" oninput="setAlbumBeatDone('${b.id}',this.value)">
+            <div class="progress-label"><span>Ferdig</span><strong id="abidone-${b.id}">${pct}%</strong></div>
+            <div class="progress-bar"><div id="abibar-${b.id}" style="width:${pct}%;background:${pctCol}"></div></div>
+            <input type="range" min="0" max="100" value="${pct}" style="padding:0;border:none;background:transparent;accent-color:var(--accent);cursor:pointer;width:100%;margin-top:4px" oninput="setAlbumBeatDone('${b.id}',this.value)">
           </div>`:""}
         </div>
       </div>
       <div class="ab-expand">
-        <div class="ab-expand-top-bar">
-          <div id="au-wrap-${b.id}" style="display:flex;align-items:center;gap:8px;width:100%;flex-wrap:wrap">
-            <button class="primary-btn" style="font-size:12px;padding:7px 14px" onclick="playSingleBeat('${b.id}')">▶ Spill</button>
-            <button class="ghost-btn" style="font-size:12px;padding:6px 12px" onclick="event.stopPropagation();downloadBeat('${b.id}')">⬇ Last ned</button>
-            ${window.isAdminMode&&!b._shared?'<button class="ghost-btn" style="font-size:12px;padding:6px 12px" onclick="event.stopPropagation();openShareBeat(\''+(b.id)+'\')">👤 Del med bruker</button>':''}
-            <button class="star-btn${b.favorite?" active":""}" data-fav-id="${b.id}" onclick="event.stopPropagation();toggleFav('${b.id}',this)" title="Favoritt" style="font-size:20px;background:none;border:none;cursor:pointer;padding:0;color:${b.favorite?'#f4a443':'rgba(255,255,255,.25)'}">★</button>
-            <div style="margin-left:auto">${(()=>{ const noAudio=!(b.audio_url||b.url); const noLyric=!(b.lyrics||(b.lyricSections||[]).some(s=>s.text?.trim())); if(noAudio) return '<span title="Mangler lydfil" style="font-size:10px;font-weight:800;padding:2px 7px;border-radius:999px;background:rgba(251,113,133,.15);color:#fb7185;border:1px solid rgba(251,113,133,.3)">Ingen lyd</span>'; if(noLyric) return '<span title="Mangler tekst" style="font-size:10px;font-weight:800;padding:2px 7px;border-radius:999px;background:rgba(249,115,22,.12);color:#f97316;border:1px solid rgba(249,115,22,.3)">Ingen tekst</span>'; return ''; })()}</div>
+        <div class="ab-action-bar">
+          <button class="ab-act primary-btn" onclick="playSingleBeat('${b.id}')">\u25B6 Spill</button>
+          ${(b.audio_url||b.url)?'<button class="ab-act ghost-btn" onclick="downloadBeat(\''+(b.id)+'\')">\u2B07 Last ned</button>':''}
+          ${!b._shared?'<button class="ab-act ghost-btn" onclick="openShareDirect(\'beat\',\''+(b.id)+'\',\''+(b.name||'Beat').replace(/\'/g,'')+'\')">\u{1F464} Del med bruker</button>':''}
+          <span class="ab-act-sep"></span>
+          <button class="ab-act ghost-btn" onclick="renameBeatInline('${b.id}')">\u270F\uFE0F Gi nytt navn</button>
+          <label class="ab-act ghost-btn" style="cursor:pointer">\u{1F3B5} Bytt lydfil<input type="file" accept="audio/*" hidden onchange="uploadBeatAudio('${b.id}',this.files[0])"></label>
+          <label class="ab-act ghost-btn" style="cursor:pointer">\u{1F5BC}\uFE0F Cover<input type="file" accept="image/*" hidden onchange="setAlbumBeatCover('${b.id}',this)"></label>
+          <span class="ab-act-sep"></span>
+          ${listMode==="album"?`<div class="ab-act ab-done-wrap" onclick="event.stopPropagation()"><input type="range" min="0" max="100" value="${pct}" class="ab-done-slider" style="accent-color:${pctCol}" oninput="setAlbumBeatDone('${b.id}',this.value)"><span id="abidone-${b.id}" class="ab-done-label" style="color:${pctCol}">${pct}%</span></div>`:""}
+          <div class="ab-act-status">
+            ${noAudio?'<span class="ab-chip red">Ingen lyd</span>':'<span class="ab-chip green">Lyd \u2713</span>'}
+            ${noLyric?'<span class="ab-chip muted">Ingen tekst</span>':'<span class="ab-chip green">Tekst \u2713</span>'}
           </div>
-          <label class="ghost-btn" style="cursor:pointer;font-size:12px;padding:6px 12px">🎵 Bytt lydfil<input type="file" accept="audio/*" hidden onchange="uploadBeatAudio('${b.id}',this.files[0])"></label>
-          <label class="ghost-btn" style="cursor:pointer;font-size:12px;padding:6px 12px">🖼️ Coverbilde<input type="file" accept="image/*" hidden onchange="setAlbumBeatCover('${b.id}',this)"></label>
-          <button class="small-btn danger" onclick="removeFromCollection('${b.id}','${listMode}')">Fjern fra ${listMode==="mixtape"?"mixtape":"album"}</button>
+          <button class="ab-act small-btn danger" onclick="removeFromCollection('${b.id}','${listMode}')">Fjern</button>
         </div>
         <div class="ab-lyric-editor">
           ${lyricsEditorMarkup(b.id,"Skriv tekst, hooks, vers, ideer...")}
@@ -711,63 +720,54 @@ function renderAlbumBeats(beats,mode,customEl){
     </div>`;
   }).join("");
 }
+
 // ── Inline beat rename ────────────────────────────────────────────────────────
 window.renameBeatInline = function(id) {
   const titleEl = document.getElementById('abt-' + id);
   if (!titleEl) return;
-  const beat = state.beats.find(b => b.id === id);
+  const beat = (typeof state!=='undefined'?state:window.state).beats.find(b=>b.id===id);
   if (!beat) return;
   const oldName = beat.name || '';
-  const input = document.createElement('input');
-  input.type = 'text';
-  input.value = oldName;
-  input.style.cssText = 'background:rgba(255,255,255,.08);border:1px solid rgba(244,164,67,.4);color:#f4ede4;font-size:inherit;font-weight:inherit;font-family:inherit;padding:2px 6px;border-radius:5px;outline:none;width:100%;min-width:80px;max-width:220px';
-  titleEl.replaceWith(input);
-  input.focus();
-  input.select();
-  function save() {
-    const newName = input.value.trim();
-    if (newName && newName !== oldName) {
-      beat.name = newName;
-      saveState();
-      showToast('✓ Navn oppdatert');
-    }
-    // Re-render to update title
-    const mixView = document.getElementById('mixtapeDetailView');
-    const albView = document.getElementById('albumDetailView');
-    if (mixView && !mixView.classList.contains('hidden')) { if (typeof renderMixtapeDetail === 'function') renderMixtapeDetail(); }
-    else if (albView && !albView.classList.contains('hidden')) { if (typeof renderAlbumDetail === 'function') renderAlbumDetail(); }
-    else { const span = document.createElement('div'); span.id = 'abt-' + id; span.className = 'ab-title'; span.style.minWidth = '0'; span.textContent = newName || oldName; input.replaceWith(span); }
+  const inp = document.createElement('input');
+  inp.type='text'; inp.value=oldName;
+  inp.style.cssText='background:rgba(255,255,255,.08);border:1px solid rgba(244,164,67,.5);color:#f4ede4;font-size:inherit;font-weight:inherit;font-family:inherit;padding:2px 8px;border-radius:6px;outline:none;min-width:120px;max-width:240px;width:auto';
+  titleEl.replaceWith(inp);
+  inp.focus(); inp.select();
+  function commit(){
+    const n=inp.value.trim();
+    if(n&&n!==oldName){beat.name=n;saveState();if(typeof showToast==='function')showToast('\u2713 Navn lagret');}
+    const mixV=document.getElementById('mixtapeDetailView');
+    const albV=document.getElementById('albumDetailView');
+    if(mixV&&!mixV.classList.contains('hidden')){if(typeof renderMixtapeDetail==='function')renderMixtapeDetail();}
+    else if(albV&&!albV.classList.contains('hidden')){if(typeof renderAlbumDetail==='function')renderAlbumDetail();}
+    else{const d=document.createElement('div');d.id='abt-'+id;d.className='ab-title';d.textContent=n||oldName;inp.replaceWith(d);}
   }
-  input.addEventListener('blur', save);
-  input.addEventListener('keydown', e => { if (e.key === 'Enter') { input.blur(); } if (e.key === 'Escape') { input.value = oldName; input.blur(); } });
+  inp.addEventListener('blur',commit);
+  inp.addEventListener('keydown',e=>{if(e.key==='Enter')inp.blur();if(e.key==='Escape'){inp.value=oldName;inp.blur();}});
 };
 
 // ── Download beat ────────────────────────────────────────────────────────────
 window.downloadBeat = function(id) {
-  const beat = (typeof state !== 'undefined' ? state : window.state)?.beats?.find(b => b.id === id);
-  const url = beat?.audio_url || beat?.url || beat?.driveUrl || beat?.drive_url;
-  if (!url) { if (typeof showToast === 'function') showToast('⚠ Ingen lydfil å laste ned'); return; }
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = (beat.name || 'beat') + '.mp3';
-  a.target = '_blank';
-  document.body.appendChild(a);
-  a.click();
-  setTimeout(() => a.remove(), 200);
+  const b=(typeof state!=='undefined'?state:window.state)?.beats?.find(x=>x.id===id);
+  const url=b?.audio_url||b?.url||b?.driveUrl||b?.drive_url;
+  if(!url){if(typeof showToast==='function')showToast('\u26a0 Ingen lydfil \u00e5 laste ned');return;}
+  const a=document.createElement('a');
+  a.href=url; a.download=(b.name||'beat').replace(/[^a-z0-9 ._-]/gi,'_')+'.mp3';
+  a.target='_blank'; document.body.appendChild(a); a.click(); setTimeout(()=>a.remove(),300);
 };
 
-// ── Open share modal for beat (safe wrapper) ─────────────────────────────────
-window.openShareBeat = function(beatId) {
-  const beat = (typeof state !== 'undefined' ? state : window.state)?.beats?.find(b => b.id === beatId);
-  const name = beat?.name || beatId;
-  if (typeof window.openShareModal === 'function') {
-    window.openShareModal('beat', beatId, name);
+// ── Share directly — no wrapper needed ───────────────────────────────────────
+window.openShareDirect = function(type, id, name) {
+  if(typeof window.openShareModal==='function'){
+    window.openShareModal(type, id, name||id);
   } else {
-    showToast('⚠ Del-funksjon ikke tilgjengelig ennå');
+    // openShareModal not ready yet — try after a tick
+    setTimeout(()=>{
+      if(typeof window.openShareModal==='function') window.openShareModal(type,id,name||id);
+      else if(typeof showToast==='function') showToast('\u26a0 Logg inn for \u00e5 dele');
+    },200);
   }
 };
-
 function toggleAlbumBeat(id){
   // Mount inline editors that appear when card expands
   requestAnimationFrame(()=>{
@@ -1107,8 +1107,8 @@ function renderMixtapeDetail(){
       </div>
       <div class="mixtape-detail-actions">
         <button class="primary-btn" id="playMixtapeBtn" onclick="playMixtapeFromStart('${mt.id}')">▶ Spill fra start</button>
-        ${(()=>{ if(mt._shared) return ''; const eid=esc(mt.id), enm=esc(mt.name); return `<button class="ghost-btn" onclick="window.openShareModal('mixtape','${eid}','${enm}')" style="font-size:13px">\u{1F464} Del med bruker</button>`; })()}
-        ${window.isAdminMode ? `<button class="ghost-btn" onclick="window.pitchMixtape('${esc(mt.id)}')" style="font-size:13px">\u{1F4C4} Pitch</button>` : ''}
+        ${!mt._shared?`<button class="ghost-btn" onclick="openShareDirect('mixtape','${esc(mt.id)}','${esc(mt.name)}')">👤 Del med bruker</button>`:''}
+        ${window.isAdminMode?`<button class="ghost-btn" onclick="window.pitchMixtape('${esc(mt.id)}')" title="Pitch-side">📄 Pitch</button>`:''}
         <button class="small-btn danger hidden" id="stopMixtapeBtn" onclick="stopCollectionPlayback()">⏹ Stopp</button>
       </div>
     </div>

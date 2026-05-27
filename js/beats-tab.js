@@ -102,7 +102,7 @@
         }).join('')}` : ''}
       ${admin ? `<hr style="border:none;border-top:1px solid rgba(255,255,255,.08);margin:4px 0">` : ''}
       ${admin ? `<hr style="border:none;border-top:1px solid rgba(255,255,255,.08);margin:4px 0">` : ''}
-      ${admin && !beat._shared ? `<button onclick="window.openShareBeat('${beatId}')">🔗 Del med bruker</button>` : ''}
+      ${admin && !beat._shared ? `<button onclick="openShareDirect('beat','${beatId}','${(beat.name||'Beat').replace(/["']/g,"")}')">🔗 Del med bruker</button>` : ''}
       ${admin ? `<button onclick="beatsTab.archiveBeat('${beatId}')">${isArch ? '↩ Gjenopprett' : '📦 Arkiver sang'}</button>` : ''}
       ${admin ? `<button class="danger" onclick="beatsTab.deleteBeat('${beatId}')">🗑 Slett permanent</button>` : ''}
     `;
