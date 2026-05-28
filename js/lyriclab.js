@@ -185,14 +185,14 @@
       </div>
       <div class="ll-section-body">
         <div class="ll-line-numbers" id="llnums-${esc(sec.id)}">${sec.text.split('\n').map((_,i)=>i+1).join('\n')}</div>
-        <textarea class="ll-textarea" id="lltxt-${esc(sec.id)}"
-          placeholder="Skriv ${sec.title.toLowerCase()} her..."
+        <div class="ll-textarea ll-highlight-editor"
+          id="lltxt-${esc(sec.id)}"
+          contenteditable="true"
+          data-section-id="${esc(sec.id)}"
+          data-placeholder="Skriv ${sec.title.toLowerCase()} her..."
           oninput="llSectionInput(this,'${esc(sec.id)}')"
-          rows="${Math.max(5, sec.text.split('\n').length + 2)}"
-        >${esc(sec.text)}</textarea>
-        ${sec.text&&sec.text.includes("%%COLOR")?
-          `<div class="ll-color-preview" id="llprev-${esc(sec.id)}">${llTextToHtml(sec.text)}</div>`
-          :""}
+          spellcheck="false"
+        >${llTextToHtml(sec.text)}</div>
       </div>
       <div class="ll-section-menu" id="llmenu-${esc(sec.id)}">
         <button onclick="llDuplicateSection('${esc(sec.id)}')">⧉ Dupliser</button>
@@ -390,7 +390,7 @@
     // Focus first empty textarea
     setTimeout(() => {
       const first = container.querySelector('.ll-textarea:not([data-has-content])');
-      const emptyTa = Array.from(container.querySelectorAll('.ll-textarea')).find(ta=>!ta.value.trim());
+      const emptyTa = Array.from(container.querySelectorAll('.ll-textarea')).find(el=>!(el.value||el.textContent||'').trim());
       if (emptyTa) emptyTa.focus();
     }, 100);
   }
@@ -417,102 +417,59 @@
   window._llSavedRange = null;
   window._llSavedEditor = null;
 
-  // Bind textarea selection tracking (window.getSelection() doesnt work for textareas)
-  function _llBindTA(ta) {
-    if (!ta || ta.dataset.llBound) return;
-    ta.dataset.llBound = '1';
-    function onSel() {
-      if (ta.selectionStart === ta.selectionEnd) return;
-      window._llSavedEditor = ta;
-      window._llSavedRange  = { start: ta.selectionStart, end: ta.selectionEnd, isTA: true };
+  // Track selection using selectionchange (most reliable cross-browser)
+  document.addEventListener('selectionchange', () => {
+    const sel = window.getSelection();
+    if (!sel || sel.isCollapsed || sel.rangeCount === 0) return;
+    const anchor = sel.anchorNode;
+    if (!anchor) return;
+    const node = anchor.nodeType === 3 ? anchor.parentElement : anchor;
+    const editor = node?.closest?.('.ll-highlight-editor');
+    if (editor) {
+      window._llSavedRange  = sel.getRangeAt(0).cloneRange();
+      window._llSavedEditor = editor;
       const hint = document.getElementById('llColorHint');
-      if (hint) { hint.textContent = '\u2713 Klikk farge'; hint.style.color = '#f4a443'; }
+      if (hint) {
+        const secId = editor.dataset.sectionId;
+        const beat  = getBeat(window.currentLyricLabBeatId);
+        const sec   = (getSections(beat||{})||[]).find(s=>s.id===secId);
+        hint.textContent = sec ? '✓ ' + sec.title + ' — klikk farge' : '✓ Klikk farge';
+        hint.style.color = '#f4a443';
+      }
     }
-    ta.addEventListener('select', onSel);
-    ta.addEventListener('mouseup', onSel);
-    ta.addEventListener('keyup', onSel);
-  }
-  function _llBindAllTAs() { document.querySelectorAll('.ll-textarea').forEach(_llBindTA); }
-  document.addEventListener('click', () => setTimeout(_llBindAllTAs, 60));
-  setTimeout(_llBindAllTAs, 400);
-
+  });
 
   window.llApplyColorActive = function(color) {
-    let editor = window._llSavedEditor;
-    let range  = window._llSavedRange;
-    // Re-check active element in case focus is still in textarea
-    const act = document.activeElement;
-    if (act && act.classList.contains('ll-textarea') && act.selectionStart !== act.selectionEnd) {
-      editor = act;
-      range = { start: act.selectionStart, end: act.selectionEnd, isTA: true };
-    }
+    const editor = window._llSavedEditor;
+    const range  = window._llSavedRange;
+
     if (!editor || !range) {
       if(typeof showToast==='function') showToast('Marker tekst i en seksjon f\u00f8rst');
-      return;
-    }
-    // ── Textarea path ─────────────────────────────────────────────────────────
-    if (editor.tagName === 'TEXTAREA' || range.isTA) {
-      const ta = editor;
-      const s = (ta.selectionStart !== ta.selectionEnd) ? ta.selectionStart : range.start;
-      const e = (ta.selectionStart !== ta.selectionEnd) ? ta.selectionEnd   : range.end;
-      if (s === e) { if(typeof showToast==='function') showToast('Marker tekst p\u00e5 nytt'); return; }
-      const val = ta.value, sel = val.slice(s, e);
-      let nv;
-      if (color) {
-        const stripped = sel.replace(/%%COLOR:[^%]+%%([\s\S]*?)%%ENDCOLOR%%/g, '$1');
-        nv = val.slice(0, s) + '%%COLOR:' + color + '%%' + stripped + '%%ENDCOLOR%%' + val.slice(e);
-      } else {
-        nv = val.replace(/%%COLOR:[^%]+%%([\s\S]*?)%%ENDCOLOR%%/g, '$1');
-      }
-      ta.value = nv;
-      const secId = ta.id.replace('lltxt-', '');
-      if (typeof window.llHighlightInput === 'function') window.llHighlightInput(ta, secId);
-      window._llSavedRange = null; window._llSavedEditor = null;
-      const hint = document.getElementById('llColorHint');
-      if (hint) { hint.textContent = 'Marker tekst i editoren, klikk s\u00e5 farge'; hint.style.color = ''; }
-      if (typeof showToast==='function') showToast(color ? '\u2713 Farge brukt' : '\u2713 Farge fjernet');
       return;
     }
 
     try {
       if (color) {
-        // Remove any existing mark elements inside the range first
         _unwrapMarks(range);
-        // Create a fresh clone of the range (unwrapMarks may have changed DOM)
         const freshRange = window._llSavedRange;
-        if (!freshRange || freshRange.collapsed) {
-          if(typeof showToast==='function') showToast('Marker tekst på nytt');
-          return;
-        }
-        // Wrap with <mark>
+        if (!freshRange || freshRange.collapsed) { if(typeof showToast==='function') showToast('Marker tekst p\u00e5 nytt'); return; }
         const mark = document.createElement('mark');
-        mark.style.cssText = 'background:' + color + ';border-radius:3px;padding:0 2px;';
-        try {
-          freshRange.surroundContents(mark);
-        } catch(e) {
-          // Selection spans elements — extract and wrap
-          const frag = freshRange.extractContents();
-          mark.appendChild(frag);
-          freshRange.insertNode(mark);
-        }
+        mark.style.cssText = 'background:' + color + ';border-radius:3px;padding:0 2px;color:#000;font-weight:600;';
+        try { freshRange.surroundContents(mark); }
+        catch(e) { const frag=freshRange.extractContents(); mark.appendChild(frag); freshRange.insertNode(mark); }
       } else {
-        // Clear — replace marks with plain text
         _unwrapMarks(range);
       }
-
-      // Trigger save
       const secId = editor.dataset.sectionId;
       if (secId) llHighlightInput(editor, secId);
-
-      // Reset saved range after applying
       window._llSavedRange  = null;
       window._llSavedEditor = null;
       const hint = document.getElementById('llColorHint');
-      if (hint) { hint.textContent = 'Marker tekst i editoren, klikk så farge'; hint.style.color = ''; }
-
+      if (hint) { hint.textContent = 'Marker tekst i editoren, klikk s\u00e5 farge'; hint.style.color = ''; }
+      if(typeof showToast==='function') showToast(color ? '\u2713 Farge brukt' : '\u2713 Farge fjernet');
     } catch(e) {
       console.warn('[LyricLab] Color apply error:', e);
-      if(typeof showToast==='function') showToast('Feil ved fargemarkering: ' + e.message);
+      if(typeof showToast==='function') showToast('Feil: ' + e.message);
     }
   };
 
@@ -607,27 +564,16 @@
     const beat = getBeat(window.currentLyricLabBeatId);
     const sec  = getSections(beat||{}).find(s=>s.id===id);
     if (!sec) return;
-    // Handle both textarea (.value) and contenteditable (.innerHTML)
-    sec.text = (div.tagName==='TEXTAREA') ? div.value : llHtmlToText(div.innerHTML);
-    // Update color preview
-    const prev = document.getElementById('llprev-' + id);
-    const hasColor = sec.text.includes('%%COLOR');
-    if (prev) { prev.style.display = hasColor ? '' : 'none'; if(hasColor) prev.innerHTML = llTextToHtml(sec.text); }
-    else if (hasColor) {
-      const ta = div.tagName==='TEXTAREA' ? div : document.getElementById('lltxt-'+id);
-      if (ta && (!ta.nextElementSibling || !ta.nextElementSibling.classList.contains('ll-color-preview'))) {
-        const d=document.createElement('div'); d.className='ll-color-preview'; d.id='llprev-'+id;
-        d.innerHTML=llTextToHtml(sec.text); if(ta.parentNode) ta.after(d);
-      }
-    }
-    // Update line numbers
+    // contenteditable: read innerHTML and convert to storage format
+    sec.text = llHtmlToText(div.innerHTML);
+    // Update line numbers from stored text
     const nums = document.getElementById('llnums-' + id);
     if (nums) { nums.style.whiteSpace='pre'; nums.textContent = sec.text.split('\n').map((_,i)=>i+1).join('\n'); }
     const cnt = document.getElementById('llsec-' + id)?.querySelector('.ll-section-line-count');
     const l = countLines(sec.text);
     if (cnt) cnt.textContent = `${l} ${l===1?'linje':'linjer'}`;
     clearTimeout(_saveTimer);
-    scheduleAutoSave(beat, div.tagName==='TEXTAREA');
+    scheduleAutoSave(beat, true);
   };
   window.llSectionInput = window.llHighlightInput;
 
@@ -966,9 +912,6 @@
           oninput="llInlineInput(this,'${esc(beatId)}','${esc(sec.id)}')"
           rows="${Math.max(4, sec.text.split('\n').length + 2)}"
         >${esc(sec.text)}</textarea>
-        ${sec.text&&sec.text.includes("%%COLOR")?
-          `<div class="ll-color-preview" id="llprev-${esc(sec.id)}">${llTextToHtml(sec.text)}</div>`
-          :""}
       </div>
     </div>`;
   }
@@ -1234,7 +1177,7 @@
   document.addEventListener('mouseup', e => {
     const ta = e.target.closest('.ll-textarea');
     if(!ta) return;
-    const sel = window.getSelection?.()?.toString().trim() || ta.value.substring(ta.selectionStart, ta.selectionEnd).trim();
+    const sel = window.getSelection?.()?.toString().trim() || (ta.value||'').substring(ta.selectionStart||0, ta.selectionEnd||0).trim();
     const word = sel.split(/\s+/)[0].replace(/[^a-zæøåA-ZÆØÅ]/g,'');
     if(word.length > 1) {
       const input = document.getElementById('llRhymeInput');
@@ -1425,12 +1368,23 @@
       if (_popover) { _popover.remove(); _popover = null; }
     }
 
-    function getWordAt(ta) {
-      const s = ta.selectionStart, val = ta.value;
-      let start = s, end = s;
-      while (start > 0 && /[a-zA-ZæøåÆØÅ]/.test(val[start-1])) start--;
-      while (end < val.length && /[a-zA-ZæøåÆØÅ]/.test(val[end])) end++;
-      return val.slice(start, end).toLowerCase().trim();
+    function getWordAt(el) {
+      // Works for both textarea (selectionStart) and contenteditable (Selection API)
+      if (el.tagName === 'TEXTAREA') {
+        const s = el.selectionStart, val = el.value;
+        let start = s, end = s;
+        while (start > 0 && /[a-zA-Z\u00e6\u00f8\u00e5\u00c6\u00d8\u00c5]/.test(val[start-1])) start--;
+        while (end < val.length && /[a-zA-Z\u00e6\u00f8\u00e5\u00c6\u00d8\u00c5]/.test(val[end])) end++;
+        return val.slice(start, end).toLowerCase().trim();
+      }
+      // contenteditable: use Selection API
+      try {
+        const sel = window.getSelection();
+        if (!sel || !sel.rangeCount) return '';
+        const r = sel.getRangeAt(0).cloneRange();
+        r.expand('word');
+        return r.toString().toLowerCase().replace(/[^a-z\u00e6\u00f8\u00e5]/gi,'').trim();
+      } catch(e) { return ''; }
     }
 
     async function showRhymePopover(e, ta) {

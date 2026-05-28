@@ -550,8 +550,8 @@ function renderAlbumDetail(){
       <button class="primary-btn" id="playAlbumBtn" onclick="playAlbumFromStart('${album.id}')">▶ Spill fra start</button>
       ${isAdmin()?'<label class="ghost-btn" style="cursor:pointer">🖼️ Bytt bilde<input type="file" accept="image/*" hidden onchange="setAlbumCover(\''+album.id+'\',this.files[0])"></label>':''}
       <button class="ghost-btn" onclick="albumToggleABSide('${album.id}')" id="abSideBtn">💿 A/B-side</button>
-      ${isAdmin()?'<button class="ghost-btn" onclick="window.albumPitchMode&&window.albumPitchMode(\''+album.id+'\')" title="Pitch">📄 Pitch</button>':''}
-      <button class="ghost-btn" onclick="window.openShareModal('album','${esc(album.id)}','${esc(album.name)}')">👤 Del med bruker</button>
+      ${isAdmin()?'<button class="ghost-btn" onclick="mvPitch(\'album\',\''+album.id+'\')" title="Pitch">📄 Pitch</button>':''}
+      <button class="ghost-btn" onclick="mvShare('album','${esc(album.id)}','${esc(album.name)}')">👤 Del med bruker</button>
       <button class="small-btn danger hidden" id="stopAlbumBtn" onclick="stopCollectionPlayback()">⏹ Stopp</button>
     </div>`;
   const beats=beatsFromIds(album.beatIds);
@@ -711,7 +711,113 @@ function renderAlbumBeats(beats,mode,customEl){
     </div>`;
   }).join("");
 }
-// ── downloadBeat / renameBeatInline ─────────────────────────────────────────
+
+// ══════════════════════════════════════════════════════════════════════════════
+// mvShare — standalone share modal, no app.js dependency
+// ══════════════════════════════════════════════════════════════════════════════
+window.mvShare = async function(contentType, contentId, contentName) {
+  // Use app.js modal if available
+  if (typeof window.openShareModal === 'function') {
+    try { await window.openShareModal(contentType, contentId, contentName); return; } catch(e) {}
+  }
+  // Fallback: build modal directly here
+  const uid = window._mvCurrentUserId || sessionStorage.getItem('mv_user_id');
+  if (!uid) { showToast('Logg inn for å dele'); return; }
+
+  const SBU = 'https://ylvqkfdvijqnecuqznyr.supabase.co';
+  const SBK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlsdnFrZmR2aWpxbmVjdXF6bnlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzMzA4MzIsImV4cCI6MjA5MzkwNjgzMn0.bYPTaxQK8n7I7w5Ri2DVYW5_LbFHg2IXkuhHsLTDDqc';
+  const hdrs = {'apikey':SBK,'Authorization':'Bearer '+SBK,'Content-Type':'application/json'};
+
+  let modal = document.getElementById('_mvShareModal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = '_mvShareModal';
+    modal.onclick = e => { if(e.target===modal) modal.style.display='none'; };
+    document.body.appendChild(modal);
+  }
+  modal.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px)';
+  modal.innerHTML = '<div style="background:#1a1612;border:1px solid rgba(255,255,255,.12);max-width:440px;width:94%;padding:24px 28px;border-radius:12px;position:relative"><p style="color:#f4a443;font-size:13px;margin:0 0 12px">Laster...</p></div>';
+
+  // Load existing access
+  let existing = [], granteeNames = {};
+  try {
+    const r = await fetch(`${SBU}/rest/v1/content_access?content_type=eq.${contentType}&content_id=eq.${contentId}&select=*`, {headers:hdrs});
+    if(r.ok) existing = await r.json();
+    if(existing.length) {
+      const ids = existing.map(x=>x.grantee_id).join(',');
+      const pr = await fetch(`${SBU}/rest/v1/profiles?id=in.(${ids})&select=id,username`, {headers:hdrs});
+      if(pr.ok)(await pr.json()).forEach(p=>granteeNames[p.id]=p.username||p.id);
+    }
+  } catch(e){}
+
+  const typeLabel = {beat:'Beat',album:'Album',mixtape:'Mixtape'}[contentType]||contentType;
+  modal.querySelector('div').innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <h2 style="font-size:16px;font-weight:800;margin:0;color:#f4ede4">Del ${typeLabel}: ${contentName||contentId}</h2>
+      <button onclick="document.getElementById('_mvShareModal').style.display='none'" style="background:none;border:none;color:rgba(255,255,255,.5);font-size:22px;cursor:pointer;padding:0;line-height:1">×</button>
+    </div>
+    <div style="display:grid;gap:10px">
+      <input id="_mvShareUser" placeholder="Brukernavn (f.eks. erik)"
+        style="width:100%;box-sizing:border-box;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#f4ede4;padding:10px 12px;font-size:13px;font-family:inherit;outline:none;border-radius:6px"
+        onkeydown="if(event.key==='Enter')window._mvDoShare('${contentType}','${contentId}','${contentName||contentId}')">
+      <div style="display:flex;gap:8px">
+        <select id="_mvShareRole" style="flex:1;background:#1a1612;border:1px solid rgba(255,255,255,.12);color:#f4ede4;padding:10px 12px;font-size:13px;font-family:inherit;outline:none;border-radius:6px">
+          <option value="viewer">Kan se</option>
+          <option value="editor">Kan redigere</option>
+        </select>
+        <button onclick="window._mvDoShare('${contentType}','${contentId}','${contentName||contentId}')" style="background:#f4a443;border:none;color:#000;font-size:13px;font-weight:800;padding:10px 20px;cursor:pointer;border-radius:6px;font-family:inherit">Del</button>
+      </div>
+      <div id="_mvShareStatus" style="font-size:11px;color:rgba(255,255,255,.4);min-height:16px"></div>
+      <div style="font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-top:4px">Har tilgang</div>
+      <div id="_mvShareList">${existing.length?existing.map(r=>`
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06)">
+          <span style="font-size:13px;font-weight:700;color:#f4ede4;flex:1">👤 ${granteeNames[r.grantee_id]||r.grantee_id}</span>
+          <span style="font-size:11px;color:rgba(255,255,255,.4)">${r.role==='editor'?'Redaktør':'Kan se'}</span>
+        </div>`).join(''):'<div style="font-size:12px;color:rgba(255,255,255,.3)">Ingen delt ennå</div>'}</div>
+    </div>`;
+
+  window._mvDoShare = async function(ct, cid, cname) {
+    const username = document.getElementById('_mvShareUser')?.value?.trim().toLowerCase();
+    const role = document.getElementById('_mvShareRole')?.value || 'viewer';
+    const statusEl = document.getElementById('_mvShareStatus');
+    if(!username){if(statusEl)statusEl.textContent='Skriv inn brukernavn';return;}
+    if(statusEl)statusEl.textContent='Søker...';
+    try {
+      const pr = await fetch(`${SBU}/rest/v1/profiles?username=eq.${encodeURIComponent(username)}&select=id`, {headers:hdrs});
+      const profiles = pr.ok ? await pr.json() : [];
+      if(!profiles.length){if(statusEl)statusEl.textContent='Finner ikke bruker: '+username;return;}
+      const granteeId = profiles[0].id;
+      const body = JSON.stringify({owner_id:uid,grantee_id:granteeId,content_type:ct,content_id:cid,role,content_name:cname});
+      const res = await fetch(`${SBU}/rest/v1/content_access`, {method:'POST',headers:{...hdrs,'Prefer':'return=minimal'},body});
+      if(!res.ok){const e=await res.text();if(statusEl)statusEl.textContent='Feil: '+e;return;}
+      if(statusEl){statusEl.style.color='#34d399';statusEl.textContent='✓ Delt med '+username;}
+      if(document.getElementById('_mvShareUser')) document.getElementById('_mvShareUser').value='';
+      setTimeout(()=>window.mvShare(ct,cid,cname),800); // reload
+    } catch(e){if(statusEl)statusEl.textContent='Feil: '+e.message;}
+  };
+};
+
+// ══════════════════════════════════════════════════════════════════════════════
+// mvPitch — pitch wrapper
+// ══════════════════════════════════════════════════════════════════════════════
+window.mvPitch = function(type, id) {
+  if (type === 'mixtape') {
+    if (typeof window.mixtapeShareMode === 'function') { window.mixtapeShareMode(id); return; }
+    // Retry in 400ms if app.js not ready yet
+    setTimeout(()=>{
+      if (typeof window.mixtapeShareMode === 'function') window.mixtapeShareMode(id);
+      else showToast('\u26a0 Pitch ikke tilgjengelig. Last inn siden på nytt.');
+    }, 400);
+  } else if (type === 'album') {
+    if (typeof window.albumPitchMode === 'function') { window.albumPitchMode(id); return; }
+    setTimeout(()=>{
+      if (typeof window.albumPitchMode === 'function') window.albumPitchMode(id);
+      else showToast('\u26a0 Pitch ikke tilgjengelig. Last inn siden på nytt.');
+    }, 400);
+  }
+};
+
+// ── downloadBeat / renameBeatInline ───────────────────────────────────────────
 window.downloadBeat = function(id) {
   const b=(typeof state!=='undefined'?state:window.state)?.beats?.find(x=>x.id===id);
   const url=b?.audio_url||b?.url||b?.driveUrl||b?.drive_url;
@@ -732,8 +838,7 @@ window.renameBeatInline = function(id) {
     else if(albV&&!albV.classList.contains('hidden')){if(typeof renderAlbumDetail==='function')renderAlbumDetail();}
     else{const d=document.createElement('div');d.id='abt-'+id;d.className='ab-title';d.textContent=n||old;inp.replaceWith(d);}
   }
-  inp.addEventListener('blur',commit);
-  inp.addEventListener('keydown',e=>{if(e.key==='Enter')inp.blur();if(e.key==='Escape'){inp.value=old;inp.blur();}});
+  inp.addEventListener('blur',commit);inp.addEventListener('keydown',e=>{if(e.key==='Enter')inp.blur();if(e.key==='Escape'){inp.value=old;inp.blur();}});
 };
 
 function toggleAlbumBeat(id){
@@ -1075,8 +1180,8 @@ function renderMixtapeDetail(){
       </div>
       <div class="mixtape-detail-actions">
         <button class="primary-btn" id="playMixtapeBtn" onclick="playMixtapeFromStart('${mt.id}')">▶ Spill fra start</button>
-        <button class="ghost-btn" onclick="window.openShareModal('mixtape','${esc(mt.id)}','${esc(mt.name)}')">👤 Del med bruker</button>
-        <button class="ghost-btn" onclick="window.mixtapeShareMode&&window.mixtapeShareMode('${esc(mt.id)}')">📄 Pitch</button>
+        <button class="ghost-btn" onclick="mvShare('mixtape','${esc(mt.id)}','${esc(mt.name)}')">👤 Del med bruker</button>
+        <button class="ghost-btn" onclick="mvPitch('mixtape','${esc(mt.id)}')">📄 Pitch</button>
         <button class="small-btn danger hidden" id="stopMixtapeBtn" onclick="stopCollectionPlayback()">⏹ Stopp</button>
       </div>
     </div>
