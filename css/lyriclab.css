@@ -564,34 +564,28 @@ audio::-webkit-media-controls-panel { background: rgba(255,255,255,.08); }
 .ll-highlight-editor { padding: 12px 14px !important; }
 .ll-section-body { display: block; }
 
-/* ── Farge-preview under textarea ──────────────────────────────────────── */
-.ll-color-preview {
-  margin-top: 4px;
-  padding: 8px 12px;
-  background: rgba(244, 164, 67, .05);
-  border: 1px solid rgba(244, 164, 67, .2);
-  border-radius: 8px;
-  font-size: 14px;
-  line-height: 1.7;
-  font-family: Georgia, serif;
-  color: #f4ede4;
-  white-space: pre-wrap;
-  word-break: break-word;
+/* ── Contenteditable section editor ──────────────────────────────────────── */
+.ll-textarea[contenteditable] {
+  display: block !important;
+  min-height: 120px !important;
+  white-space: pre-wrap !important;
+  word-break: break-word !important;
+  line-height: 1.75 !important;
+  outline: none !important;
+  cursor: text !important;
+  -webkit-user-modify: read-write-plaintext-only;
 }
-.ll-color-preview mark {
+/* Placeholder via CSS */
+.ll-textarea[contenteditable]:empty::before {
+  content: attr(data-placeholder);
+  color: rgba(247,243,234,.35) !important;
+  pointer-events: none;
+  font-style: italic;
+}
+/* Keep mark colors readable */
+.ll-textarea[contenteditable] mark {
   border-radius: 3px;
   padding: 1px 3px;
   color: #000;
-  font-weight: 700;
-}
-.ll-color-preview::before {
-  content: "Forhåndsvisning med farger:";
-  display: block;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  color: rgba(244, 164, 67, .6);
-  margin-bottom: 6px;
-  font-family: system-ui, sans-serif;
+  font-weight: 600;
 }
