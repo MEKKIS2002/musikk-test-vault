@@ -632,6 +632,9 @@ function renderAlbumDetail(){
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button class="primary-btn" id="playAlbumBtn" onclick="playAlbumFromStart('${album.id}')">▶ Spill fra start</button>
+      ${isAdmin()?'<label class="ghost-btn" style="cursor:pointer">🖼️ Bytt bilde<input type="file" accept="image/*" hidden onchange="setAlbumCover(\''+album.id+'\',this.files[0])"></label>':''}
+      ${isAdmin()?'<button class="ghost-btn" data-pitch="album|'+album.id+'|" onclick="mvPitch(this)">📄 Pitch</button>':''}
+      <button class="ghost-btn" data-share="album|${album.id}|${esc(album.name)}" onclick="mvShare(this)">👤 Del med bruker</button>
       <button class="small-btn danger hidden" id="stopAlbumBtn" onclick="stopCollectionPlayback()">⏹ Stopp</button>
     </div>`;
   const beats=beatsFromIds(album.beatIds);
@@ -756,13 +759,18 @@ function renderAlbumBeats(beats,mode,customEl){
         </div>
         <div class="ab-body">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
-            <div style="display:flex;align-items:center;gap:8px;min-width:0">
+            <div style="display:flex;align-items:center;gap:8px;min-width:0;flex:1">
               <span style="font-size:11px;color:rgba(255,255,255,.25);font-variant-numeric:tabular-nums;font-weight:700;flex-shrink:0">${String(idx+1).padStart(2,'0')}</span>
-              <div class="ab-title" style="min-width:0">${esc(b.name)}</div>
+              <div class="ab-title" id="abt-${b.id}" style="min-width:0;flex:1">${esc(b.name)}</div>
               ${b.uploadedBy?`<span style="font-size:10px;font-weight:700;letter-spacing:.06em;color:var(--mv-amber,#ff8a1f);opacity:.8;white-space:nowrap">👤 ${esc(b.uploadedBy)}</span>`:''}
             </div>
-            <button class="star-btn${b.favorite?" active":""}" data-fav-id="${b.id}" onclick="event.stopPropagation();toggleFav('${b.id}',this)" style="font-size:20px;padding:0;flex-shrink:0">★</button>
-            ${(()=>{ const noAudio=!(b.audio_url||b.url); const noLyric=!(b.lyrics||(b.lyricSections||[]).some(s=>s.text?.trim())); if(noAudio) return '<span title="Mangler lydfil" style="width:7px;height:7px;border-radius:50%;background:#fb7185;flex-shrink:0;display:inline-block;margin-top:2px"></span>'; if(noLyric) return '<span title="Mangler tekst" style="width:7px;height:7px;border-radius:50%;background:#f97316;flex-shrink:0;display:inline-block;margin-top:2px"></span>'; return ''; })()}
+            <div style="display:flex;align-items:center;gap:3px;flex-shrink:0">
+              ${(()=>{ const noAudio=!(b.audio_url||b.url); if(noAudio) return '<span title="Mangler lydfil" style="width:6px;height:6px;border-radius:50%;background:#fb7185;display:block;margin-right:2px"></span>'; return ''; })()}
+              <button onclick="event.stopPropagation();playSingleBeat('${b.id}')" title="Spill sang" style="width:28px;height:28px;border-radius:50%;background:rgba(244,164,67,.18);border:1px solid rgba(244,164,67,.4);color:#f4a443;font-size:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;padding:0">&#9654;</button>
+              <button class="ab-rename-btn" onclick="event.stopPropagation();renameBeatInline('${b.id}')" title="Gi nytt navn" style="width:24px;height:24px;background:none;border:none;color:rgba(255,255,255,.4);font-size:14px;cursor:pointer;flex-shrink:0;padding:0;opacity:0;transition:opacity .15s;border-radius:4px;display:flex;align-items:center;justify-content:center">&#9998;</button>
+              <button class="ab-remove-btn" onclick="event.stopPropagation();removeFromCollection('${b.id}','${listMode}')" title="Fjern" style="width:24px;height:24px;background:none;border:none;color:rgba(251,113,133,.4);font-size:13px;font-weight:900;cursor:pointer;flex-shrink:0;padding:0;opacity:0;transition:opacity .15s;border-radius:4px;display:flex;align-items:center;justify-content:center">&#215;</button>
+              <button class="star-btn${b.favorite?" active":""}" data-fav-id="${b.id}" onclick="event.stopPropagation();toggleFav('${b.id}',this)" style="width:24px;height:24px;font-size:18px;padding:0;flex-shrink:0;background:none;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center">&#9733;</button>
+            </div>
           </div>
           <div class="ab-stars" onclick="event.stopPropagation()">${stars}</div>
           ${listMode==="album"?`<div class="progress-wrap" onclick="event.stopPropagation()">
@@ -790,6 +798,173 @@ function renderAlbumBeats(beats,mode,customEl){
     </div>`;
   }).join("");
 }
+// ══════════════════════════════════════════════════════════════════════════════
+// mvShare — standalone share modal (reads data-share="type|id|name")
+// ══════════════════════════════════════════════════════════════════════════════
+window.mvShare = async function(btn) {
+  const raw = btn.dataset.share || '';
+  const i1 = raw.indexOf('|'), i2 = raw.indexOf('|', i1+1);
+  const contentType = raw.slice(0, i1);
+  const contentId   = raw.slice(i1+1, i2);
+  const contentName = raw.slice(i2+1) || contentId;
+  if (!contentType || !contentId) { showToast('Mangler innholds-ID'); return; }
+  const SBU='https://ylvqkfdvijqnecuqznyr.supabase.co';
+  const SBK='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlsdnFrZmR2aWpxbmVjdXF6bnlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzMzA4MzIsImV4cCI6MjA5MzkwNjgzMn0.bYPTaxQK8n7I7w5Ri2DVYW5_LbFHg2IXkuhHsLTDDqc';
+  let token=SBK, uid=window._mvCurrentUserId||sessionStorage.getItem('mv_user_id');
+  try {
+    const {data:{session}}=await window.supabaseClient.auth.getSession();
+    if(session?.access_token) token=session.access_token;
+    if(session?.user?.id){uid=session.user.id;window._mvCurrentUserId=uid;sessionStorage.setItem('mv_user_id',uid);}
+  } catch(e) {}
+  if(!uid){showToast('Logg inn for \u00e5 dele');return;}
+  const hdrs={'apikey':SBK,'Authorization':'Bearer '+token,'Content-Type':'application/json'};
+  let existing=[],names={};
+  try {
+    const r=await fetch(`${SBU}/rest/v1/content_access?content_type=eq.${contentType}&content_id=eq.${contentId}&select=*`,{headers:hdrs});
+    if(r.ok) existing=await r.json();
+    if(existing.length){
+      const ids=existing.map(x=>x.grantee_id).filter(Boolean).join(',');
+      if(ids){const pr=await fetch(`${SBU}/rest/v1/profiles?id=in.(${ids})&select=id,username`,{headers:hdrs});if(pr.ok)(await pr.json()).forEach(p=>names[p.id]=p.username||p.id);}
+    }
+  }catch(e){}
+  const typeLabel={beat:'Beat',album:'Album',mixtape:'Mixtape'}[contentType]||contentType;
+  const existHTML=existing.length
+    ?existing.map(r=>`<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06)"><span style="font-size:13px;font-weight:700;color:#f4ede4;flex:1">\uD83D\uDC64 ${names[r.grantee_id]||r.grantee_id}</span><span style="font-size:11px;color:rgba(255,255,255,.4)">${r.role==='editor'?'Redakt\u00f8r':'Kan se'}</span></div>`).join('')
+    :'<p style="font-size:12px;color:rgba(255,255,255,.3);margin:0">Ingen har tilgang</p>';
+  let modal=document.getElementById('_mvSM');
+  if(!modal){modal=document.createElement('div');modal.id='_mvSM';modal.addEventListener('click',e=>{if(e.target===modal)modal.style.display='none';});document.body.appendChild(modal);}
+  modal.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;backdrop-filter:blur(5px)';
+  modal.innerHTML=`
+    <div style="background:#1c1a17;border:1px solid rgba(255,255,255,.12);max-width:440px;width:94%;padding:26px 28px;border-radius:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <h2 style="font-size:16px;font-weight:900;margin:0;color:#f4ede4">Del ${typeLabel}</h2>
+        <button onclick="document.getElementById('_mvSM').style.display='none'" style="background:none;border:none;color:rgba(255,255,255,.4);font-size:22px;cursor:pointer;padding:0;line-height:1">&#215;</button>
+      </div>
+      <p style="font-size:12px;color:rgba(255,255,255,.35);margin:0 0 18px">${contentName}</p>
+      <div style="display:grid;gap:10px">
+        <input id="_mvSM_u" placeholder="Brukernavn"
+          style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#f4ede4;padding:10px 12px;font-size:13px;font-family:inherit;outline:none;border-radius:8px;width:100%;box-sizing:border-box"
+          onkeydown="if(event.key==='Enter') window._mvSMdo()">
+        <div style="display:flex;gap:8px">
+          <select id="_mvSM_r" style="flex:1;background:#1c1a17;border:1px solid rgba(255,255,255,.12);color:#f4ede4;padding:10px;font-size:13px;font-family:inherit;outline:none;border-radius:8px">
+            <option value="viewer">Kan se</option><option value="editor">Kan redigere</option>
+          </select>
+          <button onclick="window._mvSMdo()" style="background:linear-gradient(135deg,#f4a443,#cb6e1a);border:none;color:#000;font-size:13px;font-weight:900;padding:10px 22px;cursor:pointer;border-radius:8px;font-family:inherit">Del</button>
+        </div>
+        <div id="_mvSM_s" style="font-size:12px;color:rgba(255,255,255,.4);min-height:16px"></div>
+        <div style="font-size:10px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-top:4px">Har tilgang</div>
+        <div id="_mvSM_l">${existHTML}</div>
+      </div>
+    </div>`;
+  window._mvSMdo=async function(){
+    const username=(document.getElementById('_mvSM_u')?.value||'').trim().toLowerCase();
+    const role=document.getElementById('_mvSM_r')?.value||'viewer';
+    const statusEl=document.getElementById('_mvSM_s');
+    if(!username){if(statusEl)statusEl.textContent='Skriv inn brukernavn';return;}
+    if(statusEl){statusEl.style.color='rgba(255,255,255,.4)';statusEl.textContent='S\u00f8ker...';}
+    try{
+      const pr=await fetch(`${SBU}/rest/v1/profiles?username=eq.${encodeURIComponent(username)}&select=id`,{headers:hdrs});
+      const profiles=pr.ok?await pr.json():[];
+      if(!profiles.length){if(statusEl){statusEl.style.color='#fb7185';statusEl.textContent='Finner ikke bruker: '+username;}return;}
+      const granteeId=profiles[0].id;
+      if(granteeId===uid){if(statusEl){statusEl.style.color='#fb7185';statusEl.textContent='Kan ikke dele med deg selv';}return;}
+      const body=JSON.stringify({owner_id:uid,grantee_id:granteeId,content_type:contentType,content_id:contentId,role,content_name:contentName});
+      const res=await fetch(`${SBU}/rest/v1/content_access`,{method:'POST',headers:{...hdrs,'Prefer':'resolution=merge-duplicates'},body});
+      if(!res.ok){const err=await res.text();if(statusEl){statusEl.style.color='#fb7185';statusEl.textContent='Feil: '+err;}return;}
+      if(statusEl){statusEl.style.color='#34d399';statusEl.textContent='\u2713 Delt med '+username;}
+      if(document.getElementById('_mvSM_u')) document.getElementById('_mvSM_u').value='';
+      setTimeout(()=>window.mvShare(btn),800);
+    }catch(e){if(statusEl){statusEl.style.color='#fb7185';statusEl.textContent='Feil: '+e.message;}}
+  };
+};
+
+// ══════════════════════════════════════════════════════════════════════════════
+// mvPitch — data-pitch="type|id|"
+// ══════════════════════════════════════════════════════════════════════════════
+window.mvPitch = function(btn) {
+  const raw=(btn.dataset.pitch||'').trim();
+  const sep=raw.indexOf('|');
+  const type=sep>=0?raw.slice(0,sep):raw;
+  const id=sep>=0?raw.slice(sep+1).replace(/\|.*$/,''):'';
+  if(type==='album'){
+    if(typeof window.albumPitchMode==='function'){window.albumPitchMode(id);return;}
+    showToast('\u26a0 Album pitch ikke tilgjengelig');
+  } else if(type==='mixtape'){
+    if(typeof window.mixtapeShareMode==='function'){window.mixtapeShareMode(id);return;}
+    _mvMixtapePitchFallback(id);
+  }
+};
+function _mvMixtapePitchFallback(mixtapeId){
+  const st=typeof state!=='undefined'?state:window.state;
+  const mt=st?.mixtapes?.find(m=>m.id===mixtapeId);
+  if(!mt){showToast('Mixtape ikke funnet');return;}
+  const WORKER=window.R2_WORKER_URL||'https://beat-vault.marcus-aas-mekiassen.workers.dev';
+  if(mt._shareToken&&mt._shareEnabled!==false){_mvShowPitchModal(mt,`${WORKER}/share/${mt._shareToken}`);return;}
+  showToast('Publiserer pitch-side...');
+  const token=Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+  const beats=(typeof beatsFromIds==='function'?beatsFromIds:window.beatsFromIds)(mt.beatIds||[]);
+  const payload={mt:{id:mt.id,name:mt.name,cover:mt.cover||'',color:mt.color||'#f4a443'},beats:beats.map(b=>({id:b.id,name:b.name,duration:b.duration||0,audio_url:b.audio_url||b.url||''}))};
+  fetch(`${WORKER}/share/${token}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
+    .then(r=>r.json()).then(data=>{
+      if(!data.ok)throw new Error(data.error||'Ukjent feil');
+      mt._shareToken=token;mt._shareUrl=data.url;mt._shareEnabled=true;
+      if(typeof saveState==='function')saveState();
+      _mvShowPitchModal(mt,data.url);
+    }).catch(e=>showToast('\u26a0 Kunne ikke publisere: '+e.message));
+}
+function _mvShowPitchModal(mt,shareUrl){
+  let modal=document.getElementById('_mvPM');
+  if(!modal){modal=document.createElement('div');modal.id='_mvPM';modal.addEventListener('click',e=>{if(e.target===modal)modal.style.display='none';});document.body.appendChild(modal);}
+  modal.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;backdrop-filter:blur(5px)';
+  modal.innerHTML=`
+    <div style="background:#1c1a17;border:1px solid rgba(255,255,255,.12);max-width:480px;width:94%;padding:26px 28px;border-radius:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+        <h2 style="font-size:16px;font-weight:900;margin:0;color:#f4ede4">\uD83C\uDFA4 Pitch: ${esc(mt.name)}</h2>
+        <button onclick="document.getElementById('_mvPM').style.display='none'" style="background:none;border:none;color:rgba(255,255,255,.4);font-size:22px;cursor:pointer;padding:0;line-height:1">&#215;</button>
+      </div>
+      <p style="font-size:12px;color:rgba(255,255,255,.4);margin:0 0 14px">Del denne lenken med labels eller partnere:</p>
+      <div style="display:flex;gap:8px">
+        <input id="_mvPM_url" readonly value="${shareUrl}"
+          style="flex:1;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#f4ede4;padding:9px 12px;font-size:12px;font-family:system-ui;outline:none;border-radius:8px">
+        <button onclick="navigator.clipboard.writeText(document.getElementById('_mvPM_url').value).then(()=>{this.textContent='\u2713';setTimeout(()=>this.textContent='Kopier',2000)})"
+          style="background:#f4a443;border:none;color:#000;font-size:12px;font-weight:800;padding:9px 16px;cursor:pointer;border-radius:8px;font-family:inherit">Kopier</button>
+      </div>
+    </div>`;
+}
+
+// ── renameBeatInline ──────────────────────────────────────────────────────────
+window.renameBeatInline = function(id) {
+  const el=document.getElementById('abt-'+id);if(!el)return;
+  const st=typeof state!=='undefined'?state:window.state;
+  const b=st.beats.find(x=>x.id===id);if(!b)return;
+  const old=b.name||'';
+  const inp=document.createElement('input');inp.type='text';inp.value=old;
+  inp.style.cssText='background:rgba(255,255,255,.08);border:1px solid rgba(244,164,67,.5);color:#f4ede4;font-size:inherit;font-weight:inherit;font-family:inherit;padding:2px 8px;border-radius:6px;outline:none;width:100%;box-sizing:border-box;min-width:60px';
+  el.replaceWith(inp);inp.focus();inp.select();
+  function commit(){
+    const n=inp.value.trim();
+    if(n&&n!==old){b.name=n;saveState();if(typeof showToast==='function')showToast('\u2713 Navn lagret');}
+    const mixV=document.getElementById('mixtapeDetailView'),albV=document.getElementById('albumDetailView');
+    if(mixV&&!mixV.classList.contains('hidden')){if(typeof renderMixtapeDetail==='function')renderMixtapeDetail();}
+    else if(albV&&!albV.classList.contains('hidden')){if(typeof renderAlbumDetail==='function')renderAlbumDetail();}
+    else{const d=document.createElement('div');d.id='abt-'+id;d.className='ab-title';d.style.cssText='min-width:0;flex:1';d.textContent=n||old;inp.replaceWith(d);}
+  }
+  inp.addEventListener('blur',commit);
+  inp.addEventListener('keydown',e=>{if(e.key==='Enter')inp.blur();if(e.key==='Escape'){inp.value=old;inp.blur();}});
+};
+
+// ── downloadBeat ──────────────────────────────────────────────────────────────
+window.downloadBeat = function(id) {
+  const st=typeof state!=='undefined'?state:window.state;
+  const b=st?.beats?.find(x=>x.id===id);
+  const url=b?.audio_url||b?.url||b?.driveUrl||b?.drive_url;
+  if(!url){if(typeof showToast==='function')showToast('\u26a0 Ingen lydfil');return;}
+  const a=document.createElement('a');a.href=url;
+  a.download=(b.name||'beat').replace(/[^a-z0-9 ._-]/gi,'_')+'.mp3';
+  a.target='_blank';document.body.appendChild(a);a.click();setTimeout(()=>a.remove(),300);
+};
+
+
 function toggleAlbumBeat(id){
   // Mount inline editors that appear when card expands
   requestAnimationFrame(()=>{
@@ -1129,6 +1304,8 @@ function renderMixtapeDetail(){
       </div>
       <div class="mixtape-detail-actions">
         <button class="primary-btn" id="playMixtapeBtn" onclick="playMixtapeFromStart('${mt.id}')">▶ Spill fra start</button>
+        <button class="ghost-btn" data-share="mixtape|${mt.id}|${esc(mt.name)}" onclick="mvShare(this)">👤 Del med bruker</button>
+        <button class="ghost-btn" data-pitch="mixtape|${mt.id}|" onclick="mvPitch(this)">📄 Pitch</button>
         <button class="small-btn danger hidden" id="stopMixtapeBtn" onclick="stopCollectionPlayback()">⏹ Stopp</button>
       </div>
     </div>
