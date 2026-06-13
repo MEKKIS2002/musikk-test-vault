@@ -50,7 +50,7 @@ AKTIVE BRUKERE:
   <link rel="stylesheet" href="css/lyriclab.css?v=202605161400">
   <link rel="stylesheet" href="css/pipeline.css?v=202605161400">
   <link rel="stylesheet" href="css/main.css?v=202605161400">
-  <link rel="stylesheet" href="css/ui.css?v=202605301800">
+  <link rel="stylesheet" href="css/ui.css?v=202605302000">
   <link rel="stylesheet" href="css/track-cards.css?v=202605161400">
   <link rel="stylesheet" href="css/archive.css?v=202605161400">
   <link rel="stylesheet" href="css/mixtape.css?v=202605161400">
@@ -256,7 +256,6 @@ AKTIVE BRUKERE:
     <div class="hero-vinyl-softblur"></div>
   </div>
   <div class="dash-inner">
-    <!-- Greeting + quick actions -->
     <div class="dash-greeting-row">
       <div class="dash-greeting" id="dashGreeting">Hei &#128075;</div>
       <div class="dash-quick">
@@ -267,19 +266,11 @@ AKTIVE BRUKERE:
         <input type="file" accept="audio/*" multiple hidden id="dashUploadInput" onchange="dashUpload(this.files)">
       </div>
     </div>
-    <!-- Stat pills -->
     <div id="dashSub"></div>
-    <!-- Attention banner -->
     <div id="dashAttn" style="display:none"></div>
-    <!-- Projects -->
-    <div class="dash-sec-hd">
-      <div class="dash-section-label">Siste prosjekter</div>
-    </div>
+    <div class="dash-sec-hd"><div class="dash-section-label">Siste prosjekter</div></div>
     <div class="dash-projects-grid" id="dashProjects"></div>
-    <!-- Recent beats -->
-    <div class="dash-sec-hd" style="margin-top:14px">
-      <div class="dash-section-label">Nylig lastet opp</div>
-    </div>
+    <div class="dash-sec-hd" style="margin-top:14px"><div class="dash-section-label">Nylig lastet opp</div></div>
     <div id="dashBeats"></div>
   </div>
   <span id="beatCount" hidden></span>
@@ -772,7 +763,7 @@ AKTIVE BRUKERE:
   <script src="js/changelog.js?v=202605251400"></script>
   <script src="js/beats-tab.js?v=202605251400"></script>
   <script src="js/supabase.js?v=202605251400"></script>
-  <script src="js/db.js?v=202605301800"></script>
+  <script src="js/db.js?v=202605302000"></script>
 
     <!-- LYRIC LAB TAB -->
     <section id="lyriclabTab" class="tab-view hidden">
