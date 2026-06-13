@@ -295,7 +295,6 @@ function renderDashboard(){
   const username=sessionStorage.getItem('mv_username')||'deg';
   const h=new Date().getHours();
   const greet=h<10?'God morgen':h<17?'God dag':h<22?'God kveld':'God natt';
-
   const gEl=document.getElementById('dashGreeting');
   const sEl=document.getElementById('dashSub');
   if(gEl) gEl.textContent=greet+', '+username+' \uD83D\uDC4B';
@@ -307,7 +306,6 @@ function renderDashboard(){
   const allDemos=albums.flatMap(a=>(a.beatIds||[]).map(id=>beats.find(b=>b.id===id)).filter(Boolean));
   const avgDone=allDemos.length?Math.round(allDemos.reduce((s,b)=>s+Number(b.done||0),0)/allDemos.length):0;
 
-  // Stat pills — "uten tekst" fjernet
   if(sEl){
     sEl.innerHTML=
       `<span class="ds-pill">${beats.length} beats</span>`+
@@ -317,7 +315,6 @@ function renderDashboard(){
       `<span class="ds-pill">${avgDone}% snitt ferdig</span>`;
   }
 
-  // Attention banner (only for missing audio)
   const attnEl=document.getElementById('dashAttn');
   if(attnEl){
     if(noAudio.length){
@@ -330,15 +327,12 @@ function renderDashboard(){
     } else { attnEl.style.display='none'; }
   }
 
-  // Smart project ordering
   const sortedAlbums=albums.slice().sort((a,b)=>(b.updatedAt||b.createdAt||b.id||0)-(a.updatedAt||a.createdAt||a.id||0));
   const heroAlbum=sortedAlbums[0]?{...sortedAlbums[0],_type:'album'}:null;
   function projectScore(p){
     const pBeats=(p.beatIds||[]).map(id=>beats.find(b=>b.id===id)).filter(Boolean);
     const avg=pBeats.length?pBeats.reduce((s,b)=>s+Number(b.done||0),0)/pBeats.length:0;
-    const recency=(p.updatedAt||p.createdAt||p.id||0);
-    const completionScore=avg>15&&avg<92?(100-Math.abs(avg-55))*50000:0;
-    return recency+completionScore;
+    return (p.updatedAt||p.createdAt||p.id||0)+(avg>15&&avg<92?(100-Math.abs(avg-55))*50000:0);
   }
   const pool=[
     ...sortedAlbums.slice(1).map(a=>({...a,_type:'album'})),
@@ -346,7 +340,6 @@ function renderDashboard(){
   ].sort((a,b)=>projectScore(b)-projectScore(a)).slice(0,3);
   const projects=[...(heroAlbum?[heroAlbum]:[]),...pool].slice(0,4);
 
-  // Project cards
   const pEl=document.getElementById('dashProjects');
   if(pEl){
     if(!projects.length){pEl.innerHTML='<div class="dash-empty">Ingen prosjekter enn\u00e5.</div>';}
@@ -364,7 +357,6 @@ function renderDashboard(){
     }).join('');}
   }
 
-  // Recent beats
   const recent=beats.slice().sort((a,b)=>(b.createdAt||b.id||0)-(a.createdAt||a.id||0)).slice(0,4);
   const bEl=document.getElementById('dashBeats');
   if(bEl){
@@ -381,11 +373,11 @@ window.dashOpenProject=function(id,type){
   if(type==='album'){
     document.querySelector('.tab-btn[data-tab="albums"]')?.click();
     setTimeout(()=>{ if(typeof openAlbum==='function') openAlbum(id);
-      setTimeout(()=>{ document.getElementById('albumDetailView')?.scrollIntoView({behavior:'smooth',block:'start'}); },120); },80);
+      setTimeout(()=>document.getElementById('albumDetailView')?.scrollIntoView({behavior:'smooth',block:'start'}),120); },80);
   } else {
     document.querySelector('.tab-btn[data-tab="mixtapes"]')?.click();
     setTimeout(()=>{ if(typeof openMixtape==='function') openMixtape(id);
-      setTimeout(()=>{ document.getElementById('mixtapeDetailView')?.scrollIntoView({behavior:'smooth',block:'start'}); },120); },80);
+      setTimeout(()=>document.getElementById('mixtapeDetailView')?.scrollIntoView({behavior:'smooth',block:'start'}),120); },80);
   }
 };
 window.dashNewAlbum=function(){ document.querySelector('.tab-btn[data-tab="albums"]')?.click(); setTimeout(()=>document.getElementById('newAlbumBtn')?.click(),80); };
