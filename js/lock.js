@@ -395,6 +395,18 @@ function initLock(){
       window.isAdminMode = true;
       document.body.classList.add('admin-mode');
     }
+    // Restore UID immediately from sessionStorage (set during last login)
+    const _cachedUid = sessionStorage.getItem('mv_user_id');
+    if (_cachedUid) window._mvCurrentUserId = _cachedUid;
+    // Also restore from live Supabase session
+    if (window.supabaseClient) {
+      window.supabaseClient.auth.getSession().then(({data:{session}}) => {
+        if (session?.user?.id) {
+          window._mvCurrentUserId = session.user.id;
+          sessionStorage.setItem('mv_user_id', session.user.id);
+        }
+      }).catch(() => {});
+    }
     // Gjenopprett brukerknapp
     injectUserCorner(role);
     applyRoleMode();

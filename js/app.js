@@ -156,11 +156,10 @@
     document.querySelectorAll('.pipeline-beat-row').forEach(row=>{const ok=(!q||row.textContent.toLowerCase().includes(q))&&(!st||row.dataset.status===st)&&(!pr||row.dataset.priority===pr);row.style.display=ok?'flex':'none';});
   }
 
-  window._redesignAlbumDetail = redesignAlbumDetail;
   const _oldRenderAlbumDetail=window.renderAlbumDetail;
   window.renderAlbumDetail=function(){
     if(typeof _oldRenderAlbumDetail==='function')_oldRenderAlbumDetail();
-    else redesignAlbumDetail();
+    redesignAlbumDetail();
   };
 
   function redesignAlbumDetail(){
@@ -199,9 +198,9 @@
           </p>
           <div class="album-detail-actions">
             <button class="primary-btn" id="playAlbumBtn" onclick="playAlbumFromStart('${album.id}');document.getElementById('albumDetailHd')?.classList.add('vinyl-spinning')">▶ Spill fra start</button>
-            ${(typeof isAdmin==='function'?isAdmin():window.isAdminMode) ? `<label class="ghost-btn" style="cursor:pointer">🖼️ Bytt bilde<input type="file" accept="image/*" hidden onchange="setAlbumCover('${album.id}',this.files[0])"></label>` : ''}
+            ${window.isOwnerOrEditor && window.isOwnerOrEditor(album) ? `<label class="ghost-btn" style="cursor:pointer">🖼️ Bytt albumbilde<input type="file" accept="image/*" hidden onchange="setAlbumCover('${album.id}',this.files[0])"></label>` : ''}
             <button class="ghost-btn" onclick="albumToggleABSide('${album.id}')" id="abSideBtn" title="A/B-side visning">💿 A/B-side</button>
-            ${(typeof isAdmin==='function'?isAdmin():window.isAdminMode) ? `<button class="ghost-btn" onclick="mvPitch('album','${esc(album.id)}')">📄 Pitch</button>` : ''}
+            ${(typeof isAdmin==='function'?isAdmin():window.isAdminMode) ? `<button class="ghost-btn" data-pitch="album|${album.id}|" onclick="mvPitch(this)">📄 Pitch</button>` : ''}
             ${!album._shared ? `<button class="ghost-btn" onclick="window.openShareModal('album','${album.id}','${album.name.replace(/'/g,"\\'")}')">👤 Del med bruker</button>` : ''}
             <button class="small-btn danger hidden" id="stopAlbumBtn" onclick="stopCollectionPlayback()">⏹ Stopp</button>
           </div>
@@ -1092,13 +1091,12 @@ window.markAllNotifsRead = async function(){
 
 // ── Del-modal ─────────────────────────────────────────────────────────────
 window.openShareModal = async function(contentType, contentId, contentName){
-  const uid = window._mvCurrentUserId || sessionStorage.getItem('mv_user_id');
-  if(uid && !window._mvCurrentUserId) window._mvCurrentUserId = uid;
-  if(!uid){ showToast('Logg inn for \u00e5 dele'); return; }
-
-  // Hent eksisterende tilganger
-  const {data:{session}} = await window.supabaseClient.auth.getSession();
+  // Get session first — gives us both token and UID
+  const {data:{session}} = await window.supabaseClient.auth.getSession().catch(()=>({data:{}}));
   const token = session?.access_token;
+  const uid = window._mvCurrentUserId || session?.user?.id || sessionStorage.getItem('mv_user_id');
+  if (uid) window._mvCurrentUserId = uid;
+  if(!uid){ showToast('Logg inn for å dele'); return; }
 
   const res = await fetch(
     `${SB_URL}/rest/v1/content_access?content_type=eq.${contentType}&content_id=eq.${contentId}&select=*`,
@@ -1174,9 +1172,10 @@ window.doShare = async function(contentType, contentId, contentName){
   const status = document.getElementById('shareStatus');
   if(!username){ if(status) status.textContent='Skriv inn et brukernavn'; return; }
 
-  const {data:{session}} = await window.supabaseClient.auth.getSession();
+  const {data:{session}} = await window.supabaseClient.auth.getSession().catch(()=>({data:{}}));
   const token = session?.access_token;
-  const uid = window._mvCurrentUserId;
+  const uid = window._mvCurrentUserId || session?.user?.id || sessionStorage.getItem('mv_user_id');
+  if (uid) window._mvCurrentUserId = uid;
 
   // Finn grantee via username
   const pr = await fetch(`${SB_URL}/rest/v1/profiles?username=eq.${encodeURIComponent(username)}&select=id`, {headers:sbHeaders(token)});
