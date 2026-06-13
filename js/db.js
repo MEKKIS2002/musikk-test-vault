@@ -295,73 +295,154 @@ function renderDashboard(){
   const username=sessionStorage.getItem('mv_username')||'deg';
   const h=new Date().getHours();
   const greet=h<10?'God morgen':h<17?'God dag':h<22?'God kveld':'God natt';
+
+  // ── Greeting ──────────────────────────────────────────────────────────────
   const gEl=document.getElementById('dashGreeting');
   const sEl=document.getElementById('dashSub');
   if(gEl) gEl.textContent=greet+', '+username+' \uD83D\uDC4B';
+
+  const beats=(state.beats||[]).filter(b=>!b.archived);
+  const albums=(state.albums||[]).filter(a=>!a.archived);
+  const mixtapes=(state.mixtapes||[]).filter(m=>!m.archived);
+
+  // ── Stat pills ────────────────────────────────────────────────────────────
+  const noAudio=beats.filter(b=>!(b.audio_url||b.url));
+  const noLyric=beats.filter(b=>!(b.lyrics||(b.lyricSections||[]).some(s=>s.text?.trim())));
+  const allDemos=albums.flatMap(a=>(a.beatIds||[]).map(id=>beats.find(b=>b.id===id)).filter(Boolean));
+  const avgDone=allDemos.length?Math.round(allDemos.reduce((s,b)=>s+Number(b.done||0),0)/allDemos.length):0;
+
   if(sEl){
-    const nb=(state.beats||[]).filter(b=>!b.archived).length;
-    const na=(state.albums||[]).filter(a=>!a.archived).length;
-    const nm=(state.mixtapes||[]).filter(m=>!m.archived).length;
-    sEl.textContent=nb+' beats \u00b7 '+na+' albumer \u00b7 '+nm+' mixtapes';
+    sEl.innerHTML=`
+      <span class="ds-pill">${beats.length} beats</span>
+      <span class="ds-pill ds-accent">${albums.length} albumer</span>
+      <span class="ds-pill ds-accent">${mixtapes.length} mixtapes</span>
+      ${noAudio.length?`<span class="ds-pill ds-warn" title="${noAudio.slice(0,3).map(b=>b.name).join(', ')}">${noAudio.length} uten lyd</span>`:''}
+      ${noLyric.length?`<span class="ds-pill ds-warn" title="${noLyric.slice(0,3).map(b=>b.name).join(', ')}">${noLyric.length} uten tekst</span>`:''}
+      <span class="ds-pill">${avgDone}% snitt ferdig</span>`;
   }
 
-  // Recent projects
-  const projects=[
-    ...(state.albums||[]).filter(a=>!a.archived).map(a=>({...a,_type:'album'})),
-    ...(state.mixtapes||[]).filter(m=>!m.archived).map(m=>({...m,_type:'mixtape'}))
-  ].sort((a,b)=>(b.updatedAt||b.createdAt||b.id||0)-(a.updatedAt||a.createdAt||a.id||0)).slice(0,4);
+  // ── Attention banner ───────────────────────────────────────────────────────
+  const attnEl=document.getElementById('dashAttn');
+  if(attnEl){
+    const missing=[
+      ...noAudio.map(b=>({...b,_reason:'mangler lyd'})),
+      ...noLyric.filter(b=>!(b.audio_url||b.url)).map(b=>({...b,_reason:'mangler lyd og tekst'}))
+    ].filter((b,i,a)=>a.findIndex(x=>x.id===b.id)===i).slice(0,5);
+    if(missing.length){
+      const names=missing.slice(0,3).map(b=>esc(b.name)).join(', ')+(missing.length>3?' ...':'');
+      attnEl.style.display='';
+      attnEl.innerHTML=`<span class="attn-icon">\u26A0\uFE0F</span>
+        <div class="attn-body">
+          <div class="attn-title">${missing.length} sang${missing.length===1?'':'er'} trenger oppmerksomhet</div>
+          <div class="attn-names">${names}</div>
+        </div>
+        <button class="attn-cta" onclick="document.querySelector('.tab-btn[data-tab=\\'beats\\']')?.click()">Vis alle \u2192</button>`;
+    } else {
+      attnEl.style.display='none';
+    }
+  }
 
+  // ── Smart project ordering ─────────────────────────────────────────────────
+  // Slot 1: always the album most recently worked on (highest updatedAt/createdAt)
+  const sortedAlbums=albums.slice().sort((a,b)=>(b.updatedAt||b.createdAt||b.id||0)-(a.updatedAt||a.createdAt||a.id||0));
+  const heroAlbum=sortedAlbums[0]?{...sortedAlbums[0],_type:'album'}:null;
+
+  // Slots 2-4: remaining albums + all mixtapes, scored by "worth continuing"
+  function projectScore(p){
+    const pBeats=(p.beatIds||[]).map(id=>beats.find(b=>b.id===id)).filter(Boolean);
+    const avg=pBeats.length?pBeats.reduce((s,b)=>s+Number(b.done||0),0)/pBeats.length:0;
+    // Prefer incomplete projects (20-90%) that have recent activity
+    const recency=(p.updatedAt||p.createdAt||p.id||0);
+    const completionScore=avg>15&&avg<92?(100-Math.abs(avg-55))*50000:0;
+    return recency+completionScore;
+  }
+  const pool=[
+    ...sortedAlbums.slice(1).map(a=>({...a,_type:'album'})),
+    ...mixtapes.slice().map(m=>({...m,_type:'mixtape'}))
+  ].sort((a,b)=>projectScore(b)-projectScore(a)).slice(0,3);
+
+  const projects=[...(heroAlbum?[heroAlbum]:[]),...pool].slice(0,4);
+
+  // ── Project cards ─────────────────────────────────────────────────────────
   const pEl=document.getElementById('dashProjects');
   if(pEl){
     if(!projects.length){pEl.innerHTML='<div class="dash-empty">Ingen prosjekter enn\u00e5.</div>';}
-    else{pEl.innerHTML=projects.map(p=>{
+    else{pEl.innerHTML=projects.map((p,idx)=>{
       const isAlbum=p._type==='album';
-      const count=(p.beatIds||[]).filter(id=>(state.beats||[]).find(b=>b.id===id&&!b.archived)).length;
+      const pBeats=(p.beatIds||[]).map(id=>beats.find(b=>b.id===id)).filter(Boolean);
+      const pct=pBeats.length?Math.round(pBeats.reduce((s,b)=>s+Number(b.done||0),0)/pBeats.length):0;
+      const pctCol=pct>=70?'#34d399':pct>=35?'#f97316':'#fb7185';
+      const count=pBeats.length;
       const cover=p.cover
         ?`<img src="${esc(p.cover)}" alt="" style="width:100%;height:100%;object-fit:cover">`
-        :`<span style="font-size:32px">${isAlbum?'\uD83C\uDFB5':'\uD83C\uDFBC'}</span>`;
-      return `<div class="dash-proj-card" onclick="dashOpenProject('${esc(p.id)}','${p._type}')"><div class="dash-proj-cover">${cover}</div><div class="dash-proj-footer"><div class="dash-proj-name">${esc(p.name)}</div><div class="dash-proj-meta">${count} sang${count===1?'':'er'}</div></div></div>`;
+        :`<span style="font-size:30px">${isAlbum?'\uD83C\uDFB5':'\uD83C\uDFBC'}</span>`;
+      const heroClass=idx===0?'dash-proj-hero':'';
+      return `<div class="dash-proj-card ${heroClass}" onclick="dashOpenProject('${esc(p.id)}','${p._type}')">
+        <div class="dash-proj-cover">
+          ${cover}
+          <div class="dash-proj-prog-bar"><div style="width:${pct}%;background:${pctCol};height:100%;border-radius:2px;transition:width .3s"></div></div>
+        </div>
+        <div class="dash-proj-footer">
+          <div class="dash-proj-name">${esc(p.name)}</div>
+          <div class="dash-proj-meta">${count} sang${count===1?'':'er'} &middot; <span style="color:${pctCol};font-weight:700">${pct}%</span></div>
+        </div>
+      </div>`;
     }).join('');}
   }
 
-  // Recent beats — compact card matching sketch style
-  const beats=(state.beats||[]).filter(b=>!b.archived)
-    .sort((a,b)=>(b.createdAt||b.id||0)-(a.createdAt||a.id||0)).slice(0,4);
+  // ── Beat cards ────────────────────────────────────────────────────────────
+  const recent=beats.sort((a,b)=>(b.createdAt||b.id||0)-(a.createdAt||a.id||0)).slice(0,4);
   const bEl=document.getElementById('dashBeats');
   if(bEl){
-    if(!beats.length){bEl.innerHTML='<div class="dash-empty">Ingen sanger enn\u00e5.</div>';}
-    else{bEl.innerHTML=beats.map(b=>{
-      const cover=b.cover
-        ?`<img src="${esc(b.cover)}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:8px">`
-        :`<span style="font-size:22px">\uD83C\uDFB5</span>`;
+    if(!recent.length){bEl.innerHTML='<div class="dash-empty">Ingen sanger enn\u00e5.</div>';}
+    else{bEl.innerHTML=recent.map(b=>{
+      const cover=b.cover?`<img src="${esc(b.cover)}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:8px">`:`<span style="font-size:20px">\uD83C\uDFB5</span>`;
       const dur=b.duration?Math.floor(b.duration/60)+':'+String(Math.floor(b.duration%60)).padStart(2,'0'):'';
-      return `<div class="dash-beat-card">
-  <div class="dash-beat-top">
-    <div class="dash-beat-thumb">${cover}</div>
-    <div class="dash-beat-info">
-      <div class="dash-beat-name" title="${esc(b.name)}">${esc(b.name)}</div>
-      <div class="dash-beat-meta">${dur||'\u2014'}</div>
-    </div>
-  </div>
-  <div class="dash-beat-btns">
-    <button class="dash-btn-play" onclick="event.stopPropagation();playSingleBeat('${b.id}')">&#9654; Spill</button>
-    <button class="dash-btn-lab" onclick="event.stopPropagation();openInLyricLab('${b.id}')">&#9998; Lab</button>
-  </div>
-</div>`;
+      return `<div class="dash-beat-card"><div class="dash-beat-top"><div class="dash-beat-thumb">${cover}</div><div class="dash-beat-info"><div class="dash-beat-name" title="${esc(b.name)}">${esc(b.name)}</div><div class="dash-beat-dur">${dur||'\u2014'}</div></div></div><div class="dash-beat-btns"><button class="dash-btn-play" onclick="event.stopPropagation();playSingleBeat('${b.id}')">&#9654; Spill</button><button class="dash-btn-lab" onclick="event.stopPropagation();openInLyricLab('${b.id}')">&#9998; Lab</button></div></div>`;
     }).join('');}
   }
 }
 
+// Open project + switch tab + smooth scroll to detail
 window.dashOpenProject=function(id,type){
   if(type==='album'){
     const btn=document.querySelector('.tab-btn[data-tab="albums"]');
-    if(btn)btn.click();
-    setTimeout(()=>{if(typeof openAlbum==='function')openAlbum(id);},80);
+    if(btn) btn.click();
+    setTimeout(()=>{
+      if(typeof openAlbum==='function') openAlbum(id);
+      setTimeout(()=>{
+        const el=document.getElementById('albumDetailView');
+        if(el) el.scrollIntoView({behavior:'smooth',block:'start'});
+      },120);
+    },80);
   } else {
     const btn=document.querySelector('.tab-btn[data-tab="mixtapes"]');
-    if(btn)btn.click();
-    setTimeout(()=>{if(typeof openMixtape==='function')openMixtape(id);},80);
+    if(btn) btn.click();
+    setTimeout(()=>{
+      if(typeof openMixtape==='function') openMixtape(id);
+      setTimeout(()=>{
+        const el=document.getElementById('mixtapeDetailView');
+        if(el) el.scrollIntoView({behavior:'smooth',block:'start'});
+      },120);
+    },80);
   }
+};
+
+// Quick actions from dashboard
+window.dashNewSong=function(){
+  document.querySelector('.tab-btn[data-tab="beats"]')?.click();
+  setTimeout(()=>document.getElementById('newBeatBtn')?.click(),80);
+};
+window.dashNewAlbum=function(){
+  document.querySelector('.tab-btn[data-tab="albums"]')?.click();
+  setTimeout(()=>document.getElementById('newAlbumBtn')?.click(),80);
+};
+window.dashNewMixtape=function(){
+  document.querySelector('.tab-btn[data-tab="mixtapes"]')?.click();
+  setTimeout(()=>document.getElementById('newMixtapeBtn')?.click(),80);
+};
+window.dashOpenLyricLab=function(){
+  document.querySelector('.tab-btn[data-tab="lyriclab"]')?.click();
 };
 window.dashUpload=async function(files){
   if(!files||!files.length)return;
@@ -1693,3 +1774,5 @@ requestAnimationFrame(()=>{
     document.querySelectorAll('.tab-view:not(.hidden)').forEach(v=>v.classList.add('tab-visible'));
   }
 });
+
+window.dashUploadTrigger=function(){document.getElementById('dashUploadInput')?.click();};
