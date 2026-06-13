@@ -50,7 +50,7 @@ AKTIVE BRUKERE:
   <link rel="stylesheet" href="css/lyriclab.css?v=202605161400">
   <link rel="stylesheet" href="css/pipeline.css?v=202605161400">
   <link rel="stylesheet" href="css/main.css?v=202605161400">
-  <link rel="stylesheet" href="css/ui.css?v=202605301600">
+  <link rel="stylesheet" href="css/ui.css?v=202605301800">
   <link rel="stylesheet" href="css/track-cards.css?v=202605161400">
   <link rel="stylesheet" href="css/archive.css?v=202605161400">
   <link rel="stylesheet" href="css/mixtape.css?v=202605161400">
@@ -256,19 +256,30 @@ AKTIVE BRUKERE:
     <div class="hero-vinyl-softblur"></div>
   </div>
   <div class="dash-inner">
+    <!-- Greeting + quick actions -->
     <div class="dash-greeting-row">
-      <div>
-        <div class="dash-greeting" id="dashGreeting">Hei &#128075;</div>
-        <div class="dash-sub" id="dashSub">Music Vault</div>
+      <div class="dash-greeting" id="dashGreeting">Hei &#128075;</div>
+      <div class="dash-quick">
+        <button class="dq-btn accent" onclick="dashUploadTrigger()">&#xFF0B; Ny sang</button>
+        <button class="dq-btn" onclick="dashNewAlbum()">&#xFF0B; Nytt album</button>
+        <button class="dq-btn" onclick="dashNewMixtape()">&#xFF0B; Ny mixtape</button>
+        <button class="dq-btn" onclick="dashOpenLyricLab()">&#9998; Lyric Lab</button>
+        <input type="file" accept="audio/*" multiple hidden id="dashUploadInput" onchange="dashUpload(this.files)">
       </div>
-      <label class="ghost-btn dash-upload-btn" style="cursor:pointer">
-        &#xFF0B; Last opp sang
-        <input type="file" accept="audio/*" multiple hidden onchange="dashUpload(this.files)">
-      </label>
     </div>
-    <div class="dash-section-label">Siste prosjekter</div>
+    <!-- Stat pills -->
+    <div id="dashSub"></div>
+    <!-- Attention banner -->
+    <div id="dashAttn" style="display:none"></div>
+    <!-- Projects -->
+    <div class="dash-sec-hd">
+      <div class="dash-section-label">Siste prosjekter</div>
+    </div>
     <div class="dash-projects-grid" id="dashProjects"></div>
-    <div class="dash-section-label" style="margin-top:14px">Nylig lastet opp</div>
+    <!-- Recent beats -->
+    <div class="dash-sec-hd" style="margin-top:14px">
+      <div class="dash-section-label">Nylig lastet opp</div>
+    </div>
     <div id="dashBeats"></div>
   </div>
   <span id="beatCount" hidden></span>
@@ -761,7 +772,7 @@ AKTIVE BRUKERE:
   <script src="js/changelog.js?v=202605251400"></script>
   <script src="js/beats-tab.js?v=202605251400"></script>
   <script src="js/supabase.js?v=202605251400"></script>
-  <script src="js/db.js?v=202605301600"></script>
+  <script src="js/db.js?v=202605301800"></script>
 
     <!-- LYRIC LAB TAB -->
     <section id="lyriclabTab" class="tab-view hidden">
