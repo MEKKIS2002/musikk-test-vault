@@ -276,10 +276,17 @@ setTimeout(updateAdminUi, 50);
   let isPullingFromSupabase = false;
   let pushTimer = null;
   let lastPushAt = 0;
+  let _pendingPush = false;  // dirty flag — set when changes exist but push hasn't run yet
+  let _pushFailCount = 0;    // consecutive fail counter for backoff
+  let _intervalId = null;
 
   function client(){ return window.supabaseClient || null; }
   function appState(){ try { return state; } catch { return null; } }
-  function canWrite(){ return !!(client() && window.isAdminMode); }
+  function canWrite(){
+    // isAdminMode may not be set on auto-login path — check sessionStorage too
+    const isAdmin = window.isAdminMode || sessionStorage.getItem('mv_role')==='admin';
+    return !!(client() && isAdmin);
+  }
   function say(msg, type='info'){
     const el = document.getElementById(SYNC_STATUS_ID);
     if(el){ el.textContent = msg; el.dataset.type = type; }
@@ -593,20 +600,27 @@ setTimeout(updateAdminUi, 50);
       await syncRelations('mixtape_beats', 'mixtape_id', st.mixtapes || []);
 
       lastPushAt = Date.now();
-      say(`Lagret til Supabase ${new Date(lastPushAt).toLocaleTimeString()}.`, 'success');
-      if(manual) toast('✓ Lokale data migrert til Supabase');
+      _pendingPush = false;
+      _pushFailCount = 0;
+      say(`Lagret ${new Date(lastPushAt).toLocaleTimeString()}.`, 'success');
+      _updateSyncIndicator(true);
+      if(manual) toast('\u2713 Lokale data migrert til Supabase');
       return true;
     }catch(err){
       console.error('Supabase push-feil:', err);
+      _pushFailCount++;
+      _pendingPush = true; // still dirty — needs retry
       const hint = /metadata/i.test(err.message || '')
-        ? ' Mangler metadata-kolonne. Kjør SQL-en som står under Supabase sync-panelet.'
+        ? ' Mangler metadata-kolonne.'
         : '';
-      say(`Kunne ikke lagre til Supabase: ${err.message || err}.${hint}`, 'error');
+      say(`Lagring feilet (fors\u00f8k ${_pushFailCount}): ${err.message || err}.${hint}`, 'error');
+      _updateSyncIndicator(false);
       return false;
     }
   }
 
   function schedulePush(){
+    _pendingPush = true;
     if(isPullingFromSupabase || !canWrite()) return;
     clearTimeout(pushTimer);
     pushTimer = setTimeout(()=>pushToSupabase(), 900);
@@ -641,7 +655,67 @@ setTimeout(updateAdminUi, 50);
     document.getElementById('pushSupabaseBtn')?.addEventListener('click',()=>pushToSupabase({manual:true}));
   }
 
-  // Overstyr saveState slik at eksisterende knapper fortsatt fungerer, men også synker til Supabase.
+  // ── Sync indicator ────────────────────────────────────────────────────────
+  function _updateSyncIndicator(ok) {
+    const el = document.getElementById('mvSyncDot');
+    if (!el) return;
+    el.title = ok ? 'Synket ' + new Date().toLocaleTimeString() : 'Synkfeil — prøver igjen';
+    el.style.background = ok ? '#34d399' : '#fb7185';
+  }
+
+  // ── Periodic heartbeat: push every 20s if dirty ──────────────────────────
+  function _startHeartbeat() {
+    if (_intervalId) return;
+    _intervalId = setInterval(async () => {
+      if (!_pendingPush || isPullingFromSupabase || !canWrite()) return;
+      // Exponential backoff on repeated failure (max 5 min)
+      if (_pushFailCount > 0) {
+        const backoffMs = Math.min(_pushFailCount * 30000, 300000);
+        if (Date.now() - lastPushAt < backoffMs) return;
+      }
+      await pushToSupabase();
+    }, 20000);
+  }
+
+  // ── Push when tab becomes hidden (user switches away) ────────────────────
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden && _pendingPush && canWrite()) {
+      clearTimeout(pushTimer);
+      pushToSupabase();
+    }
+  });
+
+  // ── Push before page unload ───────────────────────────────────────────────
+  window.addEventListener('beforeunload', () => {
+    if (_pendingPush && canWrite()) {
+      // Synchronous-style fire (best effort)
+      pushToSupabase();
+    }
+  });
+
+  // ── Push when network comes back online ───────────────────────────────────
+  window.addEventListener('online', () => {
+    if (_pendingPush && canWrite()) {
+      setTimeout(() => pushToSupabase(), 1000);
+    }
+  });
+
+  // ── Inject sync dot into topbar ───────────────────────────────────────────
+  function _injectSyncDot() {
+    if (document.getElementById('mvSyncDot')) return;
+    // Find topbar gear button or notification bell as anchor
+    const anchor = document.getElementById('mvGearBtn') || document.getElementById('mvNotifBell') || document.querySelector('.topbar-right, .top-bar, header');
+    if (!anchor) return;
+    const dot = document.createElement('span');
+    dot.id = 'mvSyncDot';
+    dot.title = 'Supabase sync';
+    dot.style.cssText = 'width:8px;height:8px;border-radius:50%;background:#34d399;display:inline-block;margin-left:6px;flex-shrink:0;transition:background .3s;cursor:help';
+    anchor.after(dot);
+  }
+  setTimeout(_injectSyncDot, 1500);
+  setTimeout(_startHeartbeat, 2000);
+
+  // ── Overstyr saveState ────────────────────────────────────────────────────
   const originalSaveState = saveState;
   saveState = function(){
     originalSaveState();
