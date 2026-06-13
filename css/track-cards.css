@@ -1318,11 +1318,8 @@
 .abi-row-fav {
   align-self: center !important;
 }
-
-/* ── Row action buttons: show on hover, proper sizing ── */
+/* ── Row action buttons ── */
 .album-beat-card:hover .ab-rename-btn,
 .album-beat-card:hover .ab-remove-btn { opacity: 1 !important; }
-.ab-rename-btn:hover { background: rgba(255,255,255,.09) !important; color: rgba(255,255,255,.8) !important; }
+.ab-rename-btn:hover { background: rgba(255,255,255,.09) !important; }
 .ab-remove-btn:hover { background: rgba(251,113,133,.12) !important; color: #fb7185 !important; }
-/* Ensure all row buttons are same height so nothing offsets */
-.album-beat-card .ab-title { display:flex; align-items:center; }
