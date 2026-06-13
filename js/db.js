@@ -305,7 +305,7 @@ function renderDashboard(){
     sEl.textContent=nb+' beats \u00b7 '+na+' albumer \u00b7 '+nm+' mixtapes';
   }
 
-  // Recent projects (albums + mixtapes), newest first
+  // Recent projects
   const projects=[
     ...(state.albums||[]).filter(a=>!a.archived).map(a=>({...a,_type:'album'})),
     ...(state.mixtapes||[]).filter(m=>!m.archived).map(m=>({...m,_type:'mixtape'}))
@@ -320,17 +320,11 @@ function renderDashboard(){
       const cover=p.cover
         ?`<img src="${esc(p.cover)}" alt="" style="width:100%;height:100%;object-fit:cover">`
         :`<span style="font-size:32px">${isAlbum?'\uD83C\uDFB5':'\uD83C\uDFBC'}</span>`;
-      return `<div class="dash-proj-card" onclick="dashOpenProject('${esc(p.id)}','${p._type}')">
-        <div class="dash-proj-cover">${cover}</div>
-        <div class="dash-proj-footer">
-          <div class="dash-proj-name">${esc(p.name)}</div>
-          <div class="dash-proj-meta">${count} sang${count===1?'':'er'}</div>
-        </div>
-      </div>`;
+      return `<div class="dash-proj-card" onclick="dashOpenProject('${esc(p.id)}','${p._type}')"><div class="dash-proj-cover">${cover}</div><div class="dash-proj-footer"><div class="dash-proj-name">${esc(p.name)}</div><div class="dash-proj-meta">${count} sang${count===1?'':'er'}</div></div></div>`;
     }).join('');}
   }
 
-  // Recent beats — horizontal grid cards (like sketch)
+  // Recent beats — compact card matching sketch style
   const beats=(state.beats||[]).filter(b=>!b.archived)
     .sort((a,b)=>(b.createdAt||b.id||0)-(a.createdAt||a.id||0)).slice(0,4);
   const bEl=document.getElementById('dashBeats');
@@ -338,20 +332,22 @@ function renderDashboard(){
     if(!beats.length){bEl.innerHTML='<div class="dash-empty">Ingen sanger enn\u00e5.</div>';}
     else{bEl.innerHTML=beats.map(b=>{
       const cover=b.cover
-        ?`<img src="${esc(b.cover)}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:8px 8px 0 0">`
-        :`<span style="font-size:28px">\uD83C\uDFB5</span>`;
+        ?`<img src="${esc(b.cover)}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:8px">`
+        :`<span style="font-size:22px">\uD83C\uDFB5</span>`;
       const dur=b.duration?Math.floor(b.duration/60)+':'+String(Math.floor(b.duration%60)).padStart(2,'0'):'';
       return `<div class="dash-beat-card">
-        <div class="dash-beat-cover">${cover}</div>
-        <div class="dash-beat-body">
-          <div class="dash-beat-name" title="${esc(b.name)}">${esc(b.name)}</div>
-          ${dur?`<div class="dash-beat-dur">${dur}</div>`:''}
-        </div>
-        <div class="dash-beat-btns">
-          <button class="dash-btn-play" onclick="event.stopPropagation();playSingleBeat('${b.id}')">&#9654; Spill</button>
-          <button class="dash-btn-lab" onclick="event.stopPropagation();openInLyricLab('${b.id}')">&#9998; Lab</button>
-        </div>
-      </div>`;
+  <div class="dash-beat-top">
+    <div class="dash-beat-thumb">${cover}</div>
+    <div class="dash-beat-info">
+      <div class="dash-beat-name" title="${esc(b.name)}">${esc(b.name)}</div>
+      <div class="dash-beat-meta">${dur||'\u2014'}</div>
+    </div>
+  </div>
+  <div class="dash-beat-btns">
+    <button class="dash-btn-play" onclick="event.stopPropagation();playSingleBeat('${b.id}')">&#9654; Spill</button>
+    <button class="dash-btn-lab" onclick="event.stopPropagation();openInLyricLab('${b.id}')">&#9998; Lab</button>
+  </div>
+</div>`;
     }).join('');}
   }
 }
@@ -367,7 +363,6 @@ window.dashOpenProject=function(id,type){
     setTimeout(()=>{if(typeof openMixtape==='function')openMixtape(id);},80);
   }
 };
-
 window.dashUpload=async function(files){
   if(!files||!files.length)return;
   for(const file of files){if(typeof createBeatFromFileIDB==='function')await createBeatFromFileIDB(file);}
