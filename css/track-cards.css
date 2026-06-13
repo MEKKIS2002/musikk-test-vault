@@ -1323,3 +1323,5 @@
 .album-beat-card:hover .ab-remove-btn { opacity: 1 !important; }
 .ab-rename-btn:hover { background: rgba(255,255,255,.09) !important; }
 .ab-remove-btn:hover { background: rgba(251,113,133,.12) !important; color: #fb7185 !important; }
+/* Album header actions */
+.album-hd-actions { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:14px; }
