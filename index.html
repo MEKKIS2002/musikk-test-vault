@@ -50,8 +50,8 @@ AKTIVE BRUKERE:
   <link rel="stylesheet" href="css/lyriclab.css?v=202605161400">
   <link rel="stylesheet" href="css/pipeline.css?v=202605161400">
   <link rel="stylesheet" href="css/main.css?v=202605161400">
-  <link rel="stylesheet" href="css/ui.css?v=202605161400">
-  <link rel="stylesheet" href="css/track-cards.css?v=202605292000">
+  <link rel="stylesheet" href="css/ui.css?v=202605300900">
+  <link rel="stylesheet" href="css/track-cards.css?v=202605161400">
   <link rel="stylesheet" href="css/archive.css?v=202605161400">
   <link rel="stylesheet" href="css/mixtape.css?v=202605161400">
   <style>html,body{background:#090705 !important}
@@ -235,42 +235,50 @@ AKTIVE BRUKERE:
 <main class="app">
 <button id="producerLoginBtn" class="producer-login-btn" onclick="returnToPasswordScreen()">Logg inn</button>
 
-<section class="hero">
-  <div class="hero-main glass">
-    <div class="eyebrow">Music Vault</div>
-    <h1>Beats, demoer og&nbsp;releases.</h1>
-    <p>Organiser beats i albumer, følg demoer gjennom pipeline, og se hvilke låter som bør ferdigstilles først.</p>
-    <div class="hero-vinyl" aria-hidden="true">
-      <div class="hero-vinyl-glow"></div>
-      <div class="hero-vinyl-disc">
-        <div class="hero-vinyl-surface"></div>
-        <div class="hero-vinyl-highlight"></div>
-        <div class="hero-vinyl-label">
-          <div class="hero-vinyl-label-ring"></div>
-          <div class="hero-vinyl-marker"></div>
-        </div>
-        <div class="hero-vinyl-hole"></div>
-        <span class="hero-vinyl-speck s1"></span>
-        <span class="hero-vinyl-speck s2"></span>
-        <span class="hero-vinyl-speck s3"></span>
-        <span class="hero-vinyl-speck s4"></span>
-        <span class="hero-vinyl-scuff c1"></span>
-        <span class="hero-vinyl-scuff c2"></span>
+<section class="hero hero-dashboard" id="mvDashboard">
+  <div class="hero-vinyl hero-vinyl-bg" aria-hidden="true">
+    <div class="hero-vinyl-glow"></div>
+    <div class="hero-vinyl-disc">
+      <div class="hero-vinyl-surface"></div>
+      <div class="hero-vinyl-highlight"></div>
+      <div class="hero-vinyl-label">
+        <div class="hero-vinyl-label-ring"></div>
+        <div class="hero-vinyl-marker"></div>
       </div>
-      <div class="hero-vinyl-softblur"></div>
+      <div class="hero-vinyl-hole"></div>
+      <span class="hero-vinyl-speck s1"></span>
+      <span class="hero-vinyl-speck s2"></span>
+      <span class="hero-vinyl-speck s3"></span>
+      <span class="hero-vinyl-speck s4"></span>
+      <span class="hero-vinyl-scuff c1"></span>
+      <span class="hero-vinyl-scuff c2"></span>
     </div>
+    <div class="hero-vinyl-softblur"></div>
   </div>
-  <aside class="stats-card glass">
-    <div class="section-title"><h3>Status</h3><span class="hint">Synkes med Supabase</span></div>
-    <div class="stat-grid">
-      <div class="stat"><strong id="beatCount">0</strong><span>Beats</span></div>
-      <div class="stat"><strong id="favCount">0</strong><span>Favoritter</span></div>
-      <div class="stat"><strong id="demoCount">0</strong><span>Demoer</span></div>
-      <div class="stat"><strong id="avgDone">0%</strong><span>Snitt ferdig</span></div>
+
+  <div class="dash-inner">
+    <div class="dash-greeting-row">
+      <div>
+        <div class="dash-greeting" id="dashGreeting">Hei &#128075;</div>
+        <div class="dash-sub" id="dashSub">Music Vault</div>
+      </div>
+      <label class="ghost-btn dash-upload-btn" style="cursor:pointer">
+        &#xff0b; Last opp sang
+        <input type="file" accept="audio/*" multiple hidden id="dashUploadInput" onchange="dashUpload(this.files)">
+      </label>
     </div>
-    <button class="ghost-btn" id="exportBtn">Eksporter backup</button>
-    <label class="ghost-btn" style="text-align:center">Importer backup<input id="importInput" type="file" accept="application/json" hidden /></label>
-  </aside>
+    <div class="dash-section-label">Siste prosjekter</div>
+    <div class="dash-projects-grid" id="dashProjects"></div>
+    <div class="dash-section-label" style="margin-top:16px">Nylig lastet opp</div>
+    <div class="dash-beats-grid" id="dashBeats"></div>
+  </div>
+
+  <span id="beatCount" hidden></span>
+  <span id="favCount" hidden></span>
+  <span id="demoCount" hidden></span>
+  <span id="avgDone" hidden></span>
+  <button id="exportBtn" hidden></button>
+  <input id="importInput" type="file" accept="application/json" hidden />
 </section>
 
 <nav class="tabs">
@@ -755,7 +763,7 @@ AKTIVE BRUKERE:
   <script src="js/changelog.js?v=202605251400"></script>
   <script src="js/beats-tab.js?v=202605251400"></script>
   <script src="js/supabase.js?v=202605251400"></script>
-  <script src="js/db.js?v=202605292000"></script>
+  <script src="js/db.js?v=202605300900"></script>
 
     <!-- LYRIC LAB TAB -->
     <section id="lyriclabTab" class="tab-view hidden">
