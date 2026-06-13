@@ -50,7 +50,7 @@ AKTIVE BRUKERE:
   <link rel="stylesheet" href="css/lyriclab.css?v=202605161400">
   <link rel="stylesheet" href="css/pipeline.css?v=202605161400">
   <link rel="stylesheet" href="css/main.css?v=202605161400">
-  <link rel="stylesheet" href="css/ui.css?v=202605300900">
+  <link rel="stylesheet" href="css/ui.css?v=202605301200">
   <link rel="stylesheet" href="css/track-cards.css?v=202605161400">
   <link rel="stylesheet" href="css/archive.css?v=202605161400">
   <link rel="stylesheet" href="css/mixtape.css?v=202605161400">
@@ -235,8 +235,9 @@ AKTIVE BRUKERE:
 <main class="app">
 <button id="producerLoginBtn" class="producer-login-btn" onclick="returnToPasswordScreen()">Logg inn</button>
 
-<section class="hero hero-dashboard" id="mvDashboard">
-  <div class="hero-vinyl hero-vinyl-bg" aria-hidden="true">
+<section class="hero hero-dashboard">
+  <!-- Vinyl spins in background -->
+  <div class="hero-vinyl" aria-hidden="true">
     <div class="hero-vinyl-glow"></div>
     <div class="hero-vinyl-disc">
       <div class="hero-vinyl-surface"></div>
@@ -257,22 +258,28 @@ AKTIVE BRUKERE:
   </div>
 
   <div class="dash-inner">
+    <!-- Greeting -->
     <div class="dash-greeting-row">
       <div>
         <div class="dash-greeting" id="dashGreeting">Hei &#128075;</div>
         <div class="dash-sub" id="dashSub">Music Vault</div>
       </div>
       <label class="ghost-btn dash-upload-btn" style="cursor:pointer">
-        &#xff0b; Last opp sang
-        <input type="file" accept="audio/*" multiple hidden id="dashUploadInput" onchange="dashUpload(this.files)">
+        &#xFF0B; Last opp sang
+        <input type="file" accept="audio/*" multiple hidden onchange="dashUpload(this.files)">
       </label>
     </div>
+
+    <!-- Recent projects -->
     <div class="dash-section-label">Siste prosjekter</div>
     <div class="dash-projects-grid" id="dashProjects"></div>
-    <div class="dash-section-label" style="margin-top:16px">Nylig lastet opp</div>
-    <div class="dash-beats-grid" id="dashBeats"></div>
+
+    <!-- Recent beats - thin rows -->
+    <div class="dash-section-label" style="margin-top:14px">Nylig lastet opp</div>
+    <div class="dash-beats-list" id="dashBeats"></div>
   </div>
 
+  <!-- Compatibility anchors -->
   <span id="beatCount" hidden></span>
   <span id="favCount" hidden></span>
   <span id="demoCount" hidden></span>
@@ -763,7 +770,7 @@ AKTIVE BRUKERE:
   <script src="js/changelog.js?v=202605251400"></script>
   <script src="js/beats-tab.js?v=202605251400"></script>
   <script src="js/supabase.js?v=202605251400"></script>
-  <script src="js/db.js?v=202605300900"></script>
+  <script src="js/db.js?v=202605301200"></script>
 
     <!-- LYRIC LAB TAB -->
     <section id="lyriclabTab" class="tab-view hidden">
