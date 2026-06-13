@@ -289,55 +289,90 @@ function releaseScore(d){
   ));
 }
 
-function renderStats(){
-  renderDashboard();
-}
+function renderStats(){ renderDashboard(); }
 
 function renderDashboard(){
-  const username = sessionStorage.getItem('mv_username') || 'deg';
-  const h = new Date().getHours();
-  const greet = h < 10 ? 'God morgen' : h < 17 ? 'God dag' : h < 22 ? 'God kveld' : 'God natt';
-  const gEl = document.getElementById('dashGreeting');
-  const sEl = document.getElementById('dashSub');
-  if(gEl) gEl.textContent = greet + ', ' + username + ' \uD83D\uDC4B';
+  const username=sessionStorage.getItem('mv_username')||'deg';
+  const h=new Date().getHours();
+  const greet=h<10?'God morgen':h<17?'God dag':h<22?'God kveld':'God natt';
+  const gEl=document.getElementById('dashGreeting');
+  const sEl=document.getElementById('dashSub');
+  if(gEl) gEl.textContent=greet+', '+username+' \uD83D\uDC4B';
   if(sEl){
     const nb=(state.beats||[]).filter(b=>!b.archived).length;
     const na=(state.albums||[]).filter(a=>!a.archived).length;
     const nm=(state.mixtapes||[]).filter(m=>!m.archived).length;
     sEl.textContent=nb+' beats \u00b7 '+na+' albumer \u00b7 '+nm+' mixtapes';
   }
+
+  // Recent projects — sorted by last modified
   const projects=[
     ...(state.albums||[]).filter(a=>!a.archived).map(a=>({...a,_type:'album'})),
     ...(state.mixtapes||[]).filter(m=>!m.archived).map(m=>({...m,_type:'mixtape'}))
   ].sort((a,b)=>(b.updatedAt||b.createdAt||b.id||0)-(a.updatedAt||a.createdAt||a.id||0)).slice(0,4);
+
   const pEl=document.getElementById('dashProjects');
   if(pEl){
     if(!projects.length){pEl.innerHTML='<div class="dash-empty">Ingen prosjekter enn\u00e5.</div>';}
     else{pEl.innerHTML=projects.map(p=>{
       const isAlbum=p._type==='album';
       const count=(p.beatIds||[]).filter(id=>(state.beats||[]).find(b=>b.id===id&&!b.archived)).length;
-      const cover=p.cover?`<img src="${esc(p.cover)}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:8px">`:`<span style="font-size:28px">${isAlbum?'\uD83C\uDFB5':'\uD83C\uDFBC'}</span>`;
-      const badge=isAlbum?`<span class="dash-type-badge">Album</span>`:`<span class="dash-type-badge" style="background:rgba(168,85,247,.18);color:rgba(168,85,247,.9)">Mixtape</span>`;
-      const onclick=isAlbum?`openAlbumDetail('${esc(p.id)}')`:`openMixtapeDetail('${esc(p.id)}')`;
-      return `<div class="dash-proj-card" onclick="${onclick}"><div class="dash-proj-cover">${badge}${cover}</div><div class="dash-proj-name">${esc(p.name)}</div><div class="dash-proj-meta">${count} sang${count===1?'':'er'}</div></div>`;
+      const cover=p.cover
+        ?`<img src="${esc(p.cover)}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:8px 8px 0 0">`
+        :`<span style="font-size:32px">${isAlbum?'\uD83C\uDFB5':'\uD83C\uDFBC'}</span>`;
+      return `<div class="dash-proj-card" onclick="dashOpenProject('${esc(p.id)}','${p._type}')">
+        <div class="dash-proj-cover">${cover}</div>
+        <div class="dash-proj-footer">
+          <div class="dash-proj-name">${esc(p.name)}</div>
+          <div class="dash-proj-meta">${count} sang${count===1?'':'er'}</div>
+        </div>
+      </div>`;
     }).join('');}
   }
-  const beats=(state.beats||[]).filter(b=>!b.archived).sort((a,b)=>(b.createdAt||b.id||0)-(a.createdAt||a.id||0)).slice(0,4);
+
+  // Recent beats — thin horizontal rows
+  const beats=(state.beats||[]).filter(b=>!b.archived)
+    .sort((a,b)=>(b.createdAt||b.id||0)-(a.createdAt||a.id||0)).slice(0,4);
   const bEl=document.getElementById('dashBeats');
   if(bEl){
     if(!beats.length){bEl.innerHTML='<div class="dash-empty">Ingen sanger enn\u00e5.</div>';}
     else{bEl.innerHTML=beats.map(b=>{
-      const cover=b.cover?`<img src="${esc(b.cover)}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:7px">`:'<span style="font-size:18px">\uD83C\uDFB5</span>';
+      const cover=b.cover
+        ?`<img src="${esc(b.cover)}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:6px">`
+        :`<span style="font-size:16px">\uD83C\uDFB5</span>`;
       const dur=b.duration?Math.floor(b.duration/60)+':'+String(Math.floor(b.duration%60)).padStart(2,'0'):'';
-      return `<div class="dash-beat-card"><div class="dash-beat-thumb">${cover}</div><div class="dash-beat-info"><div class="dash-beat-name" title="${esc(b.name)}">${esc(b.name)}</div><div class="dash-beat-meta">${dur||'\u2014'}</div></div><div class="dash-beat-actions"><button class="dash-beat-btn dash-beat-play" onclick="event.stopPropagation();playSingleBeat('${b.id}')" title="Spill av">\u25B6</button><button class="dash-beat-btn" onclick="event.stopPropagation();openInLyricLab('${b.id}')" title="\u00c5pne i Lyric Lab">\u270D\uFE0F</button></div></div>`;
+      return `<div class="dash-beat-row">
+        <div class="dash-beat-thumb-sm">${cover}</div>
+        <div class="dash-beat-info">
+          <div class="dash-beat-name">${esc(b.name)}</div>
+          <div class="dash-beat-meta">${dur||'\u2014'}</div>
+        </div>
+        <div class="dash-beat-btns">
+          <button class="dash-btn-play" onclick="event.stopPropagation();playSingleBeat('${b.id}')" title="Spill">\u25B6</button>
+          <button class="dash-btn-lab" onclick="event.stopPropagation();openInLyricLab('${b.id}')" title="Lyric Lab">\u270D\uFE0F</button>
+        </div>
+      </div>`;
     }).join('');}
   }
 }
 
+window.dashOpenProject=function(id,type){
+  if(type==='album'){
+    const btn=document.querySelector('.tab-btn[data-tab="albums"]');
+    if(btn)btn.click();
+    setTimeout(()=>{if(typeof openAlbum==='function')openAlbum(id);},80);
+  } else {
+    const btn=document.querySelector('.tab-btn[data-tab="mixtapes"]');
+    if(btn)btn.click();
+    setTimeout(()=>{if(typeof openMixtape==='function')openMixtape(id);},80);
+  }
+};
+
 window.dashUpload=async function(files){
   if(!files||!files.length)return;
   for(const file of files){if(typeof createBeatFromFileIDB==='function')await createBeatFromFileIDB(file);}
-  renderDashboard();showToast('\u2713 '+files.length+' sang'+(files.length>1?'er':'')+' lastet opp');
+  renderDashboard();
+  showToast('\u2713 '+files.length+' sang'+(files.length>1?'er':'')+' lastet opp');
 };
 
 
