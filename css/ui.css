@@ -2024,3 +2024,37 @@ nav.tabs:not(.mv-tabs) { display: none !important; }
   font-size: 48px;
   background: rgba(255,255,255,.06);
 }
+
+/* ── Now playing glow — amber identity color ─────────────────────────────── */
+.now-playing-glow {
+  position: relative;
+  background: rgba(244, 164, 67, 0.07) !important;
+  border-color: rgba(244, 164, 67, 0.3) !important;
+  box-shadow:
+    0 0 0 1px rgba(244, 164, 67, 0.18),
+    0 0 12px rgba(244, 164, 67, 0.12),
+    inset 0 0 20px rgba(244, 164, 67, 0.04) !important;
+  transition: background 0.3s, box-shadow 0.3s, border-color 0.3s;
+}
+
+/* Subtle left accent bar for album/mixtape rows */
+.album-beat-card.now-playing-glow::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: linear-gradient(180deg, #f4a443, rgba(244,164,67,.4));
+  border-radius: 2px 0 0 2px;
+}
+
+/* Beats tab rows */
+.bl-row.now-playing-glow {
+  background: rgba(244, 164, 67, 0.06) !important;
+  border-left: 3px solid rgba(244, 164, 67, 0.5) !important;
+}
+
+/* Beat number / index color when playing */
+.now-playing-glow .ab-num,
+.now-playing-glow span[style*="color:rgba(255,255,255,.25)"] {
+  color: rgba(244, 164, 67, 0.7) !important;
+}
