@@ -346,9 +346,9 @@ function renderDashboard(){
         detail:noAudio.slice(0,2).map(b=>esc(b.name)).join(', ')+(noAudio.length>2?' ...':''),
         action:'Beats',tab:'beats'});
     }
-    if(!alerts.length){saEl.style.display='none';}
-    else{
-      saEl.style.display='';
+    if(!alerts.length){
+      saEl.innerHTML='<div class="sa-empty">Ingen varsler akkurat n\u00e5 \u2713</div>';
+    } else {
       saEl.innerHTML=alerts.map(a=>`
         <div class="smart-alert smart-alert-${a.type}" onclick="document.querySelector('.tab-btn[data-tab=\\'${a.tab}\\']')?.click()">
           <span class="sa-icon">${a.icon}</span>
@@ -386,29 +386,31 @@ function renderDashboard(){
     }
   }
 
-  // ── Aktivitetsstripe ────────────────────────────────────────────────────────
+  // ── Aktivitet: søyler + streak ────────────────────────────────────────────
   const actEl=document.getElementById('dashActivity');
+  const streakEl=document.getElementById('dashStreak');
   if(actEl){
-    const days=[];
     const today=new Date(); today.setHours(0,0,0,0);
     const activeDays=new Set();
-    beats.forEach(b=>{
-      const ts=b.updatedAt||b.createdAt;
-      if(ts){const d=new Date(ts);d.setHours(0,0,0,0);activeDays.add(d.getTime());}
-    });
-    albums.forEach(a=>{
-      const ts=a.updatedAt||a.createdAt;
-      if(ts){const d=new Date(ts);d.setHours(0,0,0,0);activeDays.add(d.getTime());}
-    });
+    beats.forEach(b=>{const ts=b.updatedAt||b.createdAt;if(ts){const d=new Date(ts);d.setHours(0,0,0,0);activeDays.add(d.getTime());}});
+    albums.forEach(a=>{const ts=a.updatedAt||a.createdAt;if(ts){const d=new Date(ts);d.setHours(0,0,0,0);activeDays.add(d.getTime());}});
+    mixtapes.forEach(m=>{const ts=m.updatedAt||m.createdAt;if(ts){const d=new Date(ts);d.setHours(0,0,0,0);activeDays.add(d.getTime());}});
     const dayNames=['\u00d8','M','T','O','T','F','L'];
+    const cols=[];
     for(let i=6;i>=0;i--){
       const d=new Date(today);d.setDate(d.getDate()-i);
-      const active=activeDays.has(d.getTime());
+      const on=activeDays.has(d.getTime());
       const isToday=i===0;
       const name=dayNames[d.getDay()];
-      days.push(`<div class="act-day${active?' act-day-on':''}${isToday?' act-day-today':''}"><div class="act-dot"></div><div class="act-lbl">${name}</div></div>`);
+      cols.push(`<div class="act-col"><div class="act-bar${on?' on':''}${isToday?' today':''}"></div><div class="act-day-lbl">${name}</div></div>`);
     }
-    actEl.innerHTML=days.join('');
+    actEl.innerHTML=cols.join('');
+    // Streak
+    let streak=0,cur=new Date(today);
+    while(activeDays.has(cur.getTime())){streak++;cur=new Date(cur);cur.setDate(cur.getDate()-1);}
+    if(streakEl) streakEl.innerHTML=streak>0
+      ?`<span class="streak-num">${streak}</span><span class="streak-txt">dag${streak===1?'':'er'} p\u00e5 rad</span>`
+      :'<span class="streak-txt" style="color:rgba(255,255,255,.25)">Ingen aktivitet registrert enn\u00e5</span>';
   }
 
   // ── Siste prosjekter ────────────────────────────────────────────────────────
@@ -462,7 +464,7 @@ function renderDashboard(){
       const ab=(a.beatIds||[]).map(id=>beats.find(b=>b.id===id)).filter(Boolean);
       const pct=ab.length?Math.round(ab.reduce((s,b)=>s+Number(b.done||0),0)/ab.length):0;
       const col=pct>=70?'#34d399':pct>=35?'#f97316':'#fb7185';
-      return `<div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:11px;font-weight:700;color:#f4ede4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:70%">${esc(a.name)}</span><span style="font-size:11px;font-weight:800;color:${col}">${pct}%</span></div><div style="height:4px;background:rgba(255,255,255,.08);border-radius:999px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${col};border-radius:999px"></div></div></div>`;
+      return `<div class="prog-row"><div class="prog-top"><div class="prog-name">${esc(a.name)}</div><div class="prog-pct" style="color:${col}">${pct}%</div></div><div class="prog-track"><div class="prog-fill" style="width:${pct}%;background:${col}"></div></div></div>`;
     }).join('');}
   }
 }
