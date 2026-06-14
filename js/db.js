@@ -289,7 +289,15 @@ function releaseScore(d){
   ));
 }
 
-function renderStats(){ renderDashboard(); }
+function renderStats(){ if(document.querySelector('.tab-btn.active')?.dataset?.tab==='hjem') renderDashboard(); }
+
+const _TIPS = ['Skriv hooksen først — det er den som fanger lytteren. Bygg verset rundt den.', 'Record alt, også de dårlige ideene. Neste sesjon kan du høste fra dem.', 'En enkel melodi som sitter er bedre enn et komplekst arrangement ingen husker.', 'Pitch handler om å fortelle en historie — hvem er du, hva vil du si, hvem er det for?', 'Del musikken din med noen du stoler på før du pitcher til labels.', 'Tekst flyter bedre når du skriver uten å sensurere deg selv. Rediger etterpå.', 'Bruk Pipeline til å holde oversikt over hvilke sanger som er klare for release.', 'En god tittel kan løfte hele sangen — bruk tid på den.', 'Lister med rim (rhyme schemes) hjelper deg å finne nye ord og vendinger.', 'Spill inn vokal-demos tidlig — det avslører problemer i arrangementet.', 'Jo mer konkret teksten er, jo mer universell føles den.', 'Sett en deadline for hvert prosjekt — det forhindrer perfeksjonisme.'];
+let _tipIdx = Math.floor(Math.random() * _TIPS.length);
+window.renderNextTip = function(){
+  _tipIdx = (_tipIdx + 1) % _TIPS.length;
+  const el = document.getElementById('dashTip');
+  if(el) el.textContent = _TIPS[_tipIdx];
+};
 
 function renderDashboard(){
   const username=sessionStorage.getItem('mv_username')||'deg';
@@ -308,11 +316,13 @@ function renderDashboard(){
 
   if(sEl){
     sEl.innerHTML=
+      `<div id="dashSubPills" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:2px">`+
       `<span class="ds-pill">${beats.length} beats</span>`+
       `<span class="ds-pill ds-accent">${albums.length} albumer</span>`+
       `<span class="ds-pill ds-accent">${mixtapes.length} mixtapes</span>`+
       (noAudio.length?`<span class="ds-pill ds-warn" title="${noAudio.slice(0,3).map(b=>b.name).join(', ')}">${noAudio.length} uten lyd</span>`:'')+
-      `<span class="ds-pill">${avgDone}% snitt ferdig</span>`;
+      `<span class="ds-pill">${avgDone}% snitt ferdig</span>`+
+      `</div>`;
   }
 
   const attnEl=document.getElementById('dashAttn');
@@ -327,6 +337,7 @@ function renderDashboard(){
     } else { attnEl.style.display='none'; }
   }
 
+  // Smart project ordering
   const sortedAlbums=albums.slice().sort((a,b)=>(b.updatedAt||b.createdAt||b.id||0)-(a.updatedAt||a.createdAt||a.id||0));
   const heroAlbum=sortedAlbums[0]?{...sortedAlbums[0],_type:'album'}:null;
   function projectScore(p){
@@ -365,6 +376,30 @@ function renderDashboard(){
       const cover=b.cover?`<img src="${esc(b.cover)}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:8px">`:`<span style="font-size:20px">\uD83C\uDFB5</span>`;
       const dur=b.duration?Math.floor(b.duration/60)+':'+String(Math.floor(b.duration%60)).padStart(2,'0'):'';
       return `<div class="dash-beat-card"><div class="dash-beat-top"><div class="dash-beat-thumb">${cover}</div><div class="dash-beat-info"><div class="dash-beat-name" title="${esc(b.name)}">${esc(b.name)}</div><div class="dash-beat-dur">${dur||'\u2014'}</div></div></div><div class="dash-beat-btns"><button class="dash-btn-play" onclick="event.stopPropagation();playSingleBeat('${b.id}')">&#9654; Spill</button><button class="dash-btn-lab" onclick="event.stopPropagation();openInLyricLab('${b.id}')">&#9998; Lab</button></div></div>`;
+    }).join('');}
+  }
+
+  // Tips
+  const tipEl=document.getElementById('dashTip');
+  if(tipEl && !tipEl.textContent) tipEl.textContent=_TIPS[_tipIdx];
+
+  // Progress per album
+  const progEl=document.getElementById('dashProgress');
+  if(progEl){
+    if(!albums.length){progEl.innerHTML='<div class="dash-empty">Ingen albumer enn\u00e5.</div>';}
+    else{progEl.innerHTML=albums.slice(0,4).map(a=>{
+      const ab=(a.beatIds||[]).map(id=>beats.find(b=>b.id===id)).filter(Boolean);
+      const pct=ab.length?Math.round(ab.reduce((s,b)=>s+Number(b.done||0),0)/ab.length):0;
+      const col=pct>=70?'#34d399':pct>=35?'#f97316':'#fb7185';
+      return `<div style="margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+          <span style="font-size:11px;font-weight:700;color:#f4ede4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:70%">${esc(a.name)}</span>
+          <span style="font-size:11px;font-weight:800;color:${col}">${pct}%</span>
+        </div>
+        <div style="height:4px;background:rgba(255,255,255,.08);border-radius:999px;overflow:hidden">
+          <div style="width:${pct}%;height:100%;background:${col};border-radius:999px;transition:width .4s"></div>
+        </div>
+      </div>`;
     }).join('');}
   }
 }
@@ -1330,11 +1365,12 @@ const _dirtyTabs = new Set(['albums','mixtapes','pipeline','integrations','beats
 function markDirty(tab){ if(tab) _dirtyTabs.add(tab); else ['albums','mixtapes','pipeline','integrations','beats'].forEach(t=>_dirtyTabs.add(t)); }
 
 function renderActiveTab(tab){
+  const t = tab || document.querySelector('.tab-btn.active')?.dataset?.tab || 'hjem';
+  if(t==='hjem' || t==='') { renderDashboard(); return; }
   renderStats();
-  const t = tab || document.querySelector('.tab-btn.active')?.dataset?.tab || '';
-  if((t==='mixtapes'||t==='')  && _dirtyTabs.has('mixtapes'))  { renderMixtapes();  _dirtyTabs.delete('mixtapes'); }
+  if(t==='mixtapes' && _dirtyTabs.has('mixtapes'))  { renderMixtapes();  _dirtyTabs.delete('mixtapes'); }
   if(t==='albums'   && _dirtyTabs.has('albums'))   { renderAlbums();   _dirtyTabs.delete('albums'); }
-  if(t==='pipeline') { (window.renderPipelineV2||renderPipeline)(); _dirtyTabs.delete('pipeline'); } // always re-render pipeline
+  if(t==='pipeline') { (window.renderPipelineV2||renderPipeline)(); _dirtyTabs.delete('pipeline'); }
   if(t==='integrations' && _dirtyTabs.has('integrations')){ renderIntegrations(); _dirtyTabs.delete('integrations'); }
   if(t==='beats') { if(typeof renderBeatsTab==='function') renderBeatsTab(); }
   if(t==='archive') {
@@ -1346,9 +1382,7 @@ function renderActiveTab(tab){
 
 function renderAll(){
   renderStats();
-  // Mark all tabs dirty so next time they're opened they re-render
   markDirty();
-  // Only render the currently active tab
   renderActiveTab();
   applyRoleMode();
 }
