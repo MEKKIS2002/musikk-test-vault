@@ -132,6 +132,12 @@ function updateOpenCollectionControls(){
   };
   update("album",currentAlbumId,"playAlbumBtn","stopAlbumBtn","albumNowPlaying");
   update("mixtape",currentMixtapeId,"playMixtapeBtn","stopMixtapeBtn","mixtapeNowPlaying");
+  // Vinyl animation
+  const _albPlaying=playing&&ctx.type==="album"&&ctx.id===currentAlbumId;
+  const _vWrap=document.getElementById("albumVinylWrap");
+  const _vDisc=document.getElementById("albumVinylDisc");
+  if(_vWrap) _vWrap.classList.toggle("playing",_albPlaying);
+  if(_vDisc) _vDisc.classList.toggle("spinning",_albPlaying);
 }
 function updateBottomProgress(){
   const a=bottomPlayer.audio;
@@ -804,14 +810,22 @@ function renderAlbumDetail(){
   if(!album){currentAlbumId=null;renderAlbums();return;}
   const hd=document.getElementById("albumDetailHd");
   const n=(album.beatIds||[]).filter(id=>{const b=state.beats.find(x=>x.id===id);return b&&!b.archived;}).length;
-  const coverImg=album.cover
-    ?`<img src="${esc(album.cover)}" class="album-detail-cover-img" alt="${esc(album.name)}" draggable="false">`
-    :`<div class="album-detail-cover-ph">&#127925;</div>`;
+  const coverContent=album.cover
+    ?`<img src="${esc(album.cover)}" alt="${esc(album.name)}">`
+    :`<div class="alb-cover-ph">&#127925;</div>`;
   hd.style.background="none"; hd.style.border="none"; hd.style.padding="0 0 4px 0";
   hd.innerHTML=`
     <div class="mixtape-detail-head">
-      <div class="mixtape-detail-visual album-detail-visual">
-        ${coverImg}
+      <div class="alb-visual">
+        <div class="alb-vinyl-wrap" id="albumVinylWrap">
+          <div class="alb-vinyl-disc" id="albumVinylDisc">
+            <div class="alv-g1"></div><div class="alv-g2"></div>
+            <div class="alv-g3"></div><div class="alv-g4"></div>
+            <div class="alv-label"><div class="alv-dot"></div></div>
+            <div class="alv-hole"></div>
+          </div>
+        </div>
+        <div class="alb-cover">${coverContent}</div>
       </div>
       <div class="mixtape-detail-copy">
         <div class="mixtape-detail-kicker">Album</div>
@@ -822,8 +836,8 @@ function renderAlbumDetail(){
       <div class="mixtape-detail-actions">
         <button class="primary-btn" id="playAlbumBtn" onclick="playAlbumFromStart('${album.id}')">&#9654; Spill fra start</button>
         <button class="ghost-btn" data-share="album|${album.id}|${esc(album.name)}" onclick="mvShare(this)">&#128100; Del med bruker</button>
-        ${isAdmin()?'<label class="ghost-btn" style="cursor:pointer">&#128444;&#65039; Bytt bilde<input type="file" accept="image/*" hidden onchange="setAlbumCover(\''+album.id+'\',this.files[0])"></label>':''}
-        ${isAdmin()?'<button class="ghost-btn" data-pitch="album|'+album.id+'|" onclick="mvPitch(this)">&#128196; Pitch</button>':''}
+        ${isAdmin()?'<label class="ghost-btn" style="cursor:pointer">Bytt bilde<input type="file" accept="image/*" hidden onchange="setAlbumCover(\''+album.id+'\',this.files[0])"></label>':''}
+        ${isAdmin()?'<button class="ghost-btn" data-pitch="album|'+album.id+'|" onclick="mvPitch(this)">Pitch</button>':''}
         <button class="small-btn danger hidden" id="stopAlbumBtn" onclick="stopCollectionPlayback()">&#9209; Stopp</button>
       </div>
     </div>`;
