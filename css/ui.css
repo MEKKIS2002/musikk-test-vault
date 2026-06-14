@@ -1872,3 +1872,20 @@ nav.tabs::-webkit-scrollbar{display:none!important;}
 
 /* Ensure old tabs/nav.tabs styles don't conflict */
 nav.tabs:not(.mv-tabs) { display: none !important; }
+
+/* Bell slot: hidden until bell is placed inside */
+#mvNotifBellSlot:empty { display: none !important; }
+#mvNotifBellSlot { display: flex; align-items: center; }
+
+/* Ensure bell button has correct appearance in header */
+#mvNotifBell.mv-hdr-icon-btn {
+  position: relative !important;
+  font-size: 16px !important;
+  top: auto !important; right: auto !important;
+  background: rgba(255,255,255,.05) !important;
+  border: 1px solid rgba(255,255,255,.1) !important;
+  border-radius: 8px !important;
+}
+#mvNotifBell.mv-hdr-icon-btn:hover {
+  background: rgba(255,255,255,.1) !important;
+}
