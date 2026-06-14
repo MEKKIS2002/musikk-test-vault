@@ -250,31 +250,15 @@ AKTIVE BRUKERE:
   <button class="tab-btn" data-tab="integrations">🔌 Integrasjoner</button>
 </nav>
 
-<!-- HJEM ─────────────────────────────────────────────────────────────────── -->
+<!-- BEATS -->
 <section id="hjemTab" class="tab-view tab-visible">
   <div class="hjem-wrap">
-
-    <!-- Pure CSS vinyl -->
-    <div class="dash-vinyl" aria-hidden="true">
-      <div class="dash-vinyl-disc">
-        <div class="dash-vinyl-g1"></div>
-        <div class="dash-vinyl-g2"></div>
-        <div class="dash-vinyl-g3"></div>
-        <div class="dash-vinyl-g4"></div>
-        <div class="dash-vinyl-label"><div class="dash-vinyl-dot"></div></div>
-        <div class="dash-vinyl-hole"></div>
-      </div>
-    </div>
-
     <div class="dash-inner">
-
-      <!-- Row 1: Greeting + activity strip + quick actions -->
+      <!-- Greeting + quick actions -->
       <div class="dash-greeting-row">
-        <div class="dash-greeting-left">
+        <div>
           <div class="dash-greeting" id="dashGreeting">Hei &#128075;</div>
           <div id="dashSub"></div>
-          <!-- Activity strip: last 7 days -->
-          <div class="hjem-activity-strip" id="dashActivity"></div>
         </div>
         <div class="dash-quick">
           <button class="dq-btn accent" onclick="dashUploadTrigger()">&#xFF0B; Ny sang</button>
@@ -285,47 +269,31 @@ AKTIVE BRUKERE:
         </div>
       </div>
 
-      <!-- Row 2: Fortsett der du slapp + Hurtigspill -->
-      <div class="hjem-play-row">
-        <div class="hjem-last-played" id="dashLastPlayed">
-          <div class="dash-section-label" style="margin-bottom:10px">&#9654; Fortsett der du slapp</div>
-          <div id="dashLastPlayedContent"><div class="dash-empty">Spill en sang for &#229; se den her</div></div>
-        </div>
-        <div class="hjem-quick-play">
-          <div class="dash-section-label" style="margin-bottom:10px">&#9654; Hurtigspill</div>
-          <div id="dashQuickPlay"><div class="dash-empty">Ingen nylige sanger</div></div>
-        </div>
-      </div>
+      <!-- Aktivitetsstripe -->
+      <div class="act-strip" id="dashActivity"></div>
 
-      <!-- Row 3: Smarte varsler -->
-      <div id="dashSmartAlerts"></div>
+      <!-- Smarte varsler -->
+      <div id="dashSmartAlerts" style="display:none"></div>
 
-      <!-- Row 4: Siste prosjekter -->
-      <div class="dash-sec-hd" style="margin-top:16px"><div class="dash-section-label">Siste prosjekter</div></div>
+      <!-- Siste prosjekter -->
+      <div class="dash-sec-hd"><div class="dash-section-label">Siste prosjekter</div></div>
       <div class="dash-projects-grid" id="dashProjects"></div>
 
-      <!-- Row 5: Nylig lastet opp -->
+      <!-- Fortsett der du slapp -->
+      <div class="dash-sec-hd" style="margin-top:16px"><div class="dash-section-label">Fortsett der du slapp</div></div>
+      <div id="dashLastBeat" class="last-beat-card"></div>
+
+      <!-- Nylig lastet opp -->
       <div class="dash-sec-hd" style="margin-top:16px"><div class="dash-section-label">Nylig lastet opp</div></div>
       <div id="dashBeats"></div>
 
-      <!-- Row 6: Samarbeid + Fremdrift -->
-      <div class="hjem-bottom-row">
-        <div class="hjem-collab-card">
-          <div class="dash-section-label" style="margin-bottom:10px">&#128101; Samarbeidsstatus</div>
-          <div id="dashCollab"><div class="dash-empty" style="font-size:10px">Laster...</div></div>
-        </div>
-        <div class="hjem-progress-card">
-          <div class="dash-section-label" style="margin-bottom:10px">&#128202; Fremdrift</div>
-          <div id="dashProgress"></div>
-        </div>
-      </div>
-
+      <!-- Fremdrift -->
+      <div class="dash-sec-hd" style="margin-top:18px"><div class="dash-section-label">&#128202; Fremdrift</div></div>
+      <div class="hjem-progress-card" id="dashProgress"></div>
     </div>
-
   </div>
 </section>
 
-<!-- BEATS ──────────────────────────────────────────────────────────────────── -->
 <section id="beatsTab" class="tab-view hidden">
   <div id="beatsTabContent"></div>
 </section>
@@ -782,12 +750,12 @@ AKTIVE BRUKERE:
 
   <!-- App scripts (load order matters) -->
   <script src="js/audio-compress.js?v=202605161400"></script>
-  <script src="js/lock.js?v=202606141400"></script>
+  <script src="js/lock.js?v=202606141800"></script>
   <script src="js/pipeline.js?v=202605161400"></script>
   <script src="js/lyriclab.js?v=202605161400"></script>
   <script src="js/audio-compress.js?v=202605261500"></script>
   <script src="js/audio-compress.js?v=202605261900"></script>
-  <script src="js/app.js?v=202606141400"></script>
+  <script src="js/app.js?v=202606141800"></script>
   <script src="js/track-cards.js?v=202605161400"></script>
   <script src="js/r2-storage.js?v=202605161400"></script>
   <script src="js/archive.js?v=202605262300"></script>
