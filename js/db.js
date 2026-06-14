@@ -828,7 +828,8 @@ function renderAlbumDetail(){
   const coverContent=album.cover
     ?`<img src="${esc(album.cover)}" alt="${esc(album.name)}">`
     :`<div class="alb-cover-ph">&#127925;</div>`;
-  hd.style.background="none"; hd.style.border="none"; hd.style.padding="0 0 4px 0";
+  // Reset ALL styles from #albumDetailHd.album-detail-hd in main.css
+  hd.style.cssText="background:none!important;border:none!important;box-shadow:none!important;padding:0!important;min-height:0!important;border-radius:0!important;overflow:visible!important;margin:0 0 24px!important;";
   hd.innerHTML=`
     <div class="mixtape-detail-head">
       <div class="alb-visual">
