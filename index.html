@@ -50,7 +50,7 @@ AKTIVE BRUKERE:
   <link rel="stylesheet" href="css/lyriclab.css?v=202605161400">
   <link rel="stylesheet" href="css/pipeline.css?v=202605161400">
   <link rel="stylesheet" href="css/main.css?v=202605161400">
-  <link rel="stylesheet" href="css/ui.css?v=202606141700">
+  <link rel="stylesheet" href="css/ui.css?v=202606141800">
   <link rel="stylesheet" href="css/track-cards.css?v=202605161400">
   <link rel="stylesheet" href="css/archive.css?v=202605161400">
   <link rel="stylesheet" href="css/mixtape.css?v=202605161400">
@@ -267,11 +267,14 @@ AKTIVE BRUKERE:
     </div>
 
     <div class="dash-inner">
-      <!-- Greeting + quick actions -->
+
+      <!-- Row 1: Greeting + activity strip + quick actions -->
       <div class="dash-greeting-row">
-        <div>
+        <div class="dash-greeting-left">
           <div class="dash-greeting" id="dashGreeting">Hei &#128075;</div>
           <div id="dashSub"></div>
+          <!-- Activity strip: last 7 days -->
+          <div class="hjem-activity-strip" id="dashActivity"></div>
         </div>
         <div class="dash-quick">
           <button class="dq-btn accent" onclick="dashUploadTrigger()">&#xFF0B; Ny sang</button>
@@ -282,22 +285,41 @@ AKTIVE BRUKERE:
         </div>
       </div>
 
-      <!-- Attention banner -->
-      <div id="dashAttn" style="display:none"></div>
+      <!-- Row 2: Fortsett der du slapp + Hurtigspill -->
+      <div class="hjem-play-row">
+        <div class="hjem-last-played" id="dashLastPlayed">
+          <div class="dash-section-label" style="margin-bottom:10px">&#9654; Fortsett der du slapp</div>
+          <div id="dashLastPlayedContent"><div class="dash-empty">Spill en sang for &#229; se den her</div></div>
+        </div>
+        <div class="hjem-quick-play">
+          <div class="dash-section-label" style="margin-bottom:10px">&#9654; Hurtigspill</div>
+          <div id="dashQuickPlay"><div class="dash-empty">Ingen nylige sanger</div></div>
+        </div>
+      </div>
 
-      <!-- Siste prosjekter -->
-      <div class="dash-sec-hd"><div class="dash-section-label">Siste prosjekter</div></div>
+      <!-- Row 3: Smarte varsler -->
+      <div id="dashSmartAlerts"></div>
+
+      <!-- Row 4: Siste prosjekter -->
+      <div class="dash-sec-hd" style="margin-top:16px"><div class="dash-section-label">Siste prosjekter</div></div>
       <div class="dash-projects-grid" id="dashProjects"></div>
 
-      <!-- Nylig lastet opp -->
-      <div class="dash-sec-hd" style="margin-top:14px"><div class="dash-section-label">Nylig lastet opp</div></div>
+      <!-- Row 5: Nylig lastet opp -->
+      <div class="dash-sec-hd" style="margin-top:16px"><div class="dash-section-label">Nylig lastet opp</div></div>
       <div id="dashBeats"></div>
 
-      <!-- Fremdrift -->
-      <div class="dash-sec-hd" style="margin-top:18px">
-        <div class="dash-section-label">&#128202; Fremdrift</div>
+      <!-- Row 6: Samarbeid + Fremdrift -->
+      <div class="hjem-bottom-row">
+        <div class="hjem-collab-card">
+          <div class="dash-section-label" style="margin-bottom:10px">&#128101; Samarbeidsstatus</div>
+          <div id="dashCollab"><div class="dash-empty" style="font-size:10px">Laster...</div></div>
+        </div>
+        <div class="hjem-progress-card">
+          <div class="dash-section-label" style="margin-bottom:10px">&#128202; Fremdrift</div>
+          <div id="dashProgress"></div>
+        </div>
       </div>
-      <div class="hjem-progress-card" id="dashProgress"></div>
+
     </div>
 
   </div>
@@ -773,7 +795,7 @@ AKTIVE BRUKERE:
   <script src="js/changelog.js?v=202605251400"></script>
   <script src="js/beats-tab.js?v=202605251400"></script>
   <script src="js/supabase.js?v=202605251400"></script>
-  <script src="js/db.js?v=202606141700"></script>
+  <script src="js/db.js?v=202606141800"></script>
 
     <!-- LYRIC LAB TAB -->
     <section id="lyriclabTab" class="tab-view hidden">
