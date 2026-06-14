@@ -50,7 +50,7 @@ AKTIVE BRUKERE:
   <link rel="stylesheet" href="css/lyriclab.css?v=202605161400">
   <link rel="stylesheet" href="css/pipeline.css?v=202605161400">
   <link rel="stylesheet" href="css/main.css?v=202605161400">
-  <link rel="stylesheet" href="css/ui.css?v=202606141600">
+  <link rel="stylesheet" href="css/ui.css?v=202606141700">
   <link rel="stylesheet" href="css/track-cards.css?v=202605161400">
   <link rel="stylesheet" href="css/archive.css?v=202605161400">
   <link rel="stylesheet" href="css/mixtape.css?v=202605161400">
@@ -293,18 +293,11 @@ AKTIVE BRUKERE:
       <div class="dash-sec-hd" style="margin-top:14px"><div class="dash-section-label">Nylig lastet opp</div></div>
       <div id="dashBeats"></div>
 
-      <!-- Tips + Fremdrift -->
-      <div class="hjem-bottom-grid">
-        <div class="hjem-tips-card">
-          <div class="dash-section-label" style="margin-bottom:10px">&#128161; Tips</div>
-          <div id="dashTip" class="hjem-tip-text"></div>
-          <button class="hjem-tip-next" onclick="renderNextTip()">Nytt tips &#8594;</button>
-        </div>
-        <div class="hjem-progress-card">
-          <div class="dash-section-label" style="margin-bottom:10px">&#128202; Fremdrift</div>
-          <div id="dashProgress"></div>
-        </div>
+      <!-- Fremdrift -->
+      <div class="dash-sec-hd" style="margin-top:18px">
+        <div class="dash-section-label">&#128202; Fremdrift</div>
       </div>
+      <div class="hjem-progress-card" id="dashProgress"></div>
     </div>
 
   </div>
@@ -780,7 +773,7 @@ AKTIVE BRUKERE:
   <script src="js/changelog.js?v=202605251400"></script>
   <script src="js/beats-tab.js?v=202605251400"></script>
   <script src="js/supabase.js?v=202605251400"></script>
-  <script src="js/db.js?v=202606141400"></script>
+  <script src="js/db.js?v=202606141700"></script>
 
     <!-- LYRIC LAB TAB -->
     <section id="lyriclabTab" class="tab-view hidden">
