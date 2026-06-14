@@ -104,8 +104,23 @@ async function getPlayableAudioUrl(beat){
   return null;
 }
 function updateCollectionPlayerUI(){updateBottomUI();}
+
+function _updateNowPlayingGlow(){
+  // Remove glow from all beat rows across all views
+  document.querySelectorAll('.now-playing-glow').forEach(el=>el.classList.remove('now-playing-glow'));
+  // Find currently playing beat
+  const beat=bottomPlayer.queue[bottomPlayer.index];
+  if(!beat||bottomPlayer.audio.paused) return;
+  const id=beat.id;
+  if(!id) return;
+  // Add glow to all elements with matching data-beat-id (album, mixtape, beats tab)
+  document.querySelectorAll(`[data-beat-id="${id}"], #abi-${id}`).forEach(el=>{
+    el.classList.add('now-playing-glow');
+  });
+}
 function updateBottomUI(){
   const bar=document.getElementById("bottomPlayer");if(!bar)return;
+  setTimeout(_updateNowPlayingGlow, 0);
   const beat=bottomPlayer.queue[bottomPlayer.index];
   const active=!!beat||bottomPlayer.started;
   bar.classList.toggle("show",active);
