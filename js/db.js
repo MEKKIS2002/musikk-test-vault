@@ -803,33 +803,29 @@ function renderAlbumDetail(){
   const album=state.albums.find(a=>a.id===currentAlbumId);
   if(!album){currentAlbumId=null;renderAlbums();return;}
   const hd=document.getElementById("albumDetailHd");
-  const label=album.cover
-    ?`<div class="vinyl-label"><img src="${esc(album.cover)}" alt="${esc(album.name)}"></div>`
-    :`<div class="vinyl-label"><div class="vinyl-label-ph">♪</div></div>`;
-  const sleeve=album.cover
-    ?`<div class="detail-sleeve"><img src="${esc(album.cover)}" alt="${esc(album.name)}"></div>`
-    :`<div class="detail-sleeve"><div class="record-sleeve-ph">🎵</div></div>`;
+  const n=(album.beatIds||[]).filter(id=>{const b=state.beats.find(x=>x.id===id);return b&&!b.archived;}).length;
+  const coverImg=album.cover
+    ?`<img src="${esc(album.cover)}" class="album-detail-cover-img" alt="${esc(album.name)}" draggable="false">`
+    :`<div class="album-detail-cover-ph">&#127925;</div>`;
+  hd.style.background="none"; hd.style.border="none"; hd.style.padding="0 0 4px 0";
   hd.innerHTML=`
-    <div class="detail-record">
-      <div class="vinyl-disc">
-        <div class="vinyl-groove"></div>
-        ${label}
-        <div class="vinyl-hole"></div>
+    <div class="mixtape-detail-head">
+      <div class="mixtape-detail-visual album-detail-visual">
+        ${coverImg}
       </div>
-      ${sleeve}
-    </div>
-    <div class="album-detail-info" style="flex:1">
-      <div class="eyebrow">Album</div>
-      <h2>${esc(album.name)}</h2>
-      <span>${(()=>{const n=(album.beatIds||[]).filter(id=>{const b=state.beats.find(x=>x.id===id);return b&&!b.archived;}).length;return n+' beat'+(n===1?'':'s');})()}</span>
-      <div id="albumNowPlaying" class="hint" style="margin-top:8px"></div>
-    </div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <button class="primary-btn" id="playAlbumBtn" onclick="playAlbumFromStart('${album.id}')">▶ Spill fra start</button>
-      ${isAdmin()?'<label class="ghost-btn" style="cursor:pointer">🖼️ Bytt bilde<input type="file" accept="image/*" hidden onchange="setAlbumCover(\''+album.id+'\',this.files[0])"></label>':''}
-      ${isAdmin()?'<button class="ghost-btn" data-pitch="album|'+album.id+'|" onclick="mvPitch(this)">📄 Pitch</button>':''}
-      <button class="ghost-btn" data-share="album|${album.id}|${esc(album.name)}" onclick="mvShare(this)">👤 Del med bruker</button>
-      <button class="small-btn danger hidden" id="stopAlbumBtn" onclick="stopCollectionPlayback()">⏹ Stopp</button>
+      <div class="mixtape-detail-copy">
+        <div class="mixtape-detail-kicker">Album</div>
+        <h2 style="display:flex;align-items:center;gap:8px">${esc(album.name)}</h2>
+        <span style="color:var(--muted);font-size:13px">${n} beat${n===1?"":"s"}</span>
+        <div id="albumNowPlaying" class="hint" style="margin-top:6px"></div>
+      </div>
+      <div class="mixtape-detail-actions">
+        <button class="primary-btn" id="playAlbumBtn" onclick="playAlbumFromStart('${album.id}')">&#9654; Spill fra start</button>
+        <button class="ghost-btn" data-share="album|${album.id}|${esc(album.name)}" onclick="mvShare(this)">&#128100; Del med bruker</button>
+        ${isAdmin()?'<label class="ghost-btn" style="cursor:pointer">&#128444;&#65039; Bytt bilde<input type="file" accept="image/*" hidden onchange="setAlbumCover(\''+album.id+'\',this.files[0])"></label>':''}
+        ${isAdmin()?'<button class="ghost-btn" data-pitch="album|'+album.id+'|" onclick="mvPitch(this)">&#128196; Pitch</button>':''}
+        <button class="small-btn danger hidden" id="stopAlbumBtn" onclick="stopCollectionPlayback()">&#9209; Stopp</button>
+      </div>
     </div>`;
   const beats=beatsFromIds(album.beatIds);
   renderAlbumBeats(beats);
