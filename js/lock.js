@@ -97,92 +97,66 @@ function unlockAs(role){
 }
 
 function injectUserCorner(role){
-  document.getElementById('mvUserCorner')?.remove();
+  // Target the header right slot (no longer fixed-position overlay)
+  const slot = document.getElementById('mvHeaderRight');
+  if(!slot) return;
+  slot.innerHTML = '';
 
   const username = sessionStorage.getItem('mv_username') || role;
   const pkg      = sessionStorage.getItem('mv_package')  || role;
   const isAdmin  = role === 'admin';
-
   const pkgLabels = {
     admin:'Admin', artist:'Artist', producer:'Produsent',
     lyricist:'Tekstforfatter', label:'Label', viewer:'Lytter', pro:'PRO', user:'Bruker'
   };
   const pkgLabel = pkgLabels[pkg] || pkg;
 
-  const corner = document.createElement('div');
-  corner.id = 'mvUserCorner';
-  corner.style.cssText = `
-    position:fixed;top:10px;right:14px;z-index:8100;
-    display:flex;align-items:center;gap:8px;font-family:system-ui;
-  `;
+  // Notification bell slot
+  slot.insertAdjacentHTML('beforeend', '<div id="mvNotifBellSlot" class="mv-hdr-icon-btn"></div>');
 
-  const adminBubble = isAdmin ? `
-    <div style="
-      background:linear-gradient(135deg,rgba(244,164,67,.18),rgba(244,164,67,.08));
-      border:1px solid rgba(244,164,67,.35);border-radius:999px;
-      padding:5px 12px;font-size:11px;font-weight:800;letter-spacing:.08em;
-      color:#f4a443;text-transform:uppercase;cursor:default
-    ">⚡ Admin</div>` : '';
-
-  const userLabel = `
-    <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.45);white-space:nowrap">
-      ${username}${!isAdmin ? ' · ' + pkgLabel : ''}
-    </div>`;
-
-  // Tannhjul-knapp
-  const gearBtn = `
+  // Gear/settings button with dropdown
+  slot.insertAdjacentHTML('beforeend', `
     <div style="position:relative">
-      <button id="mvGearBtn" onclick="mvToggleGearMenu(event)" title="Innstillinger" style="
-        background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);
-        width:30px;height:30px;display:flex;align-items:center;justify-content:center;
-        color:rgba(255,255,255,.5);font-size:14px;cursor:pointer;
-        transition:all .15s;
-      " onmouseover="this.style.background='rgba(255,255,255,.13)';this.style.color='#f4ede4'"
-         onmouseout="this.style.background='rgba(255,255,255,.07)';this.style.color='rgba(255,255,255,.5)'">⚙</button>
-      <div id="mvGearMenu" style="
-        display:none;position:absolute;top:36px;right:0;
-        background:#1a1612;border:1px solid rgba(255,255,255,.12);
-        min-width:180px;z-index:9500;
-        box-shadow:0 12px 32px rgba(0,0,0,.6);
-      ">
-        <div style="padding:8px 0">
-          <div style="padding:6px 14px;font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.25)">${username}</div>
-          <div style="height:1px;background:rgba(255,255,255,.07);margin:4px 0"></div>
-          <div id="mvGearLabelItem" style="display:none">
-            <button onclick="mvGearLeaveLabel()" style="
-              width:100%;text-align:left;background:none;border:none;
-              color:rgba(251,113,133,.7);font-size:13px;padding:9px 14px;
-              cursor:pointer;font-family:system-ui;display:flex;align-items:center;gap:8px;
-            " onmouseover="this.style.background='rgba(251,113,133,.08)'" onmouseout="this.style.background='none'">
-              👋 Forlat label
-            </button>
-          </div>
-          <button onclick="mvLogout()" style="
-            width:100%;text-align:left;background:none;border:none;
-            color:rgba(255,255,255,.6);font-size:13px;padding:9px 14px;
-            cursor:pointer;font-family:system-ui;display:flex;align-items:center;gap:8px;
-          " onmouseover="this.style.background='rgba(255,255,255,.06)'" onmouseout="this.style.background='none'">
-            🚪 Logg ut
-          </button>
+      <button id="mvGearBtn" class="mv-hdr-icon-btn" onclick="mvToggleGearMenu(event)" title="Innstillinger" aria-label="Innstillinger">⚙</button>
+      <div id="mvGearMenu" class="mv-gear-dropdown" style="display:none">
+        <div class="mv-gear-header">
+          <div class="mv-gear-username">${username}</div>
+          ${!isAdmin ? '<div class="mv-gear-pkg">'+pkgLabel+'</div>' : ''}
         </div>
+        <div class="mv-gear-divider"></div>
+        <div id="mvGearLabelItem" style="display:none">
+          <button class="mv-gear-item mv-gear-danger" onclick="mvGearLeaveLabel()">👋 Forlat label</button>
+        </div>
+        <button class="mv-gear-item" onclick="mvLogout()">🚪 Logg ut</button>
       </div>
-    </div>`;
+    </div>`);
 
-  corner.innerHTML = adminBubble + userLabel + `<div id="mvNotifBellSlot"></div>` + gearBtn;
-  document.body.appendChild(corner);
+  // Username + avatar
+  slot.insertAdjacentHTML('beforeend', `
+    <div class="mv-hdr-user">
+      <div class="mv-hdr-username">${username}</div>
+      <div class="mv-hdr-avatar">${(username||'?').slice(0,2).toUpperCase()}</div>
+    </div>`);
 
-  // Flytt bjellen inn i slot etter at den er opprettet av app.js
+  // Admin badge
+  if(isAdmin){
+    slot.insertAdjacentHTML('beforeend',
+      '<div class="mv-hdr-admin-badge">&#9889; ADMIN</div>');
+  }
+
+  // Move notification bell into slot when it appears
   const tryMoveBell = () => {
     const bell = document.getElementById('mvNotifBell');
-    const slot = document.getElementById('mvNotifBellSlot');
-    if(bell && slot && !slot.contains(bell)){
-      bell.style.cssText = 'position:relative;top:auto;right:auto;cursor:pointer;font-size:18px;padding:4px 6px;display:flex;align-items:center;justify-content:center;transition:background .15s;border-radius:50%';
-      slot.appendChild(bell);
+    const bellSlot = document.getElementById('mvNotifBellSlot');
+    if(bell && bellSlot && !bellSlot.contains(bell)){
+      bell.className = 'mv-hdr-icon-btn';
+      bell.style.cssText = '';
+      bellSlot.appendChild(bell);
     }
   };
-  [300,600,1200].forEach(d => setTimeout(tryMoveBell, d));
+  [300, 600, 1200].forEach(d => setTimeout(tryMoveBell, d));
 
-  // Lukk meny ved klikk utenfor
+  // Close gear menu on outside click
   document.addEventListener('click', e => {
     const menu = document.getElementById('mvGearMenu');
     const btn  = document.getElementById('mvGearBtn');
@@ -395,13 +369,7 @@ function initLock(){
       window.isAdminMode = true;
       document.body.classList.add('admin-mode');
     }
-    const _cuid=sessionStorage.getItem('mv_user_id');
-    if(_cuid) window._mvCurrentUserId=_cuid;
-    if(window.supabaseClient){
-      window.supabaseClient.auth.getSession().then(({data:{session}})=>{
-        if(session?.user?.id){window._mvCurrentUserId=session.user.id;sessionStorage.setItem('mv_user_id',session.user.id);}
-      }).catch(()=>{});
-    }
+    // Gjenopprett brukerknapp
     injectUserCorner(role);
     applyRoleMode();
     return;
