@@ -2058,3 +2058,86 @@ nav.tabs:not(.mv-tabs) { display: none !important; }
 .now-playing-glow span[style*="color:rgba(255,255,255,.25)"] {
   color: rgba(244, 164, 67, 0.7) !important;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   ALBUM DETAIL — cover + vinyl (v2: larger, vinyl visible)
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* Nuke the legacy card styling from main.css */
+#albumDetailHd.album-detail-hd {
+  background: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  min-height: 0 !important;
+  border-radius: 0 !important;
+  overflow: visible !important;
+  margin: 0 0 24px !important;
+}
+#albumDetailHd.album-detail-hd::before,
+#albumDetailHd.album-detail-hd::after { display: none !important; }
+
+/* Visual wrapper: wide enough for cover + vinyl slide area */
+.alb-visual {
+  position: relative !important;
+  flex-shrink: 0 !important;
+  width: 310px !important;  /* 200px cover + 110px vinyl space */
+  height: 200px !important;
+}
+
+/* Vinyl: starts peeking ~24px to the left, slides further when playing */
+.alb-vinyl-wrap {
+  position: absolute !important;
+  right: 0 !important;
+  top: 5px !important;
+  width: 190px !important;
+  height: 190px !important;
+  z-index: 0 !important;
+  transform: translateX(-24px) !important;   /* small peek at rest */
+  transition: transform 0.65s cubic-bezier(0.22, 1, 0.36, 1) !important;
+  will-change: transform !important;
+}
+.alb-vinyl-wrap.playing {
+  transform: translateX(-115px) !important;  /* full slide-out when playing */
+}
+
+/* Disc */
+.alb-vinyl-disc {
+  width: 100% !important;
+  height: 100% !important;
+  border-radius: 50% !important;
+  background: radial-gradient(circle at 47% 47%,
+    #2a2a2a 0%, #141414 26%, #1e1e1e 27%, #111 46%,
+    #1c1c1c 47%, #0e0e0e 66%, #181818 67%, #0a0a0a 100%) !important;
+  position: relative !important;
+}
+.alb-vinyl-disc.spinning {
+  animation: albVinylSpin 5s linear infinite !important;
+}
+
+/* Cover: larger, no rounded corners, sharp edge against vinyl */
+.alb-cover {
+  position: absolute !important;
+  right: 0 !important; top: 0 !important;
+  z-index: 1 !important;
+  width: 200px !important;
+  height: 200px !important;
+  overflow: hidden !important;
+  box-shadow: -6px 0 28px rgba(0,0,0,.6) !important;
+}
+.alb-cover img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+  border-radius: 0 !important;
+}
+.alb-cover-ph {
+  width: 100% !important;
+  height: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 56px !important;
+  background: rgba(255,255,255,.06) !important;
+}
