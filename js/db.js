@@ -469,6 +469,100 @@ function renderDashboard(){
   }
 }
 
+
+// ── Comment feed helpers ──────────────────────────────────────────────────────
+function _cfTimeAgo(date){
+  const diff=Date.now()-new Date(date).getTime();
+  const m=Math.floor(diff/60000);
+  if(m<1) return 'Akkurat n\u00e5';
+  if(m<60) return m+'m siden';
+  const h=Math.floor(m/60);
+  if(h<24) return h+'t siden';
+  const d=Math.floor(h/24);
+  if(d<7) return d+'d siden';
+  return new Date(date).toLocaleDateString('nb-NO',{day:'numeric',month:'short'});
+}
+
+window.renderCommentFeed = async function(){
+  const el=document.getElementById('dashCommentFeed');
+  if(!el) return;
+
+  const SBU='https://ylvqkfdvijqnecuqznyr.supabase.co';
+  const SBK='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlsdnFrZmR2aWpxbmVjdXF6bnlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzMzA4MzIsImV4cCI6MjA5MzkwNjgzMn0.bYPTaxQK8n7I7w5Ri2DVYW5_LbFHg2IXkuhHsLTDDqc';
+  let token=SBK, uid=window._mvCurrentUserId||sessionStorage.getItem('mv_user_id');
+  try{
+    const {data:{session}}=await window.supabaseClient.auth.getSession();
+    if(session?.access_token) token=session.access_token;
+    if(session?.user?.id) uid=session.user.id;
+  }catch(e){}
+
+  if(!uid){el.innerHTML='<div class="cf-empty">Logg inn for \u00e5 se kommentarer</div>';return;}
+  const hdrs={'apikey':SBK,'Authorization':'Bearer '+token};
+
+  const albums=(state.albums||[]).filter(a=>!a.archived);
+  const albumIds=albums.map(a=>a.id);
+  let pitchComments=[], labelComments=[];
+
+  // Pitch-kommentarer for brukerens albumer
+  if(albumIds.length){
+    try{
+      const r=await fetch(`${SBU}/rest/v1/pitch_comments?album_id=in.(${albumIds.join(',')})&order=created_at.desc&limit=10&select=*`,{headers:hdrs});
+      if(r.ok) pitchComments=await r.json();
+    }catch(e){}
+  }
+
+  // Label-kommentarer via notifications
+  try{
+    const r=await fetch(`${SBU}/rest/v1/notifications?recipient_id=eq.${uid}&type=eq.label_comment&order=created_at.desc&limit=10&select=*`,{headers:hdrs});
+    if(r.ok) labelComments=await r.json();
+  }catch(e){}
+
+  // Slå sammen og sorter
+  const all=[
+    ...pitchComments.map(c=>{
+      const aName=albums.find(a=>a.id===c.album_id)?.name||'Ukjent album';
+      const aCover=albums.find(a=>a.id===c.album_id)?.cover||'';
+      return {type:'pitch',author:c.author||'Anonym',text:c.comment||'',id:c.album_id,name:aName,cover:aCover,date:c.created_at};
+    }),
+    ...labelComments.map(n=>{
+      const aName=albums.find(a=>a.id===n.content_id)?.name||n.content_name||'Ukjent';
+      const aCover=albums.find(a=>a.id===n.content_id)?.cover||'';
+      return {type:'label',author:n.content_name||'Label',text:'',id:n.content_id,name:aName,cover:aCover,date:n.created_at};
+    })
+  ].sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,8);
+
+  if(!all.length){
+    el.innerHTML='<div class="cf-empty">Ingen kommentarer enn\u00e5 \u2014 del et pitch-album for \u00e5 f\u00e5 tilbakemelding</div>';
+    return;
+  }
+
+  el.innerHTML=all.map(c=>{
+    const initials=(c.author||'?').slice(0,2).toUpperCase();
+    const typeTag=c.type==='label'
+      ?'<span class="cf-tag cf-tag-label">Label</span>'
+      :'<span class="cf-tag cf-tag-pitch">Pitch</span>';
+    const coverImg=c.cover?`<img src="${esc(c.cover)}" style="width:100%;height:100%;object-fit:cover;border-radius:6px" alt="">`:
+      `<span style="font-size:14px">\uD83C\uDFB5</span>`;
+    return `<div class="cf-item" onclick="dashOpenProject('${esc(c.id)}','album')">
+      <div class="cf-avatar">${initials}</div>
+      <div class="cf-body">
+        <div class="cf-header">
+          <span class="cf-author">${esc(c.author)}</span>
+          ${typeTag}
+          <span class="cf-on">p\u00e5</span>
+          <span class="cf-proj">${esc(c.name)}</span>
+          <span class="cf-time">${_cfTimeAgo(c.date)}</span>
+        </div>
+        ${c.text?`<div class="cf-text">${esc(c.text)}</div>`:''}
+      </div>
+      <div class="cf-cover">${coverImg}</div>
+    </div>`;
+  }).join('');
+};
+
+// Call async comment feed without blocking dashboard render
+if(typeof window.renderCommentFeed==='function') setTimeout(()=>window.renderCommentFeed(),0);
+
 window.dashOpenProject=function(id,type){
   if(type==='album'){
     document.querySelector('.tab-btn[data-tab="albums"]')?.click();
