@@ -291,14 +291,6 @@ function releaseScore(d){
 
 function renderStats(){ if(document.querySelector('.tab-btn.active')?.dataset?.tab==='hjem') renderDashboard(); }
 
-const _TIPS = ['Skriv hooksen først — det er den som fanger lytteren. Bygg verset rundt den.', 'Record alt, også de dårlige ideene. Neste sesjon kan du høste fra dem.', 'En enkel melodi som sitter er bedre enn et komplekst arrangement ingen husker.', 'Pitch handler om å fortelle en historie — hvem er du, hva vil du si, hvem er det for?', 'Del musikken din med noen du stoler på før du pitcher til labels.', 'Tekst flyter bedre når du skriver uten å sensurere deg selv. Rediger etterpå.', 'Bruk Pipeline til å holde oversikt over hvilke sanger som er klare for release.', 'En god tittel kan løfte hele sangen — bruk tid på den.', 'Lister med rim (rhyme schemes) hjelper deg å finne nye ord og vendinger.', 'Spill inn vokal-demos tidlig — det avslører problemer i arrangementet.', 'Jo mer konkret teksten er, jo mer universell føles den.', 'Sett en deadline for hvert prosjekt — det forhindrer perfeksjonisme.'];
-let _tipIdx = Math.floor(Math.random() * _TIPS.length);
-window.renderNextTip = function(){
-  _tipIdx = (_tipIdx + 1) % _TIPS.length;
-  const el = document.getElementById('dashTip');
-  if(el) el.textContent = _TIPS[_tipIdx];
-};
-
 function renderDashboard(){
   const username=sessionStorage.getItem('mv_username')||'deg';
   const h=new Date().getHours();
@@ -378,10 +370,6 @@ function renderDashboard(){
       return `<div class="dash-beat-card"><div class="dash-beat-top"><div class="dash-beat-thumb">${cover}</div><div class="dash-beat-info"><div class="dash-beat-name" title="${esc(b.name)}">${esc(b.name)}</div><div class="dash-beat-dur">${dur||'\u2014'}</div></div></div><div class="dash-beat-btns"><button class="dash-btn-play" onclick="event.stopPropagation();playSingleBeat('${b.id}')">&#9654; Spill</button><button class="dash-btn-lab" onclick="event.stopPropagation();openInLyricLab('${b.id}')">&#9998; Lab</button></div></div>`;
     }).join('');}
   }
-
-  // Tips
-  const tipEl=document.getElementById('dashTip');
-  if(tipEl && !tipEl.textContent) tipEl.textContent=_TIPS[_tipIdx];
 
   // Progress per album
   const progEl=document.getElementById('dashProgress');
