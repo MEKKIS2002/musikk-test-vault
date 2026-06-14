@@ -50,7 +50,7 @@ AKTIVE BRUKERE:
   <link rel="stylesheet" href="css/lyriclab.css?v=202605161400">
   <link rel="stylesheet" href="css/pipeline.css?v=202605161400">
   <link rel="stylesheet" href="css/main.css?v=202605161400">
-  <link rel="stylesheet" href="css/ui.css?v=202606141200">
+  <link rel="stylesheet" href="css/ui.css?v=202606141400">
   <link rel="stylesheet" href="css/track-cards.css?v=202605161400">
   <link rel="stylesheet" href="css/archive.css?v=202605161400">
   <link rel="stylesheet" href="css/mixtape.css?v=202605161400">
@@ -235,46 +235,12 @@ AKTIVE BRUKERE:
 <main class="app">
 <button id="producerLoginBtn" class="producer-login-btn" onclick="returnToPasswordScreen()">Logg inn</button>
 
-<section class="hero hero-dashboard">
-  <div class="dash-vinyl" aria-hidden="true">
-    <div class="dash-vinyl-disc">
-      <div class="dash-vinyl-g1"></div>
-      <div class="dash-vinyl-g2"></div>
-      <div class="dash-vinyl-g3"></div>
-      <div class="dash-vinyl-g4"></div>
-      <div class="dash-vinyl-label"><div class="dash-vinyl-dot"></div></div>
-      <div class="dash-vinyl-hole"></div>
-    </div>
-  </div>
-  <div class="dash-inner">
-    <div class="dash-greeting-row">
-      <div class="dash-greeting" id="dashGreeting">Hei &#128075;</div>
-      <div class="dash-quick">
-        <button class="dq-btn accent" onclick="dashUploadTrigger()">&#xFF0B; Ny sang</button>
-        <button class="dq-btn" onclick="dashNewAlbum()">&#xFF0B; Nytt album</button>
-        <button class="dq-btn" onclick="dashNewMixtape()">&#xFF0B; Ny mixtape</button>
-        <button class="dq-btn" onclick="dashOpenLyricLab()">&#9998; Lyric Lab</button>
-        <input type="file" accept="audio/*" multiple hidden id="dashUploadInput" onchange="dashUpload(this.files)">
-      </div>
-    </div>
-    <div id="dashSub"></div>
-    <div id="dashAttn" style="display:none"></div>
-    <div class="dash-sec-hd"><div class="dash-section-label">Siste prosjekter</div></div>
-    <div class="dash-projects-grid" id="dashProjects"></div>
-    <div class="dash-sec-hd" style="margin-top:14px"><div class="dash-section-label">Nylig lastet opp</div></div>
-    <div id="dashBeats"></div>
-  </div>
-  <span id="beatCount" hidden></span>
-  <span id="favCount" hidden></span>
-  <span id="demoCount" hidden></span>
-  <span id="avgDone" hidden></span>
-  <button id="exportBtn" hidden></button>
-  <input id="importInput" type="file" accept="application/json" hidden />
-</section>
 
-<nav class="tabs">
+
+<nav class="tabs" id="mainTabs">
+  <button class="tab-btn active" data-tab="hjem">🏠 Hjem</button>
   <button class="tab-btn" data-tab="beats">🎵 Beats</button>
-  <button class="tab-btn active" data-tab="mixtapes">📼 Mixtapes</button>
+  <button class="tab-btn" data-tab="mixtapes">📼 Mixtapes</button>
   <button class="tab-btn" data-tab="albums">📁 Albumer</button>
   <button class="tab-btn" data-tab="pipeline">📊 Pipeline</button>
   <button class="tab-btn" data-tab="archive">🗄️ Arkivert</button>
@@ -284,12 +250,72 @@ AKTIVE BRUKERE:
   <button class="tab-btn" data-tab="integrations">🔌 Integrasjoner</button>
 </nav>
 
-<!-- BEATS -->
+<!-- HJEM ─────────────────────────────────────────────────────────────────── -->
+<section id="hjemTab" class="tab-view tab-visible">
+  <div class="hjem-wrap">
+
+    <!-- Pure CSS vinyl -->
+    <div class="dash-vinyl" aria-hidden="true">
+      <div class="dash-vinyl-disc">
+        <div class="dash-vinyl-g1"></div>
+        <div class="dash-vinyl-g2"></div>
+        <div class="dash-vinyl-g3"></div>
+        <div class="dash-vinyl-g4"></div>
+        <div class="dash-vinyl-label"><div class="dash-vinyl-dot"></div></div>
+        <div class="dash-vinyl-hole"></div>
+      </div>
+    </div>
+
+    <div class="dash-inner">
+      <!-- Greeting + quick actions -->
+      <div class="dash-greeting-row">
+        <div>
+          <div class="dash-greeting" id="dashGreeting">Hei &#128075;</div>
+          <div id="dashSub"></div>
+        </div>
+        <div class="dash-quick">
+          <button class="dq-btn accent" onclick="dashUploadTrigger()">&#xFF0B; Ny sang</button>
+          <button class="dq-btn" onclick="dashNewAlbum()">&#xFF0B; Nytt album</button>
+          <button class="dq-btn" onclick="dashNewMixtape()">&#xFF0B; Ny mixtape</button>
+          <button class="dq-btn" onclick="dashOpenLyricLab()">&#9998; Lyric Lab</button>
+          <input type="file" accept="audio/*" multiple hidden id="dashUploadInput" onchange="dashUpload(this.files)">
+        </div>
+      </div>
+
+      <!-- Attention banner -->
+      <div id="dashAttn" style="display:none"></div>
+
+      <!-- Siste prosjekter -->
+      <div class="dash-sec-hd"><div class="dash-section-label">Siste prosjekter</div></div>
+      <div class="dash-projects-grid" id="dashProjects"></div>
+
+      <!-- Nylig lastet opp -->
+      <div class="dash-sec-hd" style="margin-top:14px"><div class="dash-section-label">Nylig lastet opp</div></div>
+      <div id="dashBeats"></div>
+
+      <!-- Tips + Fremdrift -->
+      <div class="hjem-bottom-grid">
+        <div class="hjem-tips-card">
+          <div class="dash-section-label" style="margin-bottom:10px">&#128161; Tips</div>
+          <div id="dashTip" class="hjem-tip-text"></div>
+          <button class="hjem-tip-next" onclick="renderNextTip()">Nytt tips &#8594;</button>
+        </div>
+        <div class="hjem-progress-card">
+          <div class="dash-section-label" style="margin-bottom:10px">&#128202; Fremdrift</div>
+          <div id="dashProgress"></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- BEATS ──────────────────────────────────────────────────────────────────── -->
 <section id="beatsTab" class="tab-view hidden">
   <div id="beatsTabContent"></div>
 </section>
 
-<section id="mixtapesTab" class="tab-view">
+<section id="mixtapesTab" class="tab-view hidden">
   <div class="content-panel glass">
     <div id="mixtapesListView">
       <div class="section-title">
@@ -741,12 +767,12 @@ AKTIVE BRUKERE:
 
   <!-- App scripts (load order matters) -->
   <script src="js/audio-compress.js?v=202605161400"></script>
-  <script src="js/lock.js?v=202606141200"></script>
+  <script src="js/lock.js?v=202606141400"></script>
   <script src="js/pipeline.js?v=202605161400"></script>
   <script src="js/lyriclab.js?v=202605161400"></script>
   <script src="js/audio-compress.js?v=202605261500"></script>
   <script src="js/audio-compress.js?v=202605261900"></script>
-  <script src="js/app.js?v=202606141200"></script>
+  <script src="js/app.js?v=202606141400"></script>
   <script src="js/track-cards.js?v=202605161400"></script>
   <script src="js/r2-storage.js?v=202605161400"></script>
   <script src="js/archive.js?v=202605262300"></script>
@@ -754,7 +780,7 @@ AKTIVE BRUKERE:
   <script src="js/changelog.js?v=202605251400"></script>
   <script src="js/beats-tab.js?v=202605251400"></script>
   <script src="js/supabase.js?v=202605251400"></script>
-  <script src="js/db.js?v=202606141200"></script>
+  <script src="js/db.js?v=202606141400"></script>
 
     <!-- LYRIC LAB TAB -->
     <section id="lyriclabTab" class="tab-view hidden">
