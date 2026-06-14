@@ -1552,26 +1552,12 @@ nav.tabs::-webkit-scrollbar { display: none !important; }
 .dash-btn-lab:hover { background:rgba(255,255,255,.13); }
 
 /* ── Bottom grid: Tips + Fremdrift ── */
-.hjem-bottom-grid {
-  display:grid;
-  grid-template-columns:1fr 1fr !important;
-  gap:12px;
-  margin-top:18px;
-}
-.hjem-tips-card, .hjem-progress-card {
+/* Progress card — full width */
+.hjem-progress-card {
   background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.07);
   border-radius:12px; padding:16px 18px;
+  display:grid; grid-template-columns:repeat(3,1fr); gap:16px 24px;
 }
-.hjem-tip-text {
-  font-size:13px; color:rgba(255,255,255,.7); line-height:1.65;
-  min-height:60px; font-style:italic; margin-bottom:12px;
-}
-.hjem-tip-next {
-  font-size:11px; font-weight:700; color:rgba(244,164,67,.7);
-  background:none; border:none; cursor:pointer; padding:0;
-  font-family:inherit; transition:color .12s;
-}
-.hjem-tip-next:hover { color:#f4a443; }
 
 /* General */
 .dash-empty { font-size:11px; color:rgba(255,255,255,.22); padding:4px 0; grid-column:1/-1; }
