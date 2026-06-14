@@ -1441,3 +1441,66 @@ nav.tabs::-webkit-scrollbar{display:none!important;}
 .album-beat-card:hover .ab-remove-btn{opacity:1!important;}
 .ab-rename-btn:hover{background:rgba(255,255,255,.09)!important;}
 .ab-remove-btn:hover{background:rgba(251,113,133,.12)!important;color:#fb7185!important;}
+
+/* ── Hjem bunn-grid: 3 kolonner ───────────────────────────────────────────── */
+.hjem-bottom-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.hjem-bot-card {
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 12px;
+  padding: 16px 18px;
+}
+
+/* Aktivitet: søyler */
+.act-bars { display:flex; gap:8px; align-items:flex-end; }
+.act-col  { display:flex; flex-direction:column; align-items:center; gap:5px; flex:1; }
+.act-bar  {
+  width: 100%; height: 28px; border-radius: 6px;
+  background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.09);
+  transition: background .2s;
+}
+.act-bar.on    { background: rgba(244,164,67,.32); border-color: rgba(244,164,67,.5); }
+.act-bar.today { box-shadow: 0 0 0 2px rgba(244,164,67,.25); border-color: #f4a443; }
+.act-bar.on.today { background: rgba(244,164,67,.52); }
+.act-day-lbl { font-size:9px; font-weight:800; color:rgba(255,255,255,.28); letter-spacing:.04em; }
+
+.act-streak {
+  display: flex; align-items: baseline; gap: 6px;
+  margin-top: 14px; padding-top: 12px;
+  border-top: 1px solid rgba(255,255,255,.06);
+}
+.streak-num { font-size:24px; font-weight:900; color:#f4a443; letter-spacing:-.04em; }
+.streak-txt { font-size:11px; color:rgba(255,255,255,.35); }
+
+/* Varsler: kompakt i kort */
+.smart-alert {
+  display: flex; align-items: flex-start; gap: 8px;
+  padding: 8px 10px; border-radius: 8px; margin-bottom: 6px;
+  cursor: pointer; transition: background .12s;
+}
+.smart-alert:last-child { margin-bottom: 0; }
+.smart-alert-warn { background:rgba(249,115,22,.08); border:1px solid rgba(249,115,22,.2); }
+.smart-alert-warn:hover { background:rgba(249,115,22,.14); }
+.smart-alert-info { background:rgba(96,165,250,.08); border:1px solid rgba(96,165,250,.2); }
+.smart-alert-info:hover { background:rgba(96,165,250,.14); }
+.sa-icon { font-size:13px; flex-shrink:0; margin-top:1px; }
+.sa-body { flex:1; min-width:0; }
+.sa-msg  { font-size:11px; font-weight:700; color:#f97316; }
+.smart-alert-info .sa-msg { color:#60a5fa; }
+.sa-detail { font-size:10px; color:rgba(255,255,255,.3); margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.sa-arrow  { font-size:11px; color:rgba(255,255,255,.22); flex-shrink:0; margin-top:1px; }
+.sa-empty  { font-size:11px; color:rgba(255,255,255,.25); font-style:italic; }
+
+/* Fremdrift i kort */
+.hjem-progress-card { /* no longer standalone — but keep for compatibility */ }
+#dashProgress .prog-row { margin-bottom:11px; }
+#dashProgress .prog-row:last-child { margin-bottom:0; }
+#dashProgress .prog-top { display:flex; justify-content:space-between; margin-bottom:4px; }
+#dashProgress .prog-name { font-size:11px; font-weight:700; color:#f4ede4; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:72%; }
+#dashProgress .prog-pct  { font-size:11px; font-weight:800; }
+#dashProgress .prog-track { height:4px; background:rgba(255,255,255,.08); border-radius:999px; overflow:hidden; }
+#dashProgress .prog-fill  { height:100%; border-radius:999px; }
