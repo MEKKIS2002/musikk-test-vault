@@ -111,8 +111,12 @@ function injectUserCorner(role){
   };
   const pkgLabel = pkgLabels[pkg] || pkg;
 
-  // Notification bell slot
-  slot.insertAdjacentHTML('beforeend', '<div id="mvNotifBellSlot" class="mv-hdr-icon-btn"></div>');
+  // Notification bell slot — app.js will place the bell here directly
+  const bellSlotDiv = document.createElement('div');
+  bellSlotDiv.id = 'mvNotifBellSlot';
+  // Don't add mv-hdr-icon-btn here — the bell button itself has that class
+  bellSlotDiv.style.cssText = 'display:flex;align-items:center;';
+  slot.appendChild(bellSlotDiv);
 
   // Gear/settings button with dropdown
   slot.insertAdjacentHTML('beforeend', `
@@ -144,17 +148,7 @@ function injectUserCorner(role){
       '<div class="mv-hdr-admin-badge">&#9889; ADMIN</div>');
   }
 
-  // Move notification bell into slot when it appears
-  const tryMoveBell = () => {
-    const bell = document.getElementById('mvNotifBell');
-    const bellSlot = document.getElementById('mvNotifBellSlot');
-    if(bell && bellSlot && !bellSlot.contains(bell)){
-      bell.className = 'mv-hdr-icon-btn';
-      bell.style.cssText = '';
-      bellSlot.appendChild(bell);
-    }
-  };
-  [300, 600, 1200].forEach(d => setTimeout(tryMoveBell, d));
+  // Bell is placed by installNotificationBell() in app.js — no manual move needed
 
   // Close gear menu on outside click
   document.addEventListener('click', e => {

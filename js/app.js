@@ -957,24 +957,28 @@ function sbHeaders(token){
 // ── Varsel-bjelle ─────────────────────────────────────────────────────────
 function installNotificationBell(){
   if(document.getElementById('mvNotifBell')) return;
-  const bell = document.createElement('div');
+  const bell = document.createElement('button');
   bell.id = 'mvNotifBell';
-  bell.style.cssText = `
-    position:fixed;top:10px;right:60px;z-index:8050;
-    cursor:pointer;font-size:18px;padding:6px 8px;
-    border-radius:50%;transition:background .15s;
-    display:flex;align-items:center;justify-content:center;
-  `;
-  bell.innerHTML = `🔔<span id="mvNotifCount" style="
-    display:none;position:absolute;top:2px;right:2px;
-    background:#fb7185;color:#fff;font-size:9px;font-weight:900;
-    border-radius:999px;padding:1px 4px;font-family:system-ui;min-width:14px;text-align:center;
-  "></span>`;
+  bell.className = 'mv-hdr-icon-btn';
   bell.title = 'Varsler';
+  bell.setAttribute('aria-label','Varsler');
+  bell.style.cssText = 'position:relative;font-size:16px;';
+  bell.innerHTML = `🔔<span id="mvNotifCount" style="
+    display:none;position:absolute;top:3px;right:3px;
+    background:#fb7185;color:#fff;font-size:9px;font-weight:900;
+    border-radius:999px;padding:1px 4px;font-family:system-ui;min-width:14px;
+    text-align:center;line-height:1.4;pointer-events:none;
+  "></span>`;
   bell.onclick = () => openNotifPanel();
-  bell.onmouseover = () => bell.style.background = 'rgba(255,255,255,.1)';
-  bell.onmouseout  = () => bell.style.background = 'transparent';
-  document.body.appendChild(bell);
+
+  // Place inside header slot if available, otherwise fixed fallback
+  const slot = document.getElementById('mvNotifBellSlot');
+  if(slot){
+    slot.appendChild(bell);
+  } else {
+    bell.style.cssText += ';position:fixed;top:12px;right:60px;z-index:8050;';
+    document.body.appendChild(bell);
+  }
   loadNotifications();
 }
 
@@ -1091,11 +1095,12 @@ window.markAllNotifsRead = async function(){
 
 // ── Del-modal ─────────────────────────────────────────────────────────────
 window.openShareModal = async function(contentType, contentId, contentName){
-  const {data:{session}} = await window.supabaseClient.auth.getSession().catch(()=>({data:{}}));
+  const uid = window._mvCurrentUserId;
+  if(!uid){ showToast('Logg inn for å dele'); return; }
+
+  // Hent eksisterende tilganger
+  const {data:{session}} = await window.supabaseClient.auth.getSession();
   const token = session?.access_token;
-  const uid = window._mvCurrentUserId || session?.user?.id || sessionStorage.getItem('mv_user_id');
-  if(uid) window._mvCurrentUserId = uid;
-  if(!uid){ showToast('Logg inn for \u00e5 dele'); return; }
 
   const res = await fetch(
     `${SB_URL}/rest/v1/content_access?content_type=eq.${contentType}&content_id=eq.${contentId}&select=*`,
