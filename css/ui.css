@@ -1915,3 +1915,112 @@ nav.tabs:not(.mv-tabs) { display: none !important; }
   justify-content: center;
   font-size: 40px;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   ALBUM DETAIL — cover + spinning vinyl
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* Wrapper: reserves space for vinyl to slide into on the left */
+.alb-visual {
+  position: relative;
+  flex-shrink: 0;
+  width: 240px;   /* 160px cover + 80px vinyl slide space */
+  height: 160px;
+}
+
+/* Vinyl: sits behind the cover, slides left when playing */
+.alb-vinyl-wrap {
+  position: absolute;
+  right: 0;
+  top: 5px;
+  width: 150px;
+  height: 150px;
+  z-index: 0;
+  transform: translateX(0);
+  transition: transform 0.65s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+.alb-vinyl-wrap.playing {
+  transform: translateX(-88px); /* slides left, out from behind cover */
+}
+
+/* Disc surface */
+.alb-vinyl-disc {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 47% 47%,
+    #2a2a2a 0%, #141414 26%, #1e1e1e 27%, #111 46%,
+    #1c1c1c 47%, #0e0e0e 66%, #181818 67%, #0a0a0a 100%);
+  position: relative;
+}
+.alb-vinyl-disc.spinning {
+  animation: albVinylSpin 5s linear infinite;
+}
+@keyframes albVinylSpin { to { transform: rotate(360deg); } }
+
+/* Groove rings */
+.alv-g1, .alv-g2, .alv-g3, .alv-g4 {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%,-50%);
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,.045);
+}
+.alv-g1 { width: 88%; height: 88%; }
+.alv-g2 { width: 70%; height: 70%; border-color: rgba(255,255,255,.03); }
+.alv-g3 { width: 52%; height: 52%; }
+.alv-g4 { width: 34%; height: 34%; border-color: rgba(255,255,255,.03); }
+
+/* Label in center */
+.alv-label {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%,-50%);
+  width: 26%; height: 26%;
+  border-radius: 50%;
+  background: radial-gradient(circle, #2c1f0e, #1a1008);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.alv-dot {
+  width: 22%; height: 22%;
+  border-radius: 50%;
+  background: rgba(244,164,67,.55);
+}
+.alv-hole {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%,-50%);
+  width: 5%; height: 5%;
+  border-radius: 50%;
+  background: #060504;
+}
+
+/* Album cover — on top of vinyl, no rounded corners */
+.alb-cover {
+  position: absolute;
+  right: 0; top: 0;
+  z-index: 1;
+  width: 160px;
+  height: 160px;
+  overflow: hidden;
+  box-shadow: -4px 0 20px rgba(0,0,0,.5);
+}
+.alb-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  border-radius: 0;
+}
+.alb-cover-ph {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 48px;
+  background: rgba(255,255,255,.06);
+}
