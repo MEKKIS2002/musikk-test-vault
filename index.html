@@ -50,7 +50,7 @@ AKTIVE BRUKERE:
   <link rel="stylesheet" href="css/lyriclab.css?v=202605161400">
   <link rel="stylesheet" href="css/pipeline.css?v=202605161400">
   <link rel="stylesheet" href="css/main.css?v=202605161400">
-  <link rel="stylesheet" href="css/ui.css?v=202606142100">
+  <link rel="stylesheet" href="css/ui.css?v=202606142200">
   <link rel="stylesheet" href="css/track-cards.css?v=202605161400">
   <link rel="stylesheet" href="css/archive.css?v=202605161400">
   <link rel="stylesheet" href="css/mixtape.css?v=202605161400">
@@ -280,6 +280,14 @@ AKTIVE BRUKERE:
       <!-- Nylig lastet opp -->
       <div class="dash-sec-hd" style="margin-top:16px"><div class="dash-section-label">Nylig lastet opp</div></div>
       <div id="dashBeats"></div>
+
+      <!-- Kommentarfeed -->
+      <div class="dash-sec-hd" style="margin-top:18px">
+        <div class="dash-section-label">&#128172; Kommentarer</div>
+      </div>
+      <div id="dashCommentFeed" class="cf-feed">
+        <div class="cf-loading">Laster kommentarer&#8230;</div>
+      </div>
 
       <!-- Bunn-grid: Aktivitet + Varsler + Fremdrift -->
       <div class="hjem-bottom-row" style="margin-top:18px">
@@ -770,7 +778,7 @@ AKTIVE BRUKERE:
   <script src="js/changelog.js?v=202605251400"></script>
   <script src="js/beats-tab.js?v=202605251400"></script>
   <script src="js/supabase.js?v=202605251400"></script>
-  <script src="js/db.js?v=202606142100"></script>
+  <script src="js/db.js?v=202606142200"></script>
 
     <!-- LYRIC LAB TAB -->
     <section id="lyriclabTab" class="tab-view hidden">
