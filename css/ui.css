@@ -1574,3 +1574,81 @@ nav.tabs::-webkit-scrollbar{display:none!important;}
   display: flex; align-items: center; justify-content: center;
   overflow: hidden;
 }
+
+/* ── Kommentarer på album/mixtape ─────────────────────────────────────────── */
+.collection-comments { margin-top: 32px; }
+
+.cc-wrap {
+  border-top: 1px solid rgba(255,255,255,.08);
+  padding-top: 24px;
+}
+.cc-title {
+  font-size: 10px; font-weight: 900; letter-spacing: .14em;
+  text-transform: uppercase; color: rgba(255,255,255,.3);
+  margin-bottom: 16px;
+  display: flex; align-items: center; gap: 8px;
+}
+.cc-count {
+  background: rgba(255,255,255,.1); color: rgba(255,255,255,.5);
+  font-size: 10px; font-weight: 800; padding: 1px 7px;
+  border-radius: 999px;
+}
+.cc-list { display: flex; flex-direction: column; gap: 1px; }
+.cc-empty {
+  font-size: 12px; color: rgba(255,255,255,.25);
+  font-style: italic; padding: 8px 0;
+}
+
+.cc-item {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 14px 16px;
+  background: rgba(255,255,255,.03);
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: 10px;
+  margin-bottom: 8px;
+  transition: background .12s;
+}
+.cc-item:last-child { margin-bottom: 0; }
+.cc-item:hover { background: rgba(255,255,255,.05); }
+
+.cc-avatar {
+  width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
+  background: rgba(244,164,67,.14); border: 1px solid rgba(244,164,67,.25);
+  color: #f4a443; font-size: 11px; font-weight: 900;
+  display: flex; align-items: center; justify-content: center;
+}
+.cc-avatar-label {
+  background: rgba(168,85,247,.14) !important;
+  border-color: rgba(168,85,247,.3) !important;
+  color: rgba(168,85,247,.9) !important;
+}
+.cc-body { flex: 1; min-width: 0; }
+
+.cc-header {
+  display: flex; align-items: center; gap: 7px;
+  flex-wrap: wrap; margin-bottom: 7px;
+}
+.cc-author { font-size: 13px; font-weight: 800; color: #f4ede4; }
+.cc-tag {
+  font-size: 9px; font-weight: 900; letter-spacing: .06em;
+  text-transform: uppercase; padding: 2px 7px; border-radius: 999px;
+}
+.cc-tag-pitch { background: rgba(96,165,250,.12); color: #60a5fa; border: 1px solid rgba(96,165,250,.2); }
+.cc-tag-label { background: rgba(168,85,247,.12); color: rgba(168,85,247,.9); border: 1px solid rgba(168,85,247,.2); }
+.cc-time { font-size: 11px; color: rgba(255,255,255,.25); }
+
+.cc-del {
+  margin-left: auto; width: 22px; height: 22px;
+  border-radius: 6px; border: 1px solid rgba(251,113,133,.25);
+  background: rgba(251,113,133,.08); color: rgba(251,113,133,.6);
+  font-size: 14px; font-weight: 900; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; transition: background .12s, color .12s;
+  line-height: 1;
+}
+.cc-del:hover { background: rgba(251,113,133,.2); color: #fb7185; }
+
+.cc-text {
+  font-size: 13px; color: rgba(255,255,255,.7);
+  line-height: 1.6; white-space: pre-wrap;
+}
