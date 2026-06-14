@@ -1328,191 +1328,29 @@ select,
 .bp-track { gap: 10px !important; }
 .bp-controls { gap: 4px !important; padding: 4px 8px !important; }
 
-/* ═══════════════════════════════════════════════════════════════════════
-   TAB BAR REDESIGN — slim, modern, amber underline
-   ═══════════════════════════════════════════════════════════════════════ */
+/* ── Hjem tab: full-width like all other tabs ────────────────────────────── */
+#hjemTab { width: 100% !important; box-sizing: border-box !important; }
 
-/* Override everything from old tabs styling */
-nav.tabs, .tabs {
-  display: flex !important;
-  align-items: center !important;
-  gap: 0 !important;
-  padding: 0 12px !important;
-  background: rgba(8,7,6,.96) !important;
-  border-bottom: 1px solid rgba(255,255,255,.08) !important;
-  border-radius: 0 !important;
-  box-shadow: none !important;
-  border-top: none !important;
-  border-left: none !important;
-  border-right: none !important;
-  position: sticky !important;
-  top: 0 !important;
-  z-index: 200 !important;
-  overflow-x: auto !important;
-  scrollbar-width: none !important;
-  -webkit-overflow-scrolling: touch !important;
-}
-nav.tabs::-webkit-scrollbar { display: none !important; }
-
-.tab-btn {
-  position: relative !important;
-  flex-shrink: 0 !important;
-  height: 44px !important;
-  padding: 0 15px !important;
-  border: none !important;
-  border-bottom: 2px solid transparent !important;
-  border-radius: 0 !important;
-  background: none !important;
-  box-shadow: none !important;
-  color: rgba(255,255,255,.42) !important;
-  font-size: 12px !important;
-  font-weight: 700 !important;
-  letter-spacing: .02em !important;
-  cursor: pointer !important;
-  transition: color .15s, border-color .15s !important;
-  white-space: nowrap !important;
-  min-height: unset !important;
-}
-.tab-btn::after { display: none !important; }
-.tab-btn:hover { color: rgba(255,255,255,.75) !important; background: none !important; }
-.tab-btn.active {
-  color: #f4a443 !important;
-  border-bottom-color: #f4a443 !important;
-  background: none !important;
-  box-shadow: none !important;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════
-   HJEM TAB — full page dashboard
-   ═══════════════════════════════════════════════════════════════════════ */
-
-#hjemTab {
-  padding: 0 !important;
-  background: transparent !important;
-}
 .hjem-wrap {
-  position: relative;
-  overflow: hidden;
-  min-height: 100vh;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  min-height: 80vh !important;
 }
 
-/* CSS Vinyl — top right background */
-.dash-vinyl {
-  position: absolute;
-  right: -160px;
-  top: -110px;
-  width: 460px;
-  height: 460px;
-  z-index: 0;
-  pointer-events: none;
-}
-.dash-vinyl-disc {
-  width: 100%; height: 100%;
-  border-radius: 50%;
-  position: relative;
-  background: radial-gradient(circle at 48% 46%,
-    #242220 0%, #181614 18%, #202020 19%, #141414 38%,
-    #1e1c1a 39%, #121010 58%, #1c1a18 59%, #0e0c0c 78%,
-    #181614 79%, #0c0a0a 100%);
-  opacity: 0.22;
-  animation: dashVinylSpin 80s linear infinite;
-}
-@keyframes dashVinylSpin { to { transform: rotate(360deg); } }
-.dash-vinyl-g1,.dash-vinyl-g2,.dash-vinyl-g3,.dash-vinyl-g4 {
-  position:absolute; top:50%; left:50%;
-  transform:translate(-50%,-50%); border-radius:50%;
-  border:1px solid rgba(255,255,255,.055);
-}
-.dash-vinyl-g1{width:88%;height:88%;}
-.dash-vinyl-g2{width:72%;height:72%;border-color:rgba(255,255,255,.04);}
-.dash-vinyl-g3{width:56%;height:56%;}
-.dash-vinyl-g4{width:40%;height:40%;border-color:rgba(255,255,255,.04);}
-.dash-vinyl-label{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:28%;height:28%;border-radius:50%;background:radial-gradient(circle,#2c1f0e,#1a1008);display:flex;align-items:center;justify-content:center;}
-.dash-vinyl-dot{width:18%;height:18%;border-radius:50%;background:rgba(244,164,67,.5);}
-.dash-vinyl-hole{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:4%;height:4%;border-radius:50%;background:#060504;}
-
-/* Dashboard inner */
 .dash-inner {
-  position: relative;
-  z-index: 1;
-  padding: 20px 24px 28px;
-  max-width: 1200px;
+  max-width: 100% !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  padding: 20px 28px 28px !important;
 }
 
-/* Greeting */
-.dash-greeting-row { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:10px; gap:12px; flex-wrap:wrap; }
-.dash-greeting { font-size:20px; font-weight:900; letter-spacing:-.03em; color:#f4ede4; }
-.dash-quick { display:flex; gap:6px; flex-shrink:0; flex-wrap:wrap; }
-.dq-btn { height:32px; padding:0 14px; border-radius:8px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap; border:1px solid rgba(255,255,255,.1); background:rgba(255,255,255,.05); color:rgba(255,255,255,.6); font-family:inherit; transition:background .12s; }
-.dq-btn:hover { background:rgba(255,255,255,.1); }
-.dq-btn.accent { background:rgba(244,164,67,.15); border-color:rgba(244,164,67,.35); color:#f4a443; }
-.dq-btn.accent:hover { background:rgba(244,164,67,.28); }
-
-/* Stat pills */
-.ds-pill { font-size:11px; font-weight:700; padding:4px 10px; border-radius:999px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.08); color:rgba(255,255,255,.55); white-space:nowrap; display:inline-block; }
-.ds-accent { background:rgba(244,164,67,.08); border-color:rgba(244,164,67,.2); color:#f4a443; }
-.ds-warn { background:rgba(251,113,133,.08); border-color:rgba(251,113,133,.2); color:#fb7185; }
-
-/* Attention banner */
-#dashAttn { display:flex; align-items:center; gap:10px; background:rgba(249,115,22,.07); border:1px solid rgba(249,115,22,.2); border-radius:9px; padding:9px 12px; margin-bottom:14px; }
-.attn-icon { font-size:14px; flex-shrink:0; }
-.attn-body { flex:1; min-width:0; }
-.attn-title { font-size:12px; font-weight:800; color:#f97316; }
-.attn-names { font-size:11px; color:rgba(255,255,255,.35); margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.attn-cta { font-size:11px; font-weight:800; color:#f97316; background:rgba(249,115,22,.15); border:1px solid rgba(249,115,22,.25); padding:5px 12px; border-radius:6px; cursor:pointer; white-space:nowrap; flex-shrink:0; font-family:inherit; }
-
-/* Section label */
-.dash-sec-hd { display:flex; align-items:center; margin-bottom:8px; }
-.dash-section-label { font-size:9px; font-weight:900; letter-spacing:.14em; text-transform:uppercase; color:rgba(255,255,255,.28); }
-
-/* Project cards — 16:9 */
-.dash-projects-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:14px; }
-.dash-proj-card { border-radius:10px; overflow:hidden; cursor:pointer; border:1px solid rgba(255,255,255,.08); background:rgba(255,255,255,.04); transition:border-color .15s,transform .12s; }
-.dash-proj-card:hover { border-color:rgba(244,164,67,.4); transform:translateY(-1px); }
-.dash-proj-cover { width:100%; aspect-ratio:16/9; overflow:hidden; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,.06); position:relative; }
-.dash-proj-prog-bar { position:absolute; bottom:0; left:0; right:0; height:3px; background:rgba(0,0,0,.4); }
-.dash-proj-footer { padding:7px 10px 8px; }
-.dash-proj-name { font-size:12px; font-weight:800; color:#f4ede4; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.dash-proj-meta { font-size:10px; color:rgba(255,255,255,.3); margin-top:1px; }
-
-/* Beat cards */
-#dashBeats { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
-.dash-beat-card { background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); border-radius:10px; overflow:hidden; transition:border-color .12s; }
-.dash-beat-card:hover { border-color:rgba(255,255,255,.15); }
-.dash-beat-top { display:flex; align-items:center; gap:9px; padding:10px 10px 6px; }
-.dash-beat-thumb { width:44px; height:44px; border-radius:8px; background:rgba(255,255,255,.08); flex-shrink:0; display:flex; align-items:center; justify-content:center; overflow:hidden; }
-.dash-beat-info { flex:1; min-width:0; }
-.dash-beat-name { font-size:12px; font-weight:800; color:#f4ede4; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.dash-beat-dur { font-size:10px; color:rgba(255,255,255,.3); margin-top:2px; }
-.dash-beat-btns { display:flex; gap:5px; padding:0 10px 10px; }
-.dash-btn-play,.dash-btn-lab { flex:1; height:28px; border-radius:6px; font-size:11px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:3px; border:none; font-family:inherit; transition:background .12s; }
-.dash-btn-play { background:rgba(244,164,67,.18); color:#f4a443; }
-.dash-btn-play:hover { background:rgba(244,164,67,.32); }
-.dash-btn-lab { background:rgba(255,255,255,.06); color:rgba(255,255,255,.5); border:1px solid rgba(255,255,255,.09); }
-.dash-btn-lab:hover { background:rgba(255,255,255,.13); }
-
-/* Bottom grid: tips + progress */
-.hjem-bottom-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:18px; }
-.hjem-tips-card,.hjem-progress-card {
-  background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.07);
-  border-radius:12px; padding:16px 18px;
+/* Make grids stretch with the container */
+.dash-projects-grid {
+  grid-template-columns: repeat(4, 1fr) !important;
 }
-.hjem-tip-text { font-size:13px; color:rgba(255,255,255,.7); line-height:1.65; min-height:60px; font-style:italic; margin-bottom:12px; }
-.hjem-tip-next { font-size:11px; font-weight:700; color:rgba(244,164,67,.7); background:none; border:none; cursor:pointer; padding:0; font-family:inherit; transition:color .12s; }
-.hjem-tip-next:hover { color:#f4a443; }
-
-.dash-empty { font-size:11px; color:rgba(255,255,255,.22); padding:4px 0; grid-column:1/-1; }
-
-/* Card row hover buttons */
-.album-beat-card:hover .ab-rename-btn,
-.album-beat-card:hover .ab-remove-btn { opacity: 1 !important; }
-.ab-rename-btn:hover { background:rgba(255,255,255,.09)!important; }
-.ab-remove-btn:hover { background:rgba(251,113,133,.12)!important; color:#fb7185!important; }
-
-/* Album header actions */
-.album-hd-actions,.mixtape-detail-actions {
-  display:flex; gap:8px; flex-wrap:wrap; align-items:center;
+#dashBeats {
+  grid-template-columns: repeat(4, 1fr) !important;
 }
-
-/* Hidden compat anchors */
-#beatCount,#favCount,#demoCount,#avgDone { display:none !important; }
+.hjem-bottom-grid {
+  grid-template-columns: 1fr 1fr !important;
+}
