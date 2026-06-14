@@ -156,11 +156,10 @@
     document.querySelectorAll('.pipeline-beat-row').forEach(row=>{const ok=(!q||row.textContent.toLowerCase().includes(q))&&(!st||row.dataset.status===st)&&(!pr||row.dataset.priority===pr);row.style.display=ok?'flex':'none';});
   }
 
-  window._redesignAlbumDetail = redesignAlbumDetail;
   const _oldRenderAlbumDetail=window.renderAlbumDetail;
   window.renderAlbumDetail=function(){
     if(typeof _oldRenderAlbumDetail==='function')_oldRenderAlbumDetail();
-    else redesignAlbumDetail();
+    redesignAlbumDetail();
   };
 
   function redesignAlbumDetail(){

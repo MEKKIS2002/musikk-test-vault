@@ -168,7 +168,7 @@ async function playQueue(queue,context){
   bottomPlayer.queue=queue;bottomPlayer.index=0;bottomPlayer.context=context||null;
   await playBottomIndex(0);
 }
-async function playSingleBeat(beatId){const beat=state.beats.find(b=>b.id===beatId);if(!beat)return;trackBeatPlay(beat);await playQueue([beat],{type:"beat",id:beatId,label:"Beat"});if(document.querySelector('.tab-btn.active')?.dataset?.tab==='hjem'){const lp=document.getElementById('dashLastPlayedContent');const qp=document.getElementById('dashQuickPlay');if(lp||qp)renderDashboard();}}
+async function playSingleBeat(beatId){const beat=state.beats.find(b=>b.id===beatId);if(!beat)return;await playQueue([beat],{type:"beat",id:beatId,label:"Beat"});}
 function bottomTogglePlay(){if(!bottomPlayer.audio.src&&bottomPlayer.queue.length){playBottomIndex(bottomPlayer.index);return;}if(bottomPlayer.audio.paused){bottomPlayer.audio.play().catch(()=>showToast("Trykk Play igjen hvis nettleseren blokkerte avspilling"));}else bottomPlayer.audio.pause();updateBottomUI();}
 function bottomNext(auto=false){if(bottomPlayer.index+1<bottomPlayer.queue.length)playBottomIndex(bottomPlayer.index+1);else if(auto)bottomStop(true);}
 function bottomPrev(){if(bottomPlayer.audio.currentTime>3){bottomPlayer.audio.currentTime=0;return;}playBottomIndex(Math.max(0,bottomPlayer.index-1));}
@@ -289,30 +289,8 @@ function releaseScore(d){
   ));
 }
 
-function renderStats(){ if(document.querySelector('.tab-btn.active')?.dataset?.tab==='hjem') renderDashboard(); }
+function renderStats(){ renderDashboard(); }
 
-// ── Activity tracking ─────────────────────────────────────────────────────────
-const _ACT_KEY = 'mv_activity_v1';
-function _actData(){ try{return JSON.parse(localStorage.getItem(_ACT_KEY)||'{}');}catch(e){return{};} }
-function _actSave(d){ try{localStorage.setItem(_ACT_KEY,JSON.stringify(d));}catch(e){} }
-function trackActivityDay(){
-  const d=_actData(); const today=new Date().toISOString().slice(0,10);
-  const days=d.days||[]; if(!days.includes(today)){days.unshift(today);if(days.length>30)days.pop();}
-  d.days=days; _actSave(d);
-}
-function trackBeatPlay(beat){
-  if(!beat)return; const d=_actData();
-  const today=new Date().toISOString().slice(0,10);
-  const days=d.days||[]; if(!days.includes(today)){days.unshift(today);if(days.length>30)days.pop();}
-  d.days=days;
-  d.lastBeat={id:beat.id,name:beat.name,cover:beat.cover||'',duration:beat.duration||0,ts:Date.now()};
-  const rec=d.recentPlays||[];
-  const filtered=rec.filter(r=>r.id!==beat.id);
-  filtered.unshift({id:beat.id,name:beat.name,cover:beat.cover||'',duration:beat.duration||0,ts:Date.now()});
-  d.recentPlays=filtered.slice(0,5); _actSave(d);
-}
-
-// ── Main dashboard renderer ───────────────────────────────────────────────────
 function renderDashboard(){
   const username=sessionStorage.getItem('mv_username')||'deg';
   const h=new Date().getHours();
@@ -328,145 +306,112 @@ function renderDashboard(){
   const allDemos=albums.flatMap(a=>(a.beatIds||[]).map(id=>beats.find(b=>b.id===id)).filter(Boolean));
   const avgDone=allDemos.length?Math.round(allDemos.reduce((s,b)=>s+Number(b.done||0),0)/allDemos.length):0;
 
-  // Stat pills
+  // ── Stat pills ──────────────────────────────────────────────────────────────
   if(sEl){
-    sEl.innerHTML='<div id="dashSubPills" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">'+
+    sEl.innerHTML=`<div id="dashSubPills" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">`+
       `<span class="ds-pill">${beats.length} beats</span>`+
       `<span class="ds-pill ds-accent">${albums.length} albumer</span>`+
       `<span class="ds-pill ds-accent">${mixtapes.length} mixtapes</span>`+
-      (noAudio.length?`<span class="ds-pill ds-warn">${noAudio.length} uten lyd</span>`:'')+
+      (noAudio.length?`<span class="ds-pill ds-warn" title="${noAudio.slice(0,3).map(b=>b.name).join(', ')}">${noAudio.length} uten lyd</span>`:'')+
       `<span class="ds-pill">${avgDone}% snitt ferdig</span>`+
-      '</div>';
+      `</div>`;
   }
 
-  // ── 1. Activity strip — last 7 days ────────────────────────────────────────
-  const actEl=document.getElementById('dashActivity');
-  if(actEl){
-    trackActivityDay();
-    const d=_actData(); const activeDays=new Set(d.days||[]);
-    const days7=Array.from({length:7},(_,i)=>{
-      const dt=new Date(); dt.setDate(dt.getDate()-i);
-      return dt.toISOString().slice(0,10);
-    }).reverse();
-    const dayNames=['Man','Tir','Ons','Tor','Fre','Lør','Søn'];
-    actEl.innerHTML='<div class="hjem-act-row">'+
-      days7.map(day=>{
-        const active=activeDays.has(day);
-        const wd=new Date(day+'T12:00:00').getDay(); // 0=sun
-        const name=dayNames[wd===0?6:wd-1];
-        return `<div class="hjem-act-day"><div class="hjem-act-dot${active?' active':''}"></div><span>${name}</span></div>`;
-      }).join('')+
-      '</div>';
-  }
-
-  // ── 2. Fortsett der du slapp ───────────────────────────────────────────────
-  const lpEl=document.getElementById('dashLastPlayedContent');
-  if(lpEl){
-    const d=_actData(); const lb=d.lastBeat;
-    const lbFull=lb?beats.find(b=>b.id===lb.id)||lb:null;
-    if(lbFull){
-      const cover=lbFull.cover?`<img src="${esc(lbFull.cover)}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:10px">`:'<span style="font-size:40px">\uD83C\uDFB5</span>';
-      const dur=lbFull.duration?Math.floor(lbFull.duration/60)+':'+String(Math.floor(lbFull.duration%60)).padStart(2,'0'):'';
-      const ago=lb.ts?_timeAgo(lb.ts):'';
-      lpEl.innerHTML=`<div class="hjem-lp-card">
-        <div class="hjem-lp-cover">${cover}</div>
-        <div class="hjem-lp-info">
-          <div class="hjem-lp-name">${esc(lbFull.name)}</div>
-          ${dur?`<div class="hjem-lp-meta">${dur}${ago?' \u00b7 '+ago:''}</div>`:''}
-          <button class="hjem-lp-play" onclick="playSingleBeat('${lbFull.id}')">&#9654; Spill av</button>
-        </div>
-      </div>`;
-    } else {
-      lpEl.innerHTML='<div class="dash-empty">Spill en sang for \u00e5 se den her</div>';
-    }
-  }
-
-  // ── 3. Hurtigspill — 3 recently played ─────────────────────────────────────
-  const qpEl=document.getElementById('dashQuickPlay');
-  if(qpEl){
-    const d=_actData(); const rec=(d.recentPlays||[]).slice(0,3);
-    const recFull=rec.map(r=>beats.find(b=>b.id===r.id)||r).filter(Boolean);
-    if(!recFull.length){
-      qpEl.innerHTML='<div class="dash-empty">Ingen nylige sanger</div>';
-    } else {
-      qpEl.innerHTML=recFull.map(b=>{
-        const cover=b.cover?`<img src="${esc(b.cover)}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:6px">`:'<span style="font-size:16px">\uD83C\uDFB5</span>';
-        const dur=b.duration?Math.floor(b.duration/60)+':'+String(Math.floor(b.duration%60)).padStart(2,'0'):'';
-        return `<div class="hjem-qp-row">
-          <div class="hjem-qp-thumb">${cover}</div>
-          <div class="hjem-qp-info">
-            <div class="hjem-qp-name">${esc(b.name)}</div>
-            ${dur?`<div class="hjem-qp-meta">${dur}</div>`:''}
-          </div>
-          <button class="hjem-qp-play" onclick="playSingleBeat('${b.id}')">&#9654;</button>
-        </div>`;
-      }).join('');
-    }
-  }
-
-  // ── 4. Smarte varsler ──────────────────────────────────────────────────────
+  // ── Smarte varsler ──────────────────────────────────────────────────────────
   const saEl=document.getElementById('dashSmartAlerts');
   if(saEl){
     const alerts=[];
     const now=Date.now();
     const DAY=86400000;
-
-    // Sanger 100% ferdige men ikke i noe album
     const inAlbum=new Set(albums.flatMap(a=>a.beatIds||[]));
     const doneNotInAlbum=beats.filter(b=>Number(b.done||0)>=100&&!inAlbum.has(b.id));
     if(doneNotInAlbum.length>0){
       alerts.push({type:'info',icon:'\u2728',
         msg:`${doneNotInAlbum.length} sang${doneNotInAlbum.length>1?'er er':'en er'} 100% ferdig men ikke lagt i noe album`,
-        detail:doneNotInAlbum.slice(0,2).map(b=>b.name).join(', ')+(doneNotInAlbum.length>2?' ...':''),
+        detail:doneNotInAlbum.slice(0,2).map(b=>esc(b.name)).join(', ')+(doneNotInAlbum.length>2?' ...':''),
         action:'Albumer',tab:'albums'});
     }
-
-    // Albumer som ikke er oppdatert på lenge
     albums.forEach(a=>{
       const lastUp=a.updatedAt||a.createdAt||0;
       if(lastUp && now-lastUp>14*DAY){
         const days=Math.floor((now-lastUp)/DAY);
         alerts.push({type:'warn',icon:'\u23F0',
-          msg:`«${a.name}» har ikke blitt oppdatert p\u00e5 ${days} dager`,
-          detail:'Klikk for \u00e5 \u00e5pne',
-          action:'Åpne',cb:`dashOpenProject('${a.id}','album')`});
+          msg:`\u00ab${esc(a.name)}\u00bb har ikke blitt oppdatert p\u00e5 ${days} dager`,
+          detail:'',action:'Albumer',tab:'albums'});
       }
     });
-
-    // Sanger uten lyd
     if(noAudio.length>0){
       alerts.push({type:'warn',icon:'\uD83D\uDD07',
         msg:`${noAudio.length} sang${noAudio.length>1?'er mangler':'en mangler'} lydfil`,
-        detail:noAudio.slice(0,3).map(b=>b.name).join(', ')+(noAudio.length>3?' ...':''),
-        action:'Vis i Beats',tab:'beats'});
+        detail:noAudio.slice(0,2).map(b=>esc(b.name)).join(', ')+(noAudio.length>2?' ...':''),
+        action:'Beats',tab:'beats'});
     }
-
-    // Album med 0 sanger
-    const emptyAlbums=albums.filter(a=>!(a.beatIds&&a.beatIds.length));
-    if(emptyAlbums.length){
-      alerts.push({type:'info',icon:'\uD83D\uDCC2',
-        msg:`${emptyAlbums.length} album${emptyAlbums.length>1?'er er':'et er'} tomt`,
-        detail:emptyAlbums.map(a=>a.name).join(', '),
-        action:'Albumer',tab:'albums'});
-    }
-
     if(!alerts.length){saEl.style.display='none';}
     else{
       saEl.style.display='';
-      saEl.innerHTML='<div class="hjem-alerts">'+
-        alerts.map(a=>`<div class="hjem-alert hjem-alert-${a.type}">
-          <span class="hjem-alert-icon">${a.icon}</span>
-          <div class="hjem-alert-body">
-            <div class="hjem-alert-msg">${a.msg}</div>
-            ${a.detail?`<div class="hjem-alert-detail">${a.detail}</div>`:''}
+      saEl.innerHTML=alerts.map(a=>`
+        <div class="smart-alert smart-alert-${a.type}" onclick="document.querySelector('.tab-btn[data-tab=\\'${a.tab}\\']')?.click()">
+          <span class="sa-icon">${a.icon}</span>
+          <div class="sa-body">
+            <div class="sa-msg">${a.msg}</div>
+            ${a.detail?`<div class="sa-detail">${a.detail}</div>`:''}
           </div>
-          <button class="hjem-alert-btn" onclick="${a.cb||`document.querySelector('.tab-btn[data-tab=\\"${a.tab}\\"]')?.click()`}">${a.action}</button>
-        </div>`).join('')+
-        '</div>';
+          <span class="sa-arrow">\u2192</span>
+        </div>`).join('');
     }
   }
 
-  // ── 5. Siste prosjekter ────────────────────────────────────────────────────
+  // ── Fortsett der du slapp ───────────────────────────────────────────────────
+  const lastEl=document.getElementById('dashLastBeat');
+  if(lastEl){
+    const lastId=sessionStorage.getItem('mv_last_beat');
+    const b=lastId?beats.find(x=>x.id===lastId):null;
+    const recent=b||beats.slice().sort((a,b2)=>(b2.createdAt||b2.id||0)-(a.createdAt||a.id||0))[0];
+    if(recent){
+      const cover=recent.cover?`<img src="${esc(recent.cover)}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:10px">`:'<span style="font-size:36px">\uD83C\uDFB5</span>';
+      const dur=recent.duration?Math.floor(recent.duration/60)+':'+String(Math.floor(recent.duration%60)).padStart(2,'0'):'';
+      lastEl.innerHTML=`
+        <div class="last-beat-cover">${cover}</div>
+        <div class="last-beat-info">
+          <div class="last-beat-label">Fortsett der du slapp</div>
+          <div class="last-beat-name">${esc(recent.name)}</div>
+          ${dur?`<div class="last-beat-dur">${dur}</div>`:''}
+        </div>
+        <div class="last-beat-actions">
+          <button class="last-beat-play" onclick="event.stopPropagation();playSingleBeat('${recent.id}');sessionStorage.setItem('mv_last_beat','${recent.id}')">&#9654; Spill</button>
+          <button class="last-beat-lab" onclick="event.stopPropagation();openInLyricLab('${recent.id}')">&#9998; Lab</button>
+        </div>`;
+    } else {
+      lastEl.innerHTML='<div class="dash-empty">Ingen sanger enn\u00e5.</div>';
+    }
+  }
+
+  // ── Aktivitetsstripe ────────────────────────────────────────────────────────
+  const actEl=document.getElementById('dashActivity');
+  if(actEl){
+    const days=[];
+    const today=new Date(); today.setHours(0,0,0,0);
+    const activeDays=new Set();
+    beats.forEach(b=>{
+      const ts=b.updatedAt||b.createdAt;
+      if(ts){const d=new Date(ts);d.setHours(0,0,0,0);activeDays.add(d.getTime());}
+    });
+    albums.forEach(a=>{
+      const ts=a.updatedAt||a.createdAt;
+      if(ts){const d=new Date(ts);d.setHours(0,0,0,0);activeDays.add(d.getTime());}
+    });
+    const dayNames=['\u00d8','M','T','O','T','F','L'];
+    for(let i=6;i>=0;i--){
+      const d=new Date(today);d.setDate(d.getDate()-i);
+      const active=activeDays.has(d.getTime());
+      const isToday=i===0;
+      const name=dayNames[d.getDay()];
+      days.push(`<div class="act-day${active?' act-day-on':''}${isToday?' act-day-today':''}"><div class="act-dot"></div><div class="act-lbl">${name}</div></div>`);
+    }
+    actEl.innerHTML=days.join('');
+  }
+
+  // ── Siste prosjekter ────────────────────────────────────────────────────────
   const sortedAlbums=albums.slice().sort((a,b)=>(b.updatedAt||b.createdAt||b.id||0)-(a.updatedAt||a.createdAt||a.id||0));
   const heroAlbum=sortedAlbums[0]?{...sortedAlbums[0],_type:'album'}:null;
   function projectScore(p){
@@ -474,8 +419,12 @@ function renderDashboard(){
     const avg=pBeats.length?pBeats.reduce((s,b)=>s+Number(b.done||0),0)/pBeats.length:0;
     return (p.updatedAt||p.createdAt||p.id||0)+(avg>15&&avg<92?(100-Math.abs(avg-55))*50000:0);
   }
-  const pool=[...sortedAlbums.slice(1).map(a=>({...a,_type:'album'})),...mixtapes.map(m=>({...m,_type:'mixtape'}))].sort((a,b)=>projectScore(b)-projectScore(a)).slice(0,3);
+  const pool=[
+    ...sortedAlbums.slice(1).map(a=>({...a,_type:'album'})),
+    ...mixtapes.slice().map(m=>({...m,_type:'mixtape'}))
+  ].sort((a,b)=>projectScore(b)-projectScore(a)).slice(0,3);
   const projects=[...(heroAlbum?[heroAlbum]:[]),...pool].slice(0,4);
+
   const pEl=document.getElementById('dashProjects');
   if(pEl){
     if(!projects.length){pEl.innerHTML='<div class="dash-empty">Ingen prosjekter enn\u00e5.</div>';}
@@ -493,7 +442,7 @@ function renderDashboard(){
     }).join('');}
   }
 
-  // ── 6. Nylig lastet opp ───────────────────────────────────────────────────
+  // ── Nylig lastet opp ────────────────────────────────────────────────────────
   const recent=beats.slice().sort((a,b)=>(b.createdAt||b.id||0)-(a.createdAt||a.id||0)).slice(0,4);
   const bEl=document.getElementById('dashBeats');
   if(bEl){
@@ -501,84 +450,32 @@ function renderDashboard(){
     else{bEl.innerHTML=recent.map(b=>{
       const cover=b.cover?`<img src="${esc(b.cover)}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:8px">`:`<span style="font-size:20px">\uD83C\uDFB5</span>`;
       const dur=b.duration?Math.floor(b.duration/60)+':'+String(Math.floor(b.duration%60)).padStart(2,'0'):'';
-      return `<div class="dash-beat-card"><div class="dash-beat-top"><div class="dash-beat-thumb">${cover}</div><div class="dash-beat-info"><div class="dash-beat-name" title="${esc(b.name)}">${esc(b.name)}</div><div class="dash-beat-dur">${dur||'\u2014'}</div></div></div><div class="dash-beat-btns"><button class="dash-btn-play" onclick="event.stopPropagation();playSingleBeat('${b.id}')">&#9654; Spill</button><button class="dash-btn-lab" onclick="event.stopPropagation();openInLyricLab('${b.id}')">&#9998; Lab</button></div></div>`;
+      return `<div class="dash-beat-card"><div class="dash-beat-top"><div class="dash-beat-thumb">${cover}</div><div class="dash-beat-info"><div class="dash-beat-name" title="${esc(b.name)}">${esc(b.name)}</div><div class="dash-beat-dur">${dur||'\u2014'}</div></div></div><div class="dash-beat-btns"><button class="dash-btn-play" onclick="event.stopPropagation();playSingleBeat('${b.id}');sessionStorage.setItem('mv_last_beat','${b.id}')">&#9654; Spill</button><button class="dash-btn-lab" onclick="event.stopPropagation();openInLyricLab('${b.id}')">&#9998; Lab</button></div></div>`;
     }).join('');}
   }
 
-  // ── 7. Fremdrift per album ────────────────────────────────────────────────
+  // ── Fremdrift ───────────────────────────────────────────────────────────────
   const progEl=document.getElementById('dashProgress');
   if(progEl){
     if(!albums.length){progEl.innerHTML='<div class="dash-empty">Ingen albumer enn\u00e5.</div>';}
-    else{progEl.innerHTML=albums.slice(0,6).map(a=>{
+    else{progEl.innerHTML=albums.slice(0,4).map(a=>{
       const ab=(a.beatIds||[]).map(id=>beats.find(b=>b.id===id)).filter(Boolean);
       const pct=ab.length?Math.round(ab.reduce((s,b)=>s+Number(b.done||0),0)/ab.length):0;
       const col=pct>=70?'#34d399':pct>=35?'#f97316':'#fb7185';
-      return `<div><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:11px;font-weight:700;color:#f4ede4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:75%">${esc(a.name)}</span><span style="font-size:11px;font-weight:800;color:${col};flex-shrink:0">${pct}%</span></div><div style="height:4px;background:rgba(255,255,255,.08);border-radius:999px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${col};border-radius:999px;transition:width .4s"></div></div></div>`;
+      return `<div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:11px;font-weight:700;color:#f4ede4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:70%">${esc(a.name)}</span><span style="font-size:11px;font-weight:800;color:${col}">${pct}%</span></div><div style="height:4px;background:rgba(255,255,255,.08);border-radius:999px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${col};border-radius:999px"></div></div></div>`;
     }).join('');}
-  }
-
-  // ── 8. Samarbeidsstatus (async) ───────────────────────────────────────────
-  _renderCollab();
-}
-
-function _timeAgo(ts){
-  const diff=Date.now()-ts; const min=Math.floor(diff/60000); const h=Math.floor(min/60); const d=Math.floor(h/24);
-  if(d>0)return d===1?'i g\u00e5r':d+' dager siden';
-  if(h>0)return h===1?'1 time siden':h+' timer siden';
-  if(min>1)return min+' min siden';
-  return 'Nettopp';
-}
-
-async function _renderCollab(){
-  const collabEl=document.getElementById('dashCollab');
-  if(!collabEl)return;
-  const SBU= + SB_URL + r;
-  const SBK= + SB_KEY + r;
-  let token=SBK, uid=window._mvCurrentUserId||sessionStorage.getItem('mv_user_id');
-  try{
-    const {data:{session}}=await window.supabaseClient.auth.getSession();
-    if(session?.access_token)token=session.access_token;
-    if(session?.user?.id)uid=session.user.id;
-  }catch(e){}
-  if(!uid){collabEl.innerHTML='<div class="dash-empty">Logg inn for å se samarbeid</div>';return;}
-  const hdrs={'apikey':SBK,'Authorization':'Bearer '+token};
-  try{
-    const r=await fetch(`${SBU}/rest/v1/content_access?owner_id=eq.${uid}&select=content_type,content_name,grantee_id,role`,{headers:hdrs});
-    if(!r.ok)throw new Error('fetch failed');
-    const rows=await r.json();
-    if(!rows.length){collabEl.innerHTML='<div class="dash-empty">Du har ikke delt noe ennå</div>';return;}
-    // Get grantee usernames
-    const ids=[...new Set(rows.map(r=>r.grantee_id))].join(',');
-    const pr=await fetch(`${SBU}/rest/v1/profiles?id=in.(${ids})&select=id,username`,{headers:hdrs});
-    const profiles=pr.ok?await pr.json():[];
-    const nameMap={};profiles.forEach(p=>nameMap[p.id]=p.username||p.id);
-    // Group by grantee
-    const byGrantee={};
-    rows.forEach(row=>{
-      const name=nameMap[row.grantee_id]||row.grantee_id;
-      if(!byGrantee[name])byGrantee[name]=[];
-      byGrantee[name].push(row);
-    });
-    collabEl.innerHTML=Object.entries(byGrantee).map(([name,items])=>`
-      <div class="hjem-collab-row">
-        <div class="hjem-collab-avatar">${name.slice(0,1).toUpperCase()}</div>
-        <div class="hjem-collab-info">
-          <div class="hjem-collab-name">${esc(name)}</div>
-          <div class="hjem-collab-items">${items.map(i=>`<span class="hjem-collab-tag">${esc(i.content_name||i.content_type)}</span>`).join('')}</div>
-        </div>
-      </div>`).join('');
-  }catch(e){
-    collabEl.innerHTML='<div class="dash-empty" style="color:rgba(255,255,255,.2)">Kunne ikke laste samarbeidsstatus</div>';
   }
 }
 
 window.dashOpenProject=function(id,type){
   if(type==='album'){
     document.querySelector('.tab-btn[data-tab="albums"]')?.click();
-    setTimeout(()=>{if(typeof openAlbum==='function')openAlbum(id);setTimeout(()=>document.getElementById('albumDetailView')?.scrollIntoView({behavior:'smooth',block:'start'}),120);},80);
-  }else{
+    setTimeout(()=>{if(typeof openAlbum==='function')openAlbum(id);
+      setTimeout(()=>document.getElementById('albumDetailView')?.scrollIntoView({behavior:'smooth',block:'start'}),120);},80);
+  } else {
     document.querySelector('.tab-btn[data-tab="mixtapes"]')?.click();
-    setTimeout(()=>{if(typeof openMixtape==='function')openMixtape(id);setTimeout(()=>document.getElementById('mixtapeDetailView')?.scrollIntoView({behavior:'smooth',block:'start'}),120);},80);
+    setTimeout(()=>{if(typeof openMixtape==='function')openMixtape(id);
+      setTimeout(()=>document.getElementById('mixtapeDetailView')?.scrollIntoView({behavior:'smooth',block:'start'}),120);},80);
   }
 };
 window.dashNewAlbum=function(){document.querySelector('.tab-btn[data-tab="albums"]')?.click();setTimeout(()=>document.getElementById('newAlbumBtn')?.click(),80);};
@@ -588,8 +485,583 @@ window.dashUploadTrigger=function(){document.getElementById('dashUploadInput')?.
 window.dashUpload=async function(files){
   if(!files||!files.length)return;
   for(const file of files){if(typeof createBeatFromFileIDB==='function')await createBeatFromFileIDB(file);}
-  renderDashboard();showToast('✓ '+files.length+' sang'+(files.length>1?'er':'')+' lastet opp');
+  renderDashboard();showToast('\u2713 '+files.length+' sang'+(files.length>1?'er':'')+' lastet opp');
 };
+
+
+// ── BEATS ──
+function renderBeats(container,beats,albumMode){
+  const el=container||document.createElement("div");
+  if(!beats){
+    const q=(document.getElementById("beatSearch")||{}).value?.toLowerCase()||"";
+    const f=(document.getElementById("beatFilter")||{}).value||"all";
+    beats=state.beats
+      .filter(b=>b.name.toLowerCase().includes(q))
+      .filter(b=>f==="fav"?b.favorite:f==="lyrics"?b.lyrics?.trim():true)
+      .sort((a,b)=>Number(b.favorite)-Number(a.favorite)||b.createdAt-a.createdAt);
+  }
+  if(!beats.length){el.innerHTML=`<div class="empty">Ingen beats her ennå.</div>`;return;}
+  el.innerHTML=beats.map(b=>`
+    <div class="beat-item" id="bi-${b.id}">
+      <div class="beat-row" onclick="toggleBeat('${b.id}')">
+        <div class="icon-pill">🎵</div>
+        <div class="beat-meta">
+          <strong>${esc(b.name)}</strong>
+          <span>${b.lyrics?.trim()?"✏️ Tekst lagret":"Ingen tekst"} · ${esc(b.source||"URL")}</span>
+        </div>
+        <button class="star-btn${b.favorite?" active":""}" data-fav-id="${b.id}" onclick="event.stopPropagation();toggleFav('${b.id}',this)" title="Favoritt">★</button>
+        <span class="expand-arrow">▾</span>
+      </div>
+      <div class="beat-expand">
+        <div id="au-wrap-${b.id}" style="margin-bottom:12px">
+          <button class="primary-btn" onclick="playSingleBeat('${b.id}')">▶ Spill denne</button>
+        </div>
+        <div style="margin-bottom:12px">
+          <label class="ghost-btn" style="cursor:pointer;font-size:12px;display:inline-flex;align-items:center;gap:6px;padding:6px 12px">🎵 Last opp / bytt lydfil<input type="file" accept="audio/*" hidden onchange="uploadBeatAudio('${b.id}',this.files[0])"></label>
+        </div>
+        <div class="ab-lyric-editor">
+          ${lyricsEditorMarkup(b.id,"Skriv hook, vers, tekst, ideer, flows...")}
+        </div>
+        <div class="beat-expand-actions">
+          <button class="ghost-btn" onclick="openInLyricLab('${b.id}')">✍️ Åpne i Lyric Lab</button>
+          ${albumMode
+  ? `<button class="small-btn danger" onclick="removeFromCollection('${b.id}','${listMode}')">Fjern fra ${listMode==="mixtape"?"mixtape":"album"}</button>
+     ${isAdmin()?`<button class="small-btn danger" onclick="deleteBeat('${b.id}')">Slett sang</button>`:''}`
+  : isAdmin()?`<button class="small-btn danger" onclick="deleteBeat('${b.id}')">Slett sang</button>`:''}
+        </div>
+      </div>
+    </div>`).join("");
+}
+
+function toggleBeat(id){
+  const item=document.getElementById(`bi-${id}`);if(!item)return;
+  item.classList.toggle("expanded");
+  if(item.classList.contains("expanded")){
+    loadAudioForBeat(id);
+    requestAnimationFrame(()=>{ if(typeof mountInlineEditors==='function') mountInlineEditors(); });
+  }
+}
+const _lt={};
+function autosaveLyrics(id,val){clearTimeout(_lt[id]);_lt[id]=setTimeout(()=>{const b=state.beats.find(x=>x.id===id);if(b){b.lyrics=val;saveState();}},800);}
+function saveBeatLyrics(id){
+  const ed=document.querySelector(`#bi-${id} .rich-lyrics-editor`)||document.getElementById(`lyrics-${id}`);
+  const ta=document.querySelector(`#bi-${id} .beat-expand textarea`);
+  const b=state.beats.find(x=>x.id===id);
+  if(b&&(ed||ta)){b.lyrics=ed?ed.innerHTML:ta.value;saveState();showToast("✓ Tekst lagret");}
+}
+function copyBeatLyrics(id){const b=state.beats.find(x=>x.id===id);if(b)navigator.clipboard.writeText(stripHTML(b.lyrics||"")).then(()=>showToast("✓ Tekst kopiert"));}
+function toggleFav(id,btn){
+  const b=state.beats.find(x=>x.id===id);if(!b)return;
+  b.favorite=!b.favorite;saveState();
+  document.querySelectorAll(`[data-fav-id="${id}"]`).forEach(el=>el.classList.toggle("active",!!b.favorite));
+  if(btn)btn.classList.toggle("active",!!b.favorite);
+  renderStats();
+  showToast(b.favorite?"★ Lagt til som favoritt":"☆ Fjernet fra favoritter");
+}
+async function deleteBeat(id){
+  if(!window.isAdminMode){showToast("⚠ Kun admin kan slette sanger");return;}
+  if(!confirm("Slette denne sangen permanent? Den fjernes fra R2 og Supabase."))return;
+  const beat = state.beats.find(b=>b.id===id);
+  state.beats=state.beats.filter(b=>b.id!==id);
+  state.albums.forEach(a=>{a.beatIds=a.beatIds.filter(x=>x!==id);});
+  state.mixtapes.forEach(m=>{m.beatIds=m.beatIds.filter(x=>x!==id);});
+  saveState();
+  renderAll();
+  showToast("🗑 Sang slettet");
+  // Delete from R2
+  if(beat && window.r2Storage?.ready()){
+    try{
+      await window.r2Storage.remove(id, !!beat.archived);
+    }catch(e){ console.warn('[R2] Kunne ikke slette fil:', e); }
+  }
+  // Delete from Supabase
+  if(window.supabaseClient && window.isAdminMode){
+    try{
+      await window.supabaseClient.from('beats').delete().eq('id', id);
+      await window.supabaseClient.from('mixtape_beats').delete().eq('beat_id', id);
+      await window.supabaseClient.from('album_beats').delete().eq('beat_id', id);
+    }catch(e){ console.warn('[Supabase] Kunne ikke slette beat:', e); }
+  }
+}
+
+// ── DEMOS ──
+
+// ── ALBUMS ──
+function renderAlbums(){
+  if(currentAlbumId){renderAlbumDetail();return;}
+  document.getElementById("albumsListView").classList.remove("hidden");
+  document.getElementById("albumDetailView").classList.add("hidden");
+  const grid=document.getElementById("albumGrid");
+  const cards=state.albums.map(a=>{
+    const n=(a.beatIds||[]).filter(id=>{const b=state.beats.find(x=>x.id===id);return b&&!b.archived;}).length;
+    const label=a.cover
+      ?`<div class="vinyl-label"><img src="${esc(a.cover)}" alt="${esc(a.name)}"></div>`
+      :`<div class="vinyl-label"><div class="vinyl-label-ph">♪</div></div>`;
+    const sleeve=a.cover
+      ?`<div class="record-sleeve"><img src="${esc(a.cover)}" alt="${esc(a.name)}"></div>`
+      :`<div class="record-sleeve"><div class="record-sleeve-ph">🎵</div></div>`;
+    return`<div class="album-card" draggable="true" data-id="${a.id}" ondragstart="startCardDrag(event,'album','${a.id}')" ondragover="cardDragOver(event,'album','${a.id}')" ondragleave="cardDragLeave(event,'${a.id}')" ondrop="dropCard(event,'album','${a.id}')" ondragend="endCardDrag()" onclick="openAlbumFromCard(event,'${a.id}')">
+      <div class="album-display">
+        <div class="vinyl-disc">
+          <div class="vinyl-groove"></div>
+          ${label}
+          <div class="vinyl-hole"></div>
+        </div>
+        ${sleeve}
+      </div>
+      <div class="album-info">
+        <strong>${esc(a.name)}</strong>
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:3px">
+          <span style="font-size:11px;color:rgba(255,255,255,.45)">${n} sang${n===1?'':'er'}</span>
+          ${(()=>{const totalSec=(a.beatIds||[]).reduce((s,id)=>{const b=state.beats.find(x=>x.id===id);return s+(b&&!b.archived?Number(b.duration||0):0);},0);const m=Math.floor(totalSec/60),sec=Math.floor(totalSec%60);return totalSec>0?`<span style="font-size:11px;color:rgba(255,255,255,.3)">•</span><span style="font-size:11px;color:rgba(255,255,255,.35)">${m}:${String(sec).padStart(2,'0')}</span>`:'';})()}
+          ${(()=>{const STATUS_COLORS={'Idé':'rgba(168,85,247,.6)','Skriving':'rgba(96,165,250,.6)','Innspilling':'rgba(249,115,22,.7)','Mixing':'rgba(244,164,67,.7)','Ferdig':'rgba(52,211,153,.7)'};const s=a.status||'Idé';const c=STATUS_COLORS[s]||'rgba(255,255,255,.3)';return`<span style="font-size:10px;font-weight:800;padding:2px 8px;border-radius:999px;background:${c.replace('.6','.15').replace('.7','.15')};color:${c};border:1px solid ${c.replace('.6','.3').replace('.7','.3')}">${s}</span>`;})()}
+        </div>
+      </div>
+      <button class="small-btn" style="margin-top:8px;padding:7px 12px" onclick="event.stopPropagation();playAlbumFromStart('${a.id}')">▶ Spill</button>
+    </div>`;
+  });
+  cards.push(`<div class="album-new-btn" onclick="document.getElementById('newAlbumBtn').click()">
+    <div class="album-display">
+      <div class="vinyl-disc">
+        <div class="vinyl-groove"></div>
+        <div class="vinyl-label"><div class="vinyl-label-ph">+</div></div>
+        <div class="vinyl-hole"></div>
+      </div>
+      <div class="record-sleeve record-sleeve-new"><div class="record-sleeve-ph">+</div></div>
+    </div>
+    <span>Nytt album</span>
+  </div>`);
+  grid.innerHTML=cards.join("");
+}
+
+let cardDrag={type:null,id:null,moved:false};
+function openAlbumFromCard(event,id){if(cardDrag.moved){event.preventDefault();event.stopPropagation();cardDrag.moved=false;return;}openAlbum(id);}
+function openMixtapeFromCard(event,id){if(cardDrag.moved){event.preventDefault();event.stopPropagation();cardDrag.moved=false;return;}openMixtape(id);}
+function startCardDrag(event,type,id){
+  if(isProducerUser()){event.preventDefault();return;}
+  const isHandle=type==="album"?!!event.target.closest(".album-display"):!!event.target.closest(".cass-body");
+  if(!isHandle){event.preventDefault();return;}
+  cardDrag={type,id,moved:false};
+  event.dataTransfer.effectAllowed="move";
+  event.dataTransfer.setData("text/plain",id);
+  setTimeout(()=>event.currentTarget.classList.add("dragging"),0);
+}
+function isDropAfter(event,el){
+  const r=el.getBoundingClientRect();
+  // Slightly generous threshold makes one-step right moves easier on grid cards.
+  return r.width>=r.height ? event.clientX>(r.left+r.width*.38) : event.clientY>(r.top+r.height/2);
+}
+function cardDragOver(event,type,id){
+  if(!cardDrag.id||cardDrag.type!==type||cardDrag.id===id)return;
+  event.preventDefault();
+  const el=event.currentTarget;
+  el.dataset.dropAfter=isDropAfter(event,el)?"1":"0";
+  el.classList.add("drag-over");
+}
+function cardDragLeave(event,id){
+  if(event.currentTarget&&!event.currentTarget.contains(event.relatedTarget)){
+    event.currentTarget.classList.remove("drag-over");
+    delete event.currentTarget.dataset.dropAfter;
+  }
+}
+function dropCard(event,type,targetId){
+  event.preventDefault();
+  const sourceId=cardDrag.id||event.dataTransfer.getData("text/plain");
+  const targetCard=event.currentTarget;
+  let after=targetCard?.dataset?.dropAfter==="1";
+  document.querySelectorAll(".album-card.drag-over,.cassette-card.drag-over").forEach(el=>{el.classList.remove("drag-over");delete el.dataset.dropAfter;});
+  if(!sourceId||sourceId===targetId||cardDrag.type!==type){endCardDrag();return;}
+  const arr=type==="album"?state.albums:state.mixtapes;
+  if(type==="mixtape")ensureMixtapeStableVisuals();
+  const from=arr.findIndex(x=>x.id===sourceId);
+  const to=arr.findIndex(x=>x.id===targetId);
+  if(from<0||to<0){endCardDrag();return;}
+
+  // Adjacent moves should always work in one step.
+  if(to===from+1)after=true;
+  if(to===from-1)after=false;
+
+  const [item]=arr.splice(from,1);
+  let insertAt=arr.findIndex(x=>x.id===targetId);
+  if(insertAt<0){arr.splice(from,0,item);endCardDrag();return;}
+  if(after)insertAt+=1;
+  insertAt=Math.max(0,Math.min(insertAt,arr.length));
+  arr.splice(insertAt,0,item);
+  cardDrag.moved=true;
+  saveState();
+  type==="album"?renderAlbums():renderMixtapes();
+  showToast("✓ Rekkefølge oppdatert");
+  setTimeout(()=>{cardDrag={type:null,id:null,moved:false};},120);
+}
+function endCardDrag(){
+  document.querySelectorAll(".album-card.dragging,.cassette-card.dragging,.album-card.drag-over,.cassette-card.drag-over").forEach(el=>el.classList.remove("dragging","drag-over"));
+  if(cardDrag.id&&!cardDrag.moved)cardDrag={type:null,id:null,moved:false};
+}
+
+function openAlbum(id){currentAlbumId=id;renderAlbumDetail();setTimeout(()=>showDropZone("albumDrop"),50);}
+
+function renderAlbumDetail(){
+  document.getElementById("albumsListView").classList.add("hidden");
+  document.getElementById("albumDetailView").classList.remove("hidden");
+  const dz=document.getElementById("albumDrop");if(dz)dz.classList.add("active");
+  const album=state.albums.find(a=>a.id===currentAlbumId);
+  if(!album){currentAlbumId=null;renderAlbums();return;}
+  const hd=document.getElementById("albumDetailHd");
+  const label=album.cover
+    ?`<div class="vinyl-label"><img src="${esc(album.cover)}" alt="${esc(album.name)}"></div>`
+    :`<div class="vinyl-label"><div class="vinyl-label-ph">♪</div></div>`;
+  const sleeve=album.cover
+    ?`<div class="detail-sleeve"><img src="${esc(album.cover)}" alt="${esc(album.name)}"></div>`
+    :`<div class="detail-sleeve"><div class="record-sleeve-ph">🎵</div></div>`;
+  hd.innerHTML=`
+    <div class="detail-record">
+      <div class="vinyl-disc">
+        <div class="vinyl-groove"></div>
+        ${label}
+        <div class="vinyl-hole"></div>
+      </div>
+      ${sleeve}
+    </div>
+    <div class="album-detail-info" style="flex:1">
+      <div class="eyebrow">Album</div>
+      <h2>${esc(album.name)}</h2>
+      <span>${(()=>{const n=(album.beatIds||[]).filter(id=>{const b=state.beats.find(x=>x.id===id);return b&&!b.archived;}).length;return n+' beat'+(n===1?'':'s');})()}</span>
+      <div id="albumNowPlaying" class="hint" style="margin-top:8px"></div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="primary-btn" id="playAlbumBtn" onclick="playAlbumFromStart('${album.id}')">▶ Spill fra start</button>
+      ${isAdmin()?'<label class="ghost-btn" style="cursor:pointer">🖼️ Bytt bilde<input type="file" accept="image/*" hidden onchange="setAlbumCover(\''+album.id+'\',this.files[0])"></label>':''}
+      ${isAdmin()?'<button class="ghost-btn" data-pitch="album|'+album.id+'|" onclick="mvPitch(this)">📄 Pitch</button>':''}
+      <button class="ghost-btn" data-share="album|${album.id}|${esc(album.name)}" onclick="mvShare(this)">👤 Del med bruker</button>
+      <button class="small-btn danger hidden" id="stopAlbumBtn" onclick="stopCollectionPlayback()">⏹ Stopp</button>
+    </div>`;
+  const beats=beatsFromIds(album.beatIds);
+  renderAlbumBeats(beats);
+  updateCollectionPlayerUI();
+  updateArchiveToolbarButtons?.();
+}
+
+let collectionDrag={beatId:null,mode:null};
+function activeCollectionForMode(mode){
+  if(mode==="mixtape")return state.mixtapes.find(m=>m.id===currentMixtapeId)||null;
+  return state.albums.find(a=>a.id===currentAlbumId)||null;
+}
+function startCollectionDrag(event,beatId,mode){
+  if(!event.target.closest(".ab-cover-wrap")){event.preventDefault();return;}
+  collectionDrag={beatId,mode:mode||"album"};
+  event.stopPropagation();
+  event.dataTransfer.effectAllowed="move";
+  event.dataTransfer.setData("text/plain",beatId);
+  setTimeout(()=>{const card=document.getElementById(`abi-${beatId}`);if(card)card.classList.add("dragging");},0);
+}
+function endCollectionDrag(){
+  document.querySelectorAll(".album-beat-card.dragging,.album-beat-card.drag-over").forEach(el=>el.classList.remove("dragging","drag-over"));
+  collectionDrag={beatId:null,mode:null};
+}
+function dragBeatOver(event,targetId){
+  if(!collectionDrag.beatId||collectionDrag.beatId===targetId)return;
+  event.preventDefault();
+  const card=document.getElementById(`abi-${targetId}`);
+  if(card){card.dataset.dropAfter=isDropAfter(event,card)?"1":"0";card.classList.add("drag-over");}
+}
+function dragBeatLeave(event,targetId){
+  const card=document.getElementById(`abi-${targetId}`);
+  if(card&&!card.contains(event.relatedTarget)){card.classList.remove("drag-over");delete card.dataset.dropAfter;}
+}
+function dropCollectionBeat(event,targetId,mode){
+  event.preventDefault();event.stopPropagation();
+  const draggedId=collectionDrag.beatId||event.dataTransfer.getData("text/plain");
+  const dragMode=collectionDrag.mode||mode||"album";
+  const targetCard=document.getElementById(`abi-${targetId}`);
+  let after=targetCard?.dataset?.dropAfter==="1";
+  document.querySelectorAll(".album-beat-card.drag-over").forEach(el=>{el.classList.remove("drag-over");delete el.dataset.dropAfter;});
+  if(!draggedId||draggedId===targetId||dragMode!==mode){endCollectionDrag();return;}
+  const col=activeCollectionForMode(mode);if(!col||!Array.isArray(col.beatIds)){endCollectionDrag();return;}
+  const ids=col.beatIds.slice();
+  const from=ids.indexOf(draggedId);const to=ids.indexOf(targetId);
+  if(from<0||to<0){endCollectionDrag();return;}
+  if(to===from+1)after=true;
+  if(to===from-1)after=false;
+  ids.splice(from,1);
+  let insertAt=ids.indexOf(targetId);
+  if(insertAt<0){endCollectionDrag();return;}
+  if(after)insertAt+=1;
+  insertAt=Math.max(0,Math.min(insertAt,ids.length));
+  ids.splice(insertAt,0,draggedId);
+  col.beatIds=ids;
+  saveState();
+  if(bottomPlayer.context&&bottomPlayer.context.type===mode&&bottomPlayer.context.id===col.id){
+    const current=bottomPlayer.queue[bottomPlayer.index];
+    bottomPlayer.queue=beatsFromIds(col.beatIds);
+    bottomPlayer.index=Math.max(0,bottomPlayer.queue.findIndex(b=>current&&b.id===current.id));
+  }
+  mode==="mixtape"?renderMixtapeDetail():renderAlbumDetail();
+  showToast("✓ Rekkefølge oppdatert");
+  endCollectionDrag();
+}
+function removeFromCollection(beatId,mode){
+  const col=activeCollectionForMode(mode||"album");if(!col)return;
+  col.beatIds=col.beatIds.filter(id=>id!==beatId);
+  saveState();
+  if(mode==="mixtape"){renderMixtapeDetail();showToast("✓ Beat fjernet fra mixtape");}
+  else{renderAlbumDetail();showToast("✓ Beat fjernet fra album");}
+}
+function beatMixtapeColor(beatId,listMode){
+  let mt=null;
+  if(listMode==="mixtape"&&currentMixtapeId)mt=state.mixtapes.find(x=>x.id===currentMixtapeId);
+  if(!mt)mt=(state.mixtapes||[]).find(x=>(x.beatIds||[]).includes(beatId));
+  return mt?cassColor(mt,state.mixtapes.indexOf(mt)):"";
+}
+function songBorderAttrs(beatId,listMode){
+  const col=beatMixtapeColor(beatId,listMode);
+  return col?` class="album-beat-card mixtape-colored" style="--song-border-color:${col}"`:` class="album-beat-card"`;
+}
+function renderAlbumBeats(beats,mode,customEl){
+  const listMode=mode||"album";
+  const el=customEl||document.getElementById("albumBeatList");
+  // View class set by applyView() in track-cards.js — don't hardcode here
+  if(!beats||!beats.length){el.innerHTML=`<div class="empty">Ingen beats i dette ${listMode==="mixtape"?"mixtapen":"albumet"} ennå. Klikk "+ Legg til beats".</div>`;return;}
+  const canDrag=!isProducerUser()&&(listMode!=="mixtape"||mixtapeSortMode==="custom");
+  const hint=canDrag?`<div class="reorder-hint" style="grid-column:1/-1"><span>↕</span><span>Dra sangene for å endre rekkefølge.</span></div>`:(listMode==="mixtape"&&mixtapeSortMode!=="custom"?`<div class="reorder-hint" style="grid-column:1/-1"><span>↕</span><span>Sortert visning. Velg «Egen rekkefølge» for å dra sangene.</span></div>`:"");
+  el.innerHTML=hint+beats.map((b,idx)=>{
+    const coverHtml=b.cover
+      ?`<img class="ab-cover" src="${esc(b.cover)}" alt="${esc(b.name)}">`
+      :`<div class="ab-cover-ph">🎵</div>`;
+    if(isProducerUser()&&listMode==="mixtape"){
+      return`<div${songBorderAttrs(b.id,listMode)} id="abi-${b.id}" data-beat-id="${b.id}">
+        <div class="ab-top">
+          <div class="ab-cover-wrap" onclick="toggleAlbumBeat('${b.id}')">${coverHtml}</div>
+          <div class="ab-body">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+              <span style="font-size:11px;color:rgba(255,255,255,.25);font-variant-numeric:tabular-nums;font-weight:700;flex-shrink:0">${String(idx+1).padStart(2,'0')}</span>
+              <div class="ab-title" style="min-width:0">${esc(b.name)}</div>
+            </div>
+            <div class="hint" style="margin-top:6px">${esc(b.source||"Opplastet beat")}${b.uploadedBy?` · <span style="color:var(--mv-amber,#ff8a1f);font-size:11px">👤 ${esc(b.uploadedBy)}</span>`:''}</div>
+          </div>
+        </div>
+        <div class="ab-expand">
+          <div class="ab-expand-left">
+            <div id="au-wrap-${b.id}" style="margin-bottom:12px">
+              <button class="primary-btn" onclick="playSingleBeat('${b.id}')">▶ Spill denne</button>
+            </div>
+          </div>
+        </div>
+      </div>`;
+    }
+    const stars=Array.from({length:10},(_,i)=>`<button class="${i<(b.rating||0)?"on":""}" onclick="setAlbumBeatRating('${b.id}',${i+1})">★</button>`).join("");
+    const dragAttrs=canDrag?`draggable="true" ondragstart="startCollectionDrag(event,'${b.id}','${listMode}')" ondragend="endCollectionDrag()" ondragover="dragBeatOver(event,'${b.id}')" ondragleave="dragBeatLeave(event,'${b.id}')" ondrop="dropCollectionBeat(event,'${b.id}','${listMode}')"`:"";
+    return`<div${songBorderAttrs(b.id,listMode)} id="abi-${b.id}" data-beat-id="${b.id}" ${dragAttrs}>
+      <div class="ab-top">
+        <div class="ab-cover-wrap" onclick="toggleAlbumBeat('${b.id}')">
+          ${coverHtml}
+        </div>
+        <div class="ab-body">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+            <div style="display:flex;align-items:center;gap:8px;min-width:0;flex:1">
+              <span style="font-size:11px;color:rgba(255,255,255,.25);font-variant-numeric:tabular-nums;font-weight:700;flex-shrink:0">${String(idx+1).padStart(2,'0')}</span>
+              <div class="ab-title" id="abt-${b.id}" style="min-width:0;flex:1">${esc(b.name)}</div>
+              ${b.uploadedBy?`<span style="font-size:10px;font-weight:700;letter-spacing:.06em;color:var(--mv-amber,#ff8a1f);opacity:.8;white-space:nowrap">👤 ${esc(b.uploadedBy)}</span>`:''}
+            </div>
+            <div style="display:flex;align-items:center;gap:3px;flex-shrink:0">
+              ${(()=>{ const noAudio=!(b.audio_url||b.url); if(noAudio) return '<span title="Mangler lydfil" style="width:6px;height:6px;border-radius:50%;background:#fb7185;display:block;margin-right:2px"></span>'; return ''; })()}
+              <button onclick="event.stopPropagation();playSingleBeat('${b.id}');sessionStorage.setItem('mv_last_beat','${b.id}')" title="Spill sang" style="width:28px;height:28px;border-radius:50%;background:rgba(244,164,67,.18);border:1px solid rgba(244,164,67,.4);color:#f4a443;font-size:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;padding:0">&#9654;</button>
+              <button class="ab-rename-btn" onclick="event.stopPropagation();renameBeatInline('${b.id}')" title="Gi nytt navn" style="width:24px;height:24px;background:none;border:none;color:rgba(255,255,255,.4);font-size:14px;cursor:pointer;flex-shrink:0;padding:0;opacity:0;transition:opacity .15s;border-radius:4px;display:flex;align-items:center;justify-content:center">&#9998;</button>
+              <button class="ab-remove-btn" onclick="event.stopPropagation();removeFromCollection('${b.id}','${listMode}')" title="Fjern" style="width:24px;height:24px;background:none;border:none;color:rgba(251,113,133,.4);font-size:13px;font-weight:900;cursor:pointer;flex-shrink:0;padding:0;opacity:0;transition:opacity .15s;border-radius:4px;display:flex;align-items:center;justify-content:center">&#215;</button>
+              <button class="star-btn${b.favorite?" active":""}" data-fav-id="${b.id}" onclick="event.stopPropagation();toggleFav('${b.id}',this)" style="width:24px;height:24px;font-size:18px;padding:0;flex-shrink:0;background:none;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center">&#9733;</button>
+            </div>
+          </div>
+          <div class="ab-stars" onclick="event.stopPropagation()">${stars}</div>
+          ${listMode==="album"?`<div class="progress-wrap" onclick="event.stopPropagation()">
+            <div class="progress-label"><span>Ferdig</span><strong id="abidone-${b.id}">${b.done||0}%</strong></div>
+            <div class="progress-bar"><div id="abibar-${b.id}" style="width:${b.done||0}%"></div></div>
+            <input type="range" min="0" max="100" value="${b.done||0}" style="padding:0;border:none;background:transparent;accent-color:var(--accent);cursor:pointer;width:100%;margin-top:4px" oninput="setAlbumBeatDone('${b.id}',this.value)">
+          </div>`:""}
+        </div>
+      </div>
+      <div class="ab-expand">
+        <div class="ab-expand-top-bar">
+          <div id="au-wrap-${b.id}" style="display:flex;align-items:center;gap:8px;width:100%">
+            <button class="primary-btn" style="font-size:12px;padding:7px 14px" onclick="playSingleBeat('${b.id}')">▶ Spill</button>
+            <button class="star-btn${b.favorite?" active":""}" data-fav-id="${b.id}" onclick="event.stopPropagation();toggleFav('${b.id}',this)" title="Favoritt" style="font-size:20px;background:none;border:none;cursor:pointer;padding:0;color:${b.favorite?'#f4a443':'rgba(255,255,255,.25)'}">★</button>
+            <div style="margin-left:auto">${(()=>{ const noAudio=!(b.audio_url||b.url); const noLyric=!(b.lyrics||(b.lyricSections||[]).some(s=>s.text?.trim())); if(noAudio) return '<span title="Mangler lydfil" style="font-size:10px;font-weight:800;padding:2px 7px;border-radius:999px;background:rgba(251,113,133,.15);color:#fb7185;border:1px solid rgba(251,113,133,.3)">Ingen lyd</span>'; if(noLyric) return '<span title="Mangler tekst" style="font-size:10px;font-weight:800;padding:2px 7px;border-radius:999px;background:rgba(249,115,22,.12);color:#f97316;border:1px solid rgba(249,115,22,.3)">Ingen tekst</span>'; return ''; })()}</div>
+          </div>
+          <label class="ghost-btn" style="cursor:pointer;font-size:12px;padding:6px 12px">🎵 Bytt lydfil<input type="file" accept="audio/*" hidden onchange="uploadBeatAudio('${b.id}',this.files[0])"></label>
+          <label class="ghost-btn" style="cursor:pointer;font-size:12px;padding:6px 12px">🖼️ Coverbilde<input type="file" accept="image/*" hidden onchange="setAlbumBeatCover('${b.id}',this)"></label>
+          <button class="small-btn danger" onclick="removeFromCollection('${b.id}','${listMode}')">Fjern fra ${listMode==="mixtape"?"mixtape":"album"}</button>
+        </div>
+        <div class="ab-lyric-editor">
+          ${lyricsEditorMarkup(b.id,"Skriv tekst, hooks, vers, ideer...")}
+        </div>
+      </div>
+    </div>`;
+  }).join("");
+}
+// ══════════════════════════════════════════════════════════════════════════════
+// mvShare — standalone share modal (reads data-share="type|id|name")
+// ══════════════════════════════════════════════════════════════════════════════
+window.mvShare = async function(btn) {
+  const raw = btn.dataset.share || '';
+  const i1 = raw.indexOf('|'), i2 = raw.indexOf('|', i1+1);
+  const contentType = raw.slice(0, i1);
+  const contentId   = raw.slice(i1+1, i2);
+  const contentName = raw.slice(i2+1) || contentId;
+  if (!contentType || !contentId) { showToast('Mangler innholds-ID'); return; }
+  const SBU='https://ylvqkfdvijqnecuqznyr.supabase.co';
+  const SBK='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlsdnFrZmR2aWpxbmVjdXF6bnlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzMzA4MzIsImV4cCI6MjA5MzkwNjgzMn0.bYPTaxQK8n7I7w5Ri2DVYW5_LbFHg2IXkuhHsLTDDqc';
+  let token=SBK, uid=window._mvCurrentUserId||sessionStorage.getItem('mv_user_id');
+  try {
+    const {data:{session}}=await window.supabaseClient.auth.getSession();
+    if(session?.access_token) token=session.access_token;
+    if(session?.user?.id){uid=session.user.id;window._mvCurrentUserId=uid;sessionStorage.setItem('mv_user_id',uid);}
+  } catch(e) {}
+  if(!uid){showToast('Logg inn for \u00e5 dele');return;}
+  const hdrs={'apikey':SBK,'Authorization':'Bearer '+token,'Content-Type':'application/json'};
+  let existing=[],names={};
+  try {
+    const r=await fetch(`${SBU}/rest/v1/content_access?content_type=eq.${contentType}&content_id=eq.${contentId}&select=*`,{headers:hdrs});
+    if(r.ok) existing=await r.json();
+    if(existing.length){
+      const ids=existing.map(x=>x.grantee_id).filter(Boolean).join(',');
+      if(ids){const pr=await fetch(`${SBU}/rest/v1/profiles?id=in.(${ids})&select=id,username`,{headers:hdrs});if(pr.ok)(await pr.json()).forEach(p=>names[p.id]=p.username||p.id);}
+    }
+  }catch(e){}
+  const typeLabel={beat:'Beat',album:'Album',mixtape:'Mixtape'}[contentType]||contentType;
+  const existHTML=existing.length
+    ?existing.map(r=>`<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06)"><span style="font-size:13px;font-weight:700;color:#f4ede4;flex:1">\uD83D\uDC64 ${names[r.grantee_id]||r.grantee_id}</span><span style="font-size:11px;color:rgba(255,255,255,.4)">${r.role==='editor'?'Redakt\u00f8r':'Kan se'}</span></div>`).join('')
+    :'<p style="font-size:12px;color:rgba(255,255,255,.3);margin:0">Ingen har tilgang</p>';
+  let modal=document.getElementById('_mvSM');
+  if(!modal){modal=document.createElement('div');modal.id='_mvSM';modal.addEventListener('click',e=>{if(e.target===modal)modal.style.display='none';});document.body.appendChild(modal);}
+  modal.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;backdrop-filter:blur(5px)';
+  modal.innerHTML=`
+    <div style="background:#1c1a17;border:1px solid rgba(255,255,255,.12);max-width:440px;width:94%;padding:26px 28px;border-radius:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <h2 style="font-size:16px;font-weight:900;margin:0;color:#f4ede4">Del ${typeLabel}</h2>
+        <button onclick="document.getElementById('_mvSM').style.display='none'" style="background:none;border:none;color:rgba(255,255,255,.4);font-size:22px;cursor:pointer;padding:0;line-height:1">&#215;</button>
+      </div>
+      <p style="font-size:12px;color:rgba(255,255,255,.35);margin:0 0 18px">${contentName}</p>
+      <div style="display:grid;gap:10px">
+        <input id="_mvSM_u" placeholder="Brukernavn"
+          style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#f4ede4;padding:10px 12px;font-size:13px;font-family:inherit;outline:none;border-radius:8px;width:100%;box-sizing:border-box"
+          onkeydown="if(event.key==='Enter') window._mvSMdo()">
+        <div style="display:flex;gap:8px">
+          <select id="_mvSM_r" style="flex:1;background:#1c1a17;border:1px solid rgba(255,255,255,.12);color:#f4ede4;padding:10px;font-size:13px;font-family:inherit;outline:none;border-radius:8px">
+            <option value="viewer">Kan se</option><option value="editor">Kan redigere</option>
+          </select>
+          <button onclick="window._mvSMdo()" style="background:linear-gradient(135deg,#f4a443,#cb6e1a);border:none;color:#000;font-size:13px;font-weight:900;padding:10px 22px;cursor:pointer;border-radius:8px;font-family:inherit">Del</button>
+        </div>
+        <div id="_mvSM_s" style="font-size:12px;color:rgba(255,255,255,.4);min-height:16px"></div>
+        <div style="font-size:10px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-top:4px">Har tilgang</div>
+        <div id="_mvSM_l">${existHTML}</div>
+      </div>
+    </div>`;
+  window._mvSMdo=async function(){
+    const username=(document.getElementById('_mvSM_u')?.value||'').trim().toLowerCase();
+    const role=document.getElementById('_mvSM_r')?.value||'viewer';
+    const statusEl=document.getElementById('_mvSM_s');
+    if(!username){if(statusEl)statusEl.textContent='Skriv inn brukernavn';return;}
+    if(statusEl){statusEl.style.color='rgba(255,255,255,.4)';statusEl.textContent='S\u00f8ker...';}
+    try{
+      const pr=await fetch(`${SBU}/rest/v1/profiles?username=eq.${encodeURIComponent(username)}&select=id`,{headers:hdrs});
+      const profiles=pr.ok?await pr.json():[];
+      if(!profiles.length){if(statusEl){statusEl.style.color='#fb7185';statusEl.textContent='Finner ikke bruker: '+username;}return;}
+      const granteeId=profiles[0].id;
+      if(granteeId===uid){if(statusEl){statusEl.style.color='#fb7185';statusEl.textContent='Kan ikke dele med deg selv';}return;}
+      const body=JSON.stringify({owner_id:uid,grantee_id:granteeId,content_type:contentType,content_id:contentId,role,content_name:contentName});
+      const res=await fetch(`${SBU}/rest/v1/content_access`,{method:'POST',headers:{...hdrs,'Prefer':'resolution=merge-duplicates'},body});
+      if(!res.ok){const err=await res.text();if(statusEl){statusEl.style.color='#fb7185';statusEl.textContent='Feil: '+err;}return;}
+      if(statusEl){statusEl.style.color='#34d399';statusEl.textContent='\u2713 Delt med '+username;}
+      if(document.getElementById('_mvSM_u')) document.getElementById('_mvSM_u').value='';
+      setTimeout(()=>window.mvShare(btn),800);
+    }catch(e){if(statusEl){statusEl.style.color='#fb7185';statusEl.textContent='Feil: '+e.message;}}
+  };
+};
+
+// ══════════════════════════════════════════════════════════════════════════════
+// mvPitch — data-pitch="type|id|"
+// ══════════════════════════════════════════════════════════════════════════════
+window.mvPitch = function(btn) {
+  const raw=(btn.dataset.pitch||'').trim();
+  const sep=raw.indexOf('|');
+  const type=sep>=0?raw.slice(0,sep):raw;
+  const id=sep>=0?raw.slice(sep+1).replace(/\|.*$/,''):'';
+  if(type==='album'){
+    if(typeof window.albumPitchMode==='function'){window.albumPitchMode(id);return;}
+    showToast('\u26a0 Album pitch ikke tilgjengelig');
+  } else if(type==='mixtape'){
+    if(typeof window.mixtapeShareMode==='function'){window.mixtapeShareMode(id);return;}
+    _mvMixtapePitchFallback(id);
+  }
+};
+function _mvMixtapePitchFallback(mixtapeId){
+  const st=typeof state!=='undefined'?state:window.state;
+  const mt=st?.mixtapes?.find(m=>m.id===mixtapeId);
+  if(!mt){showToast('Mixtape ikke funnet');return;}
+  const WORKER=window.R2_WORKER_URL||'https://beat-vault.marcus-aas-mekiassen.workers.dev';
+  if(mt._shareToken&&mt._shareEnabled!==false){_mvShowPitchModal(mt,`${WORKER}/share/${mt._shareToken}`);return;}
+  showToast('Publiserer pitch-side...');
+  const token=Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+  const beats=(typeof beatsFromIds==='function'?beatsFromIds:window.beatsFromIds)(mt.beatIds||[]);
+  const payload={mt:{id:mt.id,name:mt.name,cover:mt.cover||'',color:mt.color||'#f4a443'},beats:beats.map(b=>({id:b.id,name:b.name,duration:b.duration||0,audio_url:b.audio_url||b.url||''}))};
+  fetch(`${WORKER}/share/${token}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
+    .then(r=>r.json()).then(data=>{
+      if(!data.ok)throw new Error(data.error||'Ukjent feil');
+      mt._shareToken=token;mt._shareUrl=data.url;mt._shareEnabled=true;
+      if(typeof saveState==='function')saveState();
+      _mvShowPitchModal(mt,data.url);
+    }).catch(e=>showToast('\u26a0 Kunne ikke publisere: '+e.message));
+}
+function _mvShowPitchModal(mt,shareUrl){
+  let modal=document.getElementById('_mvPM');
+  if(!modal){modal=document.createElement('div');modal.id='_mvPM';modal.addEventListener('click',e=>{if(e.target===modal)modal.style.display='none';});document.body.appendChild(modal);}
+  modal.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;backdrop-filter:blur(5px)';
+  modal.innerHTML=`
+    <div style="background:#1c1a17;border:1px solid rgba(255,255,255,.12);max-width:480px;width:94%;padding:26px 28px;border-radius:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+        <h2 style="font-size:16px;font-weight:900;margin:0;color:#f4ede4">\uD83C\uDFA4 Pitch: ${esc(mt.name)}</h2>
+        <button onclick="document.getElementById('_mvPM').style.display='none'" style="background:none;border:none;color:rgba(255,255,255,.4);font-size:22px;cursor:pointer;padding:0;line-height:1">&#215;</button>
+      </div>
+      <p style="font-size:12px;color:rgba(255,255,255,.4);margin:0 0 14px">Del denne lenken med labels eller partnere:</p>
+      <div style="display:flex;gap:8px">
+        <input id="_mvPM_url" readonly value="${shareUrl}"
+          style="flex:1;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#f4ede4;padding:9px 12px;font-size:12px;font-family:system-ui;outline:none;border-radius:8px">
+        <button onclick="navigator.clipboard.writeText(document.getElementById('_mvPM_url').value).then(()=>{this.textContent='\u2713';setTimeout(()=>this.textContent='Kopier',2000)})"
+          style="background:#f4a443;border:none;color:#000;font-size:12px;font-weight:800;padding:9px 16px;cursor:pointer;border-radius:8px;font-family:inherit">Kopier</button>
+      </div>
+    </div>`;
+}
+
+// ── renameBeatInline ──────────────────────────────────────────────────────────
+window.renameBeatInline = function(id) {
+  const el=document.getElementById('abt-'+id);if(!el)return;
+  const st=typeof state!=='undefined'?state:window.state;
+  const b=st.beats.find(x=>x.id===id);if(!b)return;
+  const old=b.name||'';
+  const inp=document.createElement('input');inp.type='text';inp.value=old;
+  inp.style.cssText='background:rgba(255,255,255,.08);border:1px solid rgba(244,164,67,.5);color:#f4ede4;font-size:inherit;font-weight:inherit;font-family:inherit;padding:2px 8px;border-radius:6px;outline:none;width:100%;box-sizing:border-box;min-width:60px';
+  el.replaceWith(inp);inp.focus();inp.select();
+  function commit(){
+    const n=inp.value.trim();
+    if(n&&n!==old){b.name=n;saveState();if(typeof showToast==='function')showToast('\u2713 Navn lagret');}
+    const mixV=document.getElementById('mixtapeDetailView'),albV=document.getElementById('albumDetailView');
+    if(mixV&&!mixV.classList.contains('hidden')){if(typeof renderMixtapeDetail==='function')renderMixtapeDetail();}
+    else if(albV&&!albV.classList.contains('hidden')){if(typeof renderAlbumDetail==='function')renderAlbumDetail();}
+    else{const d=document.createElement('div');d.id='abt-'+id;d.className='ab-title';d.style.cssText='min-width:0;flex:1';d.textContent=n||old;inp.replaceWith(d);}
+  }
+  inp.addEventListener('blur',commit);
+  inp.addEventListener('keydown',e=>{if(e.key==='Enter')inp.blur();if(e.key==='Escape'){inp.value=old;inp.blur();}});
+};
+
+// ── downloadBeat ──────────────────────────────────────────────────────────────
+window.downloadBeat = function(id) {
+  const st=typeof state!=='undefined'?state:window.state;
+  const b=st?.beats?.find(x=>x.id===id);
+  const url=b?.audio_url||b?.url||b?.driveUrl||b?.drive_url;
+  if(!url){if(typeof showToast==='function')showToast('\u26a0 Ingen lydfil');return;}
+  const a=document.createElement('a');a.href=url;
+  a.download=(b.name||'beat').replace(/[^a-z0-9 ._-]/gi,'_')+'.mp3';
+  a.target='_blank';document.body.appendChild(a);a.click();setTimeout(()=>a.remove(),300);
+};
+
 
 function toggleAlbumBeat(id){
   // Mount inline editors that appear when card expands
@@ -956,24 +1428,26 @@ const _dirtyTabs = new Set(['albums','mixtapes','pipeline','integrations','beats
 function markDirty(tab){ if(tab) _dirtyTabs.add(tab); else ['albums','mixtapes','pipeline','integrations','beats'].forEach(t=>_dirtyTabs.add(t)); }
 
 function renderActiveTab(tab){
-  const t = tab || document.querySelector('.tab-btn.active')?.dataset?.tab || 'hjem';
-  if(t==='hjem' || t==='') { renderDashboard(); return; }
+  const t=tab||document.querySelector('.tab-btn.active')?.dataset?.tab||'hjem';
+  if(t==='hjem'||t===''){renderDashboard();return;}
   renderStats();
-  if(t==='mixtapes' && _dirtyTabs.has('mixtapes'))  { renderMixtapes();  _dirtyTabs.delete('mixtapes'); }
-  if(t==='albums'   && _dirtyTabs.has('albums'))   { renderAlbums();   _dirtyTabs.delete('albums'); }
-  if(t==='pipeline') { (window.renderPipelineV2||renderPipeline)(); _dirtyTabs.delete('pipeline'); }
-  if(t==='integrations' && _dirtyTabs.has('integrations')){ renderIntegrations(); _dirtyTabs.delete('integrations'); }
-  if(t==='beats') { if(typeof renderBeatsTab==='function') renderBeatsTab(); }
-  if(t==='archive') {
-    if(typeof window.renderArchiveView==='function') window.renderArchiveView();
-    else if(typeof window.openArchiveTab==='function') window.openArchiveTab();
+  if(t==='mixtapes'&&_dirtyTabs.has('mixtapes')){renderMixtapes();_dirtyTabs.delete('mixtapes');}
+  if(t==='albums'&&_dirtyTabs.has('albums')){renderAlbums();_dirtyTabs.delete('albums');}
+  if(t==='pipeline'){(window.renderPipelineV2||renderPipeline)();_dirtyTabs.delete('pipeline');}
+  if(t==='integrations'&&_dirtyTabs.has('integrations')){renderIntegrations();_dirtyTabs.delete('integrations');}
+  if(t==='beats'){if(typeof renderBeatsTab==='function')renderBeatsTab();}
+  if(t==='archive'){
+    if(typeof window.renderArchiveView==='function')window.renderArchiveView();
+    else if(typeof window.openArchiveTab==='function')window.openArchiveTab();
   }
-  if(t==='lyriclab' && typeof window.renderLyricLab==='function') window.renderLyricLab();
+  if(t==='lyriclab'&&typeof window.renderLyricLab==='function')window.renderLyricLab();
 }
 
 function renderAll(){
   renderStats();
+  // Mark all tabs dirty so next time they're opened they re-render
   markDirty();
+  // Only render the currently active tab
   renderActiveTab();
   applyRoleMode();
 }
