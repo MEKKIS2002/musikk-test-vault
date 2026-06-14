@@ -835,6 +835,7 @@ function renderAlbumDetail(){
   renderAlbumBeats(beats);
   updateCollectionPlayerUI();
   updateArchiveToolbarButtons?.();
+  if(typeof renderCollectionComments==='function') renderCollectionComments('album', currentAlbumId);
 }
 
 let collectionDrag={beatId:null,mode:null};
@@ -1158,6 +1159,106 @@ window.downloadBeat = function(id) {
   a.target='_blank';document.body.appendChild(a);a.click();setTimeout(()=>a.remove(),300);
 };
 
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Comments on albums and mixtapes
+// ══════════════════════════════════════════════════════════════════════════════
+window.renderCollectionComments = async function(type, id) {
+  const elId = type==='album' ? 'albumComments' : 'mixtapeComments';
+  const el = document.getElementById(elId);
+  if(!el || !id) return;
+
+  const SBU='https://ylvqkfdvijqnecuqznyr.supabase.co', SBK='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlsdnFrZmR2aWpxbmVjdXF6bnlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzMzA4MzIsImV4cCI6MjA5MzkwNjgzMn0.bYPTaxQK8n7I7w5Ri2DVYW5_LbFHg2IXkuhHsLTDDqc';
+  let token=SBK, uid=window._mvCurrentUserId||sessionStorage.getItem('mv_user_id');
+  try {
+    const {data:{session}}=await window.supabaseClient.auth.getSession();
+    if(session?.access_token) token=session.access_token;
+    if(session?.user?.id) uid=session.user.id;
+  } catch(e) {}
+  const hdrs={'apikey':SBK,'Authorization':'Bearer '+token,'Content-Type':'application/json'};
+
+  let pitchComments=[], labelComments=[];
+  try {
+    const r=await fetch(`${SBU}/rest/v1/pitch_comments?album_id=eq.${id}&order=created_at.asc&select=*`,{headers:hdrs});
+    if(r.ok) pitchComments=await r.json();
+  }catch(e){}
+  try {
+    const r=await fetch(`${SBU}/rest/v1/notifications?content_id=eq.${id}&type=eq.label_comment&order=created_at.asc&select=*`,{headers:hdrs});
+    if(r.ok) labelComments=await r.json();
+  }catch(e){}
+
+  const all=[
+    ...pitchComments.map(c=>{
+      const initials=(c.author||'?').slice(0,2).toUpperCase();
+      const dt=new Date(c.created_at);
+      const timeStr=dt.toLocaleDateString('nb-NO',{day:'numeric',month:'short'})+' '+dt.toLocaleTimeString('nb-NO',{hour:'2-digit',minute:'2-digit'});
+      const canDelete=isAdmin()||uid===c.sender_id;
+      return `<div class="cc-item" id="cc-${c.id}">
+        <div class="cc-avatar">${initials}</div>
+        <div class="cc-body">
+          <div class="cc-header">
+            <span class="cc-author">${esc(c.author||'Anonym')}</span>
+            <span class="cc-tag cc-tag-pitch">Pitch</span>
+            <span class="cc-time">${timeStr}</span>
+            ${canDelete?`<button class="cc-del" onclick="deleteCollectionComment('pitch','${c.id}','${type}','${id}')" title="Slett kommentar">&#215;</button>`:''}
+          </div>
+          <div class="cc-text">${esc(c.comment||'')}</div>
+        </div>
+      </div>`;
+    }),
+    ...labelComments.map(n=>{
+      const author=n.content_name||'Label';
+      const initials=author.slice(0,2).toUpperCase();
+      const dt=new Date(n.created_at);
+      const timeStr=dt.toLocaleDateString('nb-NO',{day:'numeric',month:'short'})+' '+dt.toLocaleTimeString('nb-NO',{hour:'2-digit',minute:'2-digit'});
+      const canDelete=isAdmin()||uid===n.recipient_id||uid===n.sender_id;
+      return `<div class="cc-item" id="cc-${n.id}">
+        <div class="cc-avatar cc-avatar-label">${initials}</div>
+        <div class="cc-body">
+          <div class="cc-header">
+            <span class="cc-author">${esc(author)}</span>
+            <span class="cc-tag cc-tag-label">Label</span>
+            <span class="cc-time">${timeStr}</span>
+            ${canDelete?`<button class="cc-del" onclick="deleteCollectionComment('notification','${n.id}','${type}','${id}')" title="Slett">&#215;</button>`:''}
+          </div>
+        </div>
+      </div>`;
+    })
+  ];
+
+  el.innerHTML=`
+    <div class="cc-wrap">
+      <div class="cc-title">&#128172; Kommentarer ${all.length?'<span class="cc-count">'+all.length+'</span>':''}</div>
+      <div class="cc-list">${all.length
+        ? all.join('')
+        : '<div class="cc-empty">Ingen kommentarer enn\u00e5. Del et pitch-album for \u00e5 f\u00e5 tilbakemeldinger.</div>'
+      }</div>
+    </div>`;
+};
+
+window.deleteCollectionComment = async function(source, commentId, type, collectionId) {
+  if(!confirm('Slette denne kommentaren?')) return;
+  const SBU='https://ylvqkfdvijqnecuqznyr.supabase.co', SBK='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlsdnFrZmR2aWpxbmVjdXF6bnlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzMzA4MzIsImV4cCI6MjA5MzkwNjgzMn0.bYPTaxQK8n7I7w5Ri2DVYW5_LbFHg2IXkuhHsLTDDqc';
+  let token=SBK, uid=window._mvCurrentUserId||sessionStorage.getItem('mv_user_id');
+  try {
+    const {data:{session}}=await window.supabaseClient.auth.getSession();
+    if(session?.access_token) token=session.access_token;
+  }catch(e){}
+  const hdrs={'apikey':SBK,'Authorization':'Bearer '+token};
+  const table=source==='pitch'?'pitch_comments':'notifications';
+  try {
+    const r=await fetch(`${SBU}/rest/v1/${table}?id=eq.${commentId}`,{method:'DELETE',headers:hdrs});
+    if(r.ok||r.status===204){
+      document.getElementById('cc-'+commentId)?.remove();
+      if(typeof showToast==='function') showToast('\u2713 Kommentar slettet');
+    } else {
+      if(typeof showToast==='function') showToast('\u26a0 Kunne ikke slette');
+    }
+  }catch(e){
+    if(typeof showToast==='function') showToast('\u26a0 Feil: '+e.message);
+  }
+};
 
 function toggleAlbumBeat(id){
   // Mount inline editors that appear when card expands
@@ -1510,6 +1611,7 @@ function renderMixtapeDetail(){
   renderAlbumBeats(beats,"mixtape",document.getElementById("mixtapeBeatList"));
   updateCollectionPlayerUI();
   updateArchiveToolbarButtons?.();
+  if(typeof renderCollectionComments==='function') renderCollectionComments('mixtape', currentMixtapeId);
 }
 
 function renderIntegrations(){
