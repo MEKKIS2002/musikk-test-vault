@@ -1576,3 +1576,133 @@ nav.tabs::-webkit-scrollbar { display: none !important; }
 
 /* ── bp-cover: remove cassette circles ── */
 .bp-cover::before, .bp-cover::after { display:none !important; }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   HJEM — nye seksjoner
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* Greeting left column holds pills + activity */
+.dash-greeting-left { display:flex; flex-direction:column; gap:6px; }
+
+/* ── Aktivitetsstripe ── */
+.hjem-activity-strip { margin-top:6px; }
+.hjem-act-row { display:flex; gap:8px; align-items:flex-end; }
+.hjem-act-day { display:flex; flex-direction:column; align-items:center; gap:4px; }
+.hjem-act-day span { font-size:9px; font-weight:700; letter-spacing:.04em; color:rgba(255,255,255,.22); text-transform:uppercase; }
+.hjem-act-dot {
+  width:10px; height:10px; border-radius:50%;
+  background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.08);
+  transition:background .2s;
+}
+.hjem-act-dot.active { background:#f4a443; border-color:#f4a443; box-shadow:0 0 6px rgba(244,164,67,.4); }
+
+/* ── Fortsett der du slapp + Hurtigspill row ── */
+.hjem-play-row {
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+  margin-bottom:14px;
+}
+
+/* Fortsett der du slapp */
+.hjem-last-played {
+  background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.07);
+  border-radius:12px; padding:14px 16px;
+}
+.hjem-lp-card { display:flex; align-items:center; gap:14px; }
+.hjem-lp-cover {
+  width:72px; height:72px; border-radius:10px; flex-shrink:0;
+  background:rgba(255,255,255,.08); display:flex; align-items:center;
+  justify-content:center; overflow:hidden;
+}
+.hjem-lp-info { flex:1; min-width:0; }
+.hjem-lp-name { font-size:15px; font-weight:900; color:#f4ede4; letter-spacing:-.02em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:3px; }
+.hjem-lp-meta { font-size:11px; color:rgba(255,255,255,.35); margin-bottom:10px; }
+.hjem-lp-play {
+  display:inline-flex; align-items:center; gap:6px;
+  height:36px; padding:0 20px; border-radius:8px;
+  background:rgba(244,164,67,.18); border:1px solid rgba(244,164,67,.4);
+  color:#f4a443; font-size:13px; font-weight:800; cursor:pointer;
+  font-family:inherit; transition:background .12s;
+}
+.hjem-lp-play:hover { background:rgba(244,164,67,.32); }
+
+/* Hurtigspill */
+.hjem-quick-play {
+  background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.07);
+  border-radius:12px; padding:14px 16px;
+  display:flex; flex-direction:column; gap:0;
+}
+.hjem-qp-row {
+  display:flex; align-items:center; gap:10px;
+  padding:8px 0; border-bottom:1px solid rgba(255,255,255,.05);
+}
+.hjem-qp-row:last-child { border-bottom:none; }
+.hjem-qp-thumb {
+  width:36px; height:36px; border-radius:6px; flex-shrink:0;
+  background:rgba(255,255,255,.08); display:flex; align-items:center;
+  justify-content:center; overflow:hidden; font-size:14px;
+}
+.hjem-qp-info { flex:1; min-width:0; }
+.hjem-qp-name { font-size:12px; font-weight:800; color:#f4ede4; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.hjem-qp-meta { font-size:10px; color:rgba(255,255,255,.3); margin-top:1px; }
+.hjem-qp-play {
+  width:30px; height:30px; border-radius:50%; flex-shrink:0;
+  background:rgba(244,164,67,.15); border:1px solid rgba(244,164,67,.3);
+  color:#f4a443; font-size:11px; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  transition:background .12s;
+}
+.hjem-qp-play:hover { background:rgba(244,164,67,.3); }
+
+/* ── Smarte varsler ── */
+.hjem-alerts { display:flex; flex-direction:column; gap:6px; margin-bottom:16px; }
+.hjem-alert {
+  display:flex; align-items:center; gap:10px;
+  border-radius:9px; padding:9px 12px;
+}
+.hjem-alert-info {
+  background:rgba(99,102,241,.07); border:1px solid rgba(99,102,241,.2);
+}
+.hjem-alert-warn {
+  background:rgba(249,115,22,.07); border:1px solid rgba(249,115,22,.2);
+}
+.hjem-alert-icon { font-size:15px; flex-shrink:0; }
+.hjem-alert-body { flex:1; min-width:0; }
+.hjem-alert-msg  { font-size:12px; font-weight:700; color:#f4ede4; }
+.hjem-alert-detail { font-size:11px; color:rgba(255,255,255,.35); margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.hjem-alert-btn {
+  font-size:11px; font-weight:800; cursor:pointer; white-space:nowrap;
+  flex-shrink:0; font-family:inherit; padding:5px 12px; border-radius:6px;
+  background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.12); color:rgba(255,255,255,.7);
+  transition:background .12s;
+}
+.hjem-alert-warn .hjem-alert-btn { background:rgba(249,115,22,.15); border-color:rgba(249,115,22,.25); color:#f97316; }
+.hjem-alert-info .hjem-alert-btn { background:rgba(99,102,241,.15); border-color:rgba(99,102,241,.25); color:#a5b4fc; }
+.hjem-alert-btn:hover { filter:brightness(1.15); }
+
+/* ── Samarbeid + Fremdrift row ── */
+.hjem-bottom-row {
+  display:grid; grid-template-columns:1fr 1fr;
+  gap:12px; margin-top:18px;
+}
+.hjem-collab-card, .hjem-progress-card {
+  background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.07);
+  border-radius:12px; padding:16px 18px;
+}
+.hjem-collab-row { display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid rgba(255,255,255,.05); }
+.hjem-collab-row:last-child { border-bottom:none; }
+.hjem-collab-avatar {
+  width:32px; height:32px; border-radius:50%; flex-shrink:0;
+  background:rgba(244,164,67,.15); border:1px solid rgba(244,164,67,.3);
+  display:flex; align-items:center; justify-content:center;
+  font-size:13px; font-weight:900; color:#f4a443;
+}
+.hjem-collab-info { flex:1; min-width:0; }
+.hjem-collab-name { font-size:12px; font-weight:800; color:#f4ede4; }
+.hjem-collab-items { display:flex; gap:4px; flex-wrap:wrap; margin-top:3px; }
+.hjem-collab-tag {
+  font-size:10px; font-weight:700; padding:2px 7px; border-radius:4px;
+  background:rgba(255,255,255,.07); color:rgba(255,255,255,.5);
+  white-space:nowrap; max-width:120px; overflow:hidden; text-overflow:ellipsis;
+}
