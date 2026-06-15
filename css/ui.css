@@ -2456,3 +2456,80 @@ nav.tabs:not(.mv-tabs) { display: none !important; }
 
 /* Card gets grab cursor when draggable */
 .album-beat-card[draggable="true"] { cursor: default; }
+
+/* ── Card row: rename + remove hover ── */
+.album-beat-card:hover .ab-rename-btn,
+.album-beat-card:hover .ab-remove-btn { opacity: 1 !important; }
+.ab-rename-btn:hover { background: rgba(255,255,255,.09) !important; }
+.ab-remove-btn:hover { background: rgba(251,113,133,.12) !important; color: #fb7185 !important; }
+
+/* ── Drag fix: prevent text selection stealing the drag gesture ── */
+.album-beat-card[draggable="true"] {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  cursor: grab !important;
+}
+.album-beat-card[draggable="true"]:active { cursor: grabbing !important; }
+.ab-cover-ph {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -webkit-user-drag: none !important;
+}
+
+/* ── Bottom player: larger, nicer cover image ── */
+.bp-cover {
+  width: 48px !important;
+  height: 48px !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  flex-shrink: 0 !important;
+  background: rgba(255,255,255,.07) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 22px !important;
+  box-shadow: 0 2px 12px rgba(0,0,0,.4) !important;
+}
+.bp-cover img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  border-radius: inherit !important;
+  display: block !important;
+}
+
+/* Mobile: even bigger cover in player */
+@media (max-width: 768px) {
+  .bp-cover {
+    width: 44px !important;
+    height: 44px !important;
+    border-radius: 7px !important;
+  }
+  .bottom-player {
+    padding: 10px 14px !important;
+    gap: 10px !important;
+  }
+  .bp-track { gap: 10px !important; }
+  .bp-title { font-size: 13px !important; font-weight: 800 !important; }
+  .bp-sub { font-size: 11px !important; }
+}
+
+/* ── Now-playing glow ── */
+.now-playing-glow {
+  background: rgba(244,164,67,.07) !important;
+  border-color: rgba(244,164,67,.3) !important;
+  box-shadow: 0 0 0 1px rgba(244,164,67,.18), 0 0 12px rgba(244,164,67,.12), inset 0 0 20px rgba(244,164,67,.04) !important;
+  transition: background .3s, box-shadow .3s, border-color .3s !important;
+}
+.album-beat-card.now-playing-glow::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: linear-gradient(180deg, #f4a443, rgba(244,164,67,.4));
+  border-radius: 2px 0 0 2px;
+}
+.bl-row.now-playing-glow {
+  background: rgba(244,164,67,.06) !important;
+  border-left: 3px solid rgba(244,164,67,.5) !important;
+}
