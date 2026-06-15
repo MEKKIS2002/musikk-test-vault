@@ -2429,3 +2429,30 @@ nav.tabs:not(.mv-tabs) { display: none !important; }
 @media (max-width: 768px) {
   #mvMobFab { display: flex; }
 }
+
+/* ── Drag handle for beat rows ── */
+.ab-drag-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  flex-shrink: 0;
+  color: rgba(255,255,255,.2);
+  font-size: 14px;
+  cursor: grab;
+  letter-spacing: -2px;
+  transition: color .12s;
+  align-self: stretch;
+  padding: 0 2px;
+}
+.ab-drag-handle:hover { color: rgba(255,255,255,.5); }
+.ab-drag-handle:active { cursor: grabbing; }
+
+/* Ensure ab-cover-ph is always same size as img */
+.ab-cover-ph {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+}
+
+/* Card gets grab cursor when draggable */
+.album-beat-card[draggable="true"] { cursor: default; }
