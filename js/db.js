@@ -104,23 +104,8 @@ async function getPlayableAudioUrl(beat){
   return null;
 }
 function updateCollectionPlayerUI(){updateBottomUI();}
-
-function _updateNowPlayingGlow(){
-  // Remove glow from all beat rows across all views
-  document.querySelectorAll('.now-playing-glow').forEach(el=>el.classList.remove('now-playing-glow'));
-  // Find currently playing beat
-  const beat=bottomPlayer.queue[bottomPlayer.index];
-  if(!beat||bottomPlayer.audio.paused) return;
-  const id=beat.id;
-  if(!id) return;
-  // Add glow to all elements with matching data-beat-id (album, mixtape, beats tab)
-  document.querySelectorAll(`[data-beat-id="${id}"], #abi-${id}`).forEach(el=>{
-    el.classList.add('now-playing-glow');
-  });
-}
 function updateBottomUI(){
   const bar=document.getElementById("bottomPlayer");if(!bar)return;
-  setTimeout(_updateNowPlayingGlow, 0);
   const beat=bottomPlayer.queue[bottomPlayer.index];
   const active=!!beat||bottomPlayer.started;
   bar.classList.toggle("show",active);
@@ -147,12 +132,6 @@ function updateOpenCollectionControls(){
   };
   update("album",currentAlbumId,"playAlbumBtn","stopAlbumBtn","albumNowPlaying");
   update("mixtape",currentMixtapeId,"playMixtapeBtn","stopMixtapeBtn","mixtapeNowPlaying");
-  // Vinyl animation
-  const _albPlaying=playing&&ctx.type==="album"&&ctx.id===currentAlbumId;
-  const _vWrap=document.getElementById("albumVinylWrap");
-  const _vDisc=document.getElementById("albumVinylDisc");
-  if(_vWrap) _vWrap.classList.toggle("playing",_albPlaying);
-  if(_vDisc) _vDisc.classList.toggle("spinning",_albPlaying);
 }
 function updateBottomProgress(){
   const a=bottomPlayer.audio;
@@ -319,70 +298,49 @@ function renderDashboard(){
   const gEl=document.getElementById('dashGreeting');
   const sEl=document.getElementById('dashSub');
   if(gEl) gEl.textContent=greet+', '+username+' \uD83D\uDC4B';
-
   const beats=(state.beats||[]).filter(b=>!b.archived);
   const albums=(state.albums||[]).filter(a=>!a.archived);
   const mixtapes=(state.mixtapes||[]).filter(m=>!m.archived);
   const noAudio=beats.filter(b=>!(b.audio_url||b.url));
   const allDemos=albums.flatMap(a=>(a.beatIds||[]).map(id=>beats.find(b=>b.id===id)).filter(Boolean));
   const avgDone=allDemos.length?Math.round(allDemos.reduce((s,b)=>s+Number(b.done||0),0)/allDemos.length):0;
-
-  // ── Stat pills ──────────────────────────────────────────────────────────────
   if(sEl){
     sEl.innerHTML=`<div id="dashSubPills" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">`+
       `<span class="ds-pill">${beats.length} beats</span>`+
       `<span class="ds-pill ds-accent">${albums.length} albumer</span>`+
       `<span class="ds-pill ds-accent">${mixtapes.length} mixtapes</span>`+
       (noAudio.length?`<span class="ds-pill ds-warn" title="${noAudio.slice(0,3).map(b=>b.name).join(', ')}">${noAudio.length} uten lyd</span>`:'')+
-      `<span class="ds-pill">${avgDone}% snitt ferdig</span>`+
-      `</div>`;
+      `<span class="ds-pill">${avgDone}% snitt ferdig</span></div>`;
   }
-
-  // ── Smarte varsler ──────────────────────────────────────────────────────────
   const saEl=document.getElementById('dashSmartAlerts');
   if(saEl){
-    const alerts=[];
-    const now=Date.now();
-    const DAY=86400000;
+    const alerts=[];const now=Date.now(),DAY=86400000;
     const inAlbum=new Set(albums.flatMap(a=>a.beatIds||[]));
-    const doneNotInAlbum=beats.filter(b=>Number(b.done||0)>=100&&!inAlbum.has(b.id));
-    if(doneNotInAlbum.length>0){
-      alerts.push({type:'info',icon:'\u2728',
-        msg:`${doneNotInAlbum.length} sang${doneNotInAlbum.length>1?'er er':'en er'} 100% ferdig men ikke lagt i noe album`,
-        detail:doneNotInAlbum.slice(0,2).map(b=>esc(b.name)).join(', ')+(doneNotInAlbum.length>2?' ...':''),
-        action:'Albumer',tab:'albums'});
-    }
-    albums.forEach(a=>{
-      const lastUp=a.updatedAt||a.createdAt||0;
-      if(lastUp && now-lastUp>14*DAY){
-        const days=Math.floor((now-lastUp)/DAY);
-        alerts.push({type:'warn',icon:'\u23F0',
-          msg:`\u00ab${esc(a.name)}\u00bb har ikke blitt oppdatert p\u00e5 ${days} dager`,
-          detail:'',action:'Albumer',tab:'albums'});
-      }
-    });
-    if(noAudio.length>0){
-      alerts.push({type:'warn',icon:'\uD83D\uDD07',
-        msg:`${noAudio.length} sang${noAudio.length>1?'er mangler':'en mangler'} lydfil`,
-        detail:noAudio.slice(0,2).map(b=>esc(b.name)).join(', ')+(noAudio.length>2?' ...':''),
-        action:'Beats',tab:'beats'});
-    }
-    if(!alerts.length){
-      saEl.innerHTML='<div class="sa-empty">Ingen varsler akkurat n\u00e5 \u2713</div>';
-    } else {
-      saEl.innerHTML=alerts.map(a=>`
-        <div class="smart-alert smart-alert-${a.type}" onclick="document.querySelector('.tab-btn[data-tab=\\'${a.tab}\\']')?.click()">
-          <span class="sa-icon">${a.icon}</span>
-          <div class="sa-body">
-            <div class="sa-msg">${a.msg}</div>
-            ${a.detail?`<div class="sa-detail">${a.detail}</div>`:''}
-          </div>
-          <span class="sa-arrow">\u2192</span>
-        </div>`).join('');
-    }
+    const doneNotIn=beats.filter(b=>Number(b.done||0)>=100&&!inAlbum.has(b.id));
+    if(doneNotIn.length) alerts.push({type:'info',icon:'\u2728',msg:`${doneNotIn.length} sang${doneNotIn.length>1?'er er':'en er'} 100% ferdig men ikke i noe album`,detail:doneNotIn.slice(0,2).map(b=>esc(b.name)).join(', ')+(doneNotIn.length>2?' ...':''),tab:'albums'});
+    albums.forEach(a=>{const lu=a.updatedAt||a.createdAt||0;if(lu&&now-lu>14*DAY)alerts.push({type:'warn',icon:'\u23F0',msg:`\u00ab${esc(a.name)}\u00bb ikke oppdatert p\u00e5 ${Math.floor((now-lu)/DAY)} dager`,detail:'',tab:'albums'});});
+    if(noAudio.length) alerts.push({type:'warn',icon:'\uD83D\uDD07',msg:`${noAudio.length} sang${noAudio.length>1?'er mangler':'en mangler'} lydfil`,detail:noAudio.slice(0,2).map(b=>esc(b.name)).join(', ')+(noAudio.length>2?' ...':''),tab:'beats'});
+    if(!alerts.length) saEl.innerHTML='<div class="sa-empty">Ingen varsler akkurat n\u00e5 \u2713</div>';
+    else saEl.innerHTML=alerts.map(a=>`<div class="smart-alert smart-alert-${a.type}" onclick="document.querySelector('.tab-btn[data-tab=\\'${a.tab}\\']')?.click()"><span class="sa-icon">${a.icon}</span><div class="sa-body"><div class="sa-msg">${a.msg}</div>${a.detail?`<div class="sa-detail">${a.detail}</div>`:''}</div><span class="sa-arrow">\u2192</span></div>`).join('');
   }
-
-  // ── Fortsett der du slapp ───────────────────────────────────────────────────
+  const sortedAlbums=albums.slice().sort((a,b)=>(b.updatedAt||b.createdAt||b.id||0)-(a.updatedAt||a.createdAt||a.id||0));
+  const heroAlbum=sortedAlbums[0]?{...sortedAlbums[0],_type:'album'}:null;
+  function projectScore(p){const pB=(p.beatIds||[]).map(id=>beats.find(b=>b.id===id)).filter(Boolean);const avg=pB.length?pB.reduce((s,b)=>s+Number(b.done||0),0)/pB.length:0;return(p.updatedAt||p.createdAt||p.id||0)+(avg>15&&avg<92?(100-Math.abs(avg-55))*50000:0);}
+  const pool=[...sortedAlbums.slice(1).map(a=>({...a,_type:'album'})),...mixtapes.map(m=>({...m,_type:'mixtape'}))].sort((a,b)=>projectScore(b)-projectScore(a)).slice(0,3);
+  const projects=[...(heroAlbum?[heroAlbum]:[]),...pool].slice(0,4);
+  const pEl=document.getElementById('dashProjects');
+  if(pEl){
+    if(!projects.length){pEl.innerHTML='<div class="dash-empty">Ingen prosjekter enn\u00e5.</div>';}
+    else{pEl.innerHTML=projects.map(p=>{
+      const isAlbum=p._type==='album';
+      const pB=(p.beatIds||[]).map(id=>beats.find(b=>b.id===id)).filter(Boolean);
+      const pct=pB.length?Math.round(pB.reduce((s,b)=>s+Number(b.done||0),0)/pB.length):0;
+      const col=pct>=70?'#34d399':pct>=35?'#f97316':'#fb7185';
+      const count=pB.length;
+      const cover=p.cover?`<img src="${esc(p.cover)}" alt="" style="width:100%;height:100%;object-fit:cover">`:`<span style="font-size:28px">${isAlbum?'\uD83C\uDFB5':'\uD83C\uDFBC'}</span>`;
+      return `<div class="dash-proj-card" onclick="dashOpenProject('${esc(p.id)}','${p._type}')"><div class="dash-proj-cover">${cover}<div class="dash-proj-prog-bar"><div style="width:${pct}%;background:${col};height:100%;border-radius:2px"></div></div></div><div class="dash-proj-footer"><div class="dash-proj-name">${esc(p.name)}</div><div class="dash-proj-meta">${count} sang${count===1?'':'er'} &middot; <span style="color:${col};font-weight:700">${pct}%</span></div></div></div>`;
+    }).join('');}
+  }
   const lastEl=document.getElementById('dashLastBeat');
   if(lastEl){
     const lastId=sessionStorage.getItem('mv_last_beat');
@@ -391,93 +349,37 @@ function renderDashboard(){
     if(recent){
       const cover=recent.cover?`<img src="${esc(recent.cover)}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:10px">`:'<span style="font-size:36px">\uD83C\uDFB5</span>';
       const dur=recent.duration?Math.floor(recent.duration/60)+':'+String(Math.floor(recent.duration%60)).padStart(2,'0'):'';
-      lastEl.innerHTML=`
-        <div class="last-beat-cover">${cover}</div>
-        <div class="last-beat-info">
-          <div class="last-beat-label">Fortsett der du slapp</div>
-          <div class="last-beat-name">${esc(recent.name)}</div>
-          ${dur?`<div class="last-beat-dur">${dur}</div>`:''}
-        </div>
-        <div class="last-beat-actions">
-          <button class="last-beat-play" onclick="event.stopPropagation();playSingleBeat('${recent.id}');sessionStorage.setItem('mv_last_beat','${recent.id}')">&#9654; Spill</button>
-          <button class="last-beat-lab" onclick="event.stopPropagation();openInLyricLab('${recent.id}')">&#9998; Lab</button>
-        </div>`;
-    } else {
-      lastEl.innerHTML='<div class="dash-empty">Ingen sanger enn\u00e5.</div>';
-    }
+      lastEl.innerHTML=`<div class="last-beat-cover">${cover}</div><div class="last-beat-info"><div class="last-beat-label">Fortsett der du slapp</div><div class="last-beat-name">${esc(recent.name)}</div>${dur?`<div class="last-beat-dur">${dur}</div>`:''}</div><div class="last-beat-actions"><button class="last-beat-play" onclick="event.stopPropagation();playSingleBeat('${recent.id}');sessionStorage.setItem('mv_last_beat','${recent.id}')">&#9654; Spill</button><button class="last-beat-lab" onclick="event.stopPropagation();openInLyricLab('${recent.id}')">&#9998; Lab</button></div>`;
+    } else {lastEl.innerHTML='<div class="dash-empty">Ingen sanger enn\u00e5.</div>';}
   }
-
-  // ── Aktivitet: søyler + streak ────────────────────────────────────────────
   const actEl=document.getElementById('dashActivity');
   const streakEl=document.getElementById('dashStreak');
   if(actEl){
-    const today=new Date(); today.setHours(0,0,0,0);
+    const today=new Date();today.setHours(0,0,0,0);
     const activeDays=new Set();
     beats.forEach(b=>{const ts=b.updatedAt||b.createdAt;if(ts){const d=new Date(ts);d.setHours(0,0,0,0);activeDays.add(d.getTime());}});
     albums.forEach(a=>{const ts=a.updatedAt||a.createdAt;if(ts){const d=new Date(ts);d.setHours(0,0,0,0);activeDays.add(d.getTime());}});
     mixtapes.forEach(m=>{const ts=m.updatedAt||m.createdAt;if(ts){const d=new Date(ts);d.setHours(0,0,0,0);activeDays.add(d.getTime());}});
     const dayNames=['\u00d8','M','T','O','T','F','L'];
-    const cols=[];
-    for(let i=6;i>=0;i--){
-      const d=new Date(today);d.setDate(d.getDate()-i);
-      const on=activeDays.has(d.getTime());
-      const isToday=i===0;
-      const name=dayNames[d.getDay()];
-      cols.push(`<div class="act-col"><div class="act-bar${on?' on':''}${isToday?' today':''}"></div><div class="act-day-lbl">${name}</div></div>`);
-    }
-    actEl.innerHTML=cols.join('');
-    // Streak
+    actEl.innerHTML=Array.from({length:7},(_,i)=>{
+      const d=new Date(today);d.setDate(d.getDate()-(6-i));
+      const on=activeDays.has(d.getTime()),isToday=i===6;
+      return `<div class="act-col"><div class="act-bar${on?' on':''}${isToday?' today':''}"></div><div class="act-day-lbl">${dayNames[d.getDay()]}</div></div>`;
+    }).join('');
     let streak=0,cur=new Date(today);
     while(activeDays.has(cur.getTime())){streak++;cur=new Date(cur);cur.setDate(cur.getDate()-1);}
-    if(streakEl) streakEl.innerHTML=streak>0
-      ?`<span class="streak-num">${streak}</span><span class="streak-txt">dag${streak===1?'':'er'} p\u00e5 rad</span>`
-      :'<span class="streak-txt" style="color:rgba(255,255,255,.25)">Ingen aktivitet registrert enn\u00e5</span>';
+    if(streakEl) streakEl.innerHTML=streak>0?`<span class="streak-num">${streak}</span><span class="streak-txt">dag${streak===1?'':'er'} p\u00e5 rad</span>`:'<span class="streak-txt" style="color:rgba(255,255,255,.25)">Ingen aktivitet registrert enn\u00e5</span>';
   }
-
-  // ── Siste prosjekter ────────────────────────────────────────────────────────
-  const sortedAlbums=albums.slice().sort((a,b)=>(b.updatedAt||b.createdAt||b.id||0)-(a.updatedAt||a.createdAt||a.id||0));
-  const heroAlbum=sortedAlbums[0]?{...sortedAlbums[0],_type:'album'}:null;
-  function projectScore(p){
-    const pBeats=(p.beatIds||[]).map(id=>beats.find(b=>b.id===id)).filter(Boolean);
-    const avg=pBeats.length?pBeats.reduce((s,b)=>s+Number(b.done||0),0)/pBeats.length:0;
-    return (p.updatedAt||p.createdAt||p.id||0)+(avg>15&&avg<92?(100-Math.abs(avg-55))*50000:0);
-  }
-  const pool=[
-    ...sortedAlbums.slice(1).map(a=>({...a,_type:'album'})),
-    ...mixtapes.slice().map(m=>({...m,_type:'mixtape'}))
-  ].sort((a,b)=>projectScore(b)-projectScore(a)).slice(0,3);
-  const projects=[...(heroAlbum?[heroAlbum]:[]),...pool].slice(0,4);
-
-  const pEl=document.getElementById('dashProjects');
-  if(pEl){
-    if(!projects.length){pEl.innerHTML='<div class="dash-empty">Ingen prosjekter enn\u00e5.</div>';}
-    else{pEl.innerHTML=projects.map(p=>{
-      const isAlbum=p._type==='album';
-      const pBeats=(p.beatIds||[]).map(id=>beats.find(b=>b.id===id)).filter(Boolean);
-      const pct=pBeats.length?Math.round(pBeats.reduce((s,b)=>s+Number(b.done||0),0)/pBeats.length):0;
-      const pctCol=pct>=70?'#34d399':pct>=35?'#f97316':'#fb7185';
-      const count=pBeats.length;
-      const cover=p.cover?`<img src="${esc(p.cover)}" alt="" style="width:100%;height:100%;object-fit:cover">`:`<span style="font-size:28px">${isAlbum?'\uD83C\uDFB5':'\uD83C\uDFBC'}</span>`;
-      return `<div class="dash-proj-card" onclick="dashOpenProject('${esc(p.id)}','${p._type}')">
-        <div class="dash-proj-cover">${cover}<div class="dash-proj-prog-bar"><div style="width:${pct}%;background:${pctCol};height:100%;border-radius:2px"></div></div></div>
-        <div class="dash-proj-footer"><div class="dash-proj-name">${esc(p.name)}</div><div class="dash-proj-meta">${count} sang${count===1?'':'er'} &middot; <span style="color:${pctCol};font-weight:700">${pct}%</span></div></div>
-      </div>`;
-    }).join('');}
-  }
-
-  // ── Nylig lastet opp ────────────────────────────────────────────────────────
-  const recent=beats.slice().sort((a,b)=>(b.createdAt||b.id||0)-(a.createdAt||a.id||0)).slice(0,4);
+  const recent2=beats.slice().sort((a,b)=>(b.createdAt||b.id||0)-(a.createdAt||a.id||0)).slice(0,4);
   const bEl=document.getElementById('dashBeats');
   if(bEl){
-    if(!recent.length){bEl.innerHTML='<div class="dash-empty">Ingen sanger enn\u00e5.</div>';}
-    else{bEl.innerHTML=recent.map(b=>{
+    if(!recent2.length){bEl.innerHTML='<div class="dash-empty">Ingen sanger enn\u00e5.</div>';}
+    else{bEl.innerHTML=recent2.map(b=>{
       const cover=b.cover?`<img src="${esc(b.cover)}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:8px">`:`<span style="font-size:20px">\uD83C\uDFB5</span>`;
       const dur=b.duration?Math.floor(b.duration/60)+':'+String(Math.floor(b.duration%60)).padStart(2,'0'):'';
       return `<div class="dash-beat-card"><div class="dash-beat-top"><div class="dash-beat-thumb">${cover}</div><div class="dash-beat-info"><div class="dash-beat-name" title="${esc(b.name)}">${esc(b.name)}</div><div class="dash-beat-dur">${dur||'\u2014'}</div></div></div><div class="dash-beat-btns"><button class="dash-btn-play" onclick="event.stopPropagation();playSingleBeat('${b.id}');sessionStorage.setItem('mv_last_beat','${b.id}')">&#9654; Spill</button><button class="dash-btn-lab" onclick="event.stopPropagation();openInLyricLab('${b.id}')">&#9998; Lab</button></div></div>`;
     }).join('');}
   }
-
-  // ── Fremdrift ───────────────────────────────────────────────────────────────
   const progEl=document.getElementById('dashProgress');
   if(progEl){
     if(!albums.length){progEl.innerHTML='<div class="dash-empty">Ingen albumer enn\u00e5.</div>';}
@@ -489,121 +391,12 @@ function renderDashboard(){
     }).join('');}
   }
 }
-
-
-// ── Comment feed helpers ──────────────────────────────────────────────────────
-function _cfTimeAgo(date){
-  const diff=Date.now()-new Date(date).getTime();
-  const m=Math.floor(diff/60000);
-  if(m<1) return 'Akkurat n\u00e5';
-  if(m<60) return m+'m siden';
-  const h=Math.floor(m/60);
-  if(h<24) return h+'t siden';
-  const d=Math.floor(h/24);
-  if(d<7) return d+'d siden';
-  return new Date(date).toLocaleDateString('nb-NO',{day:'numeric',month:'short'});
-}
-
-window.renderCommentFeed = async function(){
-  const el=document.getElementById('dashCommentFeed');
-  if(!el) return;
-
-  const SBU='https://ylvqkfdvijqnecuqznyr.supabase.co';
-  const SBK='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlsdnFrZmR2aWpxbmVjdXF6bnlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzMzA4MzIsImV4cCI6MjA5MzkwNjgzMn0.bYPTaxQK8n7I7w5Ri2DVYW5_LbFHg2IXkuhHsLTDDqc';
-  let token=SBK, uid=window._mvCurrentUserId||sessionStorage.getItem('mv_user_id');
-  try{
-    const {data:{session}}=await window.supabaseClient.auth.getSession();
-    if(session?.access_token) token=session.access_token;
-    if(session?.user?.id) uid=session.user.id;
-  }catch(e){}
-
-  if(!uid){el.innerHTML='<div class="cf-empty">Logg inn for \u00e5 se kommentarer</div>';return;}
-  const hdrs={'apikey':SBK,'Authorization':'Bearer '+token};
-
-  const albums=(state.albums||[]).filter(a=>!a.archived);
-  const albumIds=albums.map(a=>a.id);
-  let pitchComments=[], labelComments=[];
-
-  // Pitch-kommentarer for brukerens albumer
-  if(albumIds.length){
-    try{
-      const r=await fetch(`${SBU}/rest/v1/pitch_comments?album_id=in.(${albumIds.join(',')})&order=created_at.desc&limit=10&select=*`,{headers:hdrs});
-      if(r.ok) pitchComments=await r.json();
-    }catch(e){}
-  }
-
-  // Label-kommentarer via notifications
-  try{
-    const r=await fetch(`${SBU}/rest/v1/notifications?recipient_id=eq.${uid}&type=eq.label_comment&order=created_at.desc&limit=10&select=*`,{headers:hdrs});
-    if(r.ok) labelComments=await r.json();
-  }catch(e){}
-
-  // Slå sammen og sorter
-  const all=[
-    ...pitchComments.map(c=>{
-      const aName=albums.find(a=>a.id===c.album_id)?.name||'Ukjent album';
-      const aCover=albums.find(a=>a.id===c.album_id)?.cover||'';
-      return {type:'pitch',author:c.author||'Anonym',text:c.comment||'',id:c.album_id,name:aName,cover:aCover,date:c.created_at};
-    }),
-    ...labelComments.map(n=>{
-      const aName=albums.find(a=>a.id===n.content_id)?.name||n.content_name||'Ukjent';
-      const aCover=albums.find(a=>a.id===n.content_id)?.cover||'';
-      return {type:'label',author:n.content_name||'Label',text:'',id:n.content_id,name:aName,cover:aCover,date:n.created_at};
-    })
-  ].sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,8);
-
-  if(!all.length){
-    el.innerHTML='<div class="cf-empty">Ingen kommentarer enn\u00e5 \u2014 del et pitch-album for \u00e5 f\u00e5 tilbakemelding</div>';
-    return;
-  }
-
-  el.innerHTML=all.map(c=>{
-    const initials=(c.author||'?').slice(0,2).toUpperCase();
-    const typeTag=c.type==='label'
-      ?'<span class="cf-tag cf-tag-label">Label</span>'
-      :'<span class="cf-tag cf-tag-pitch">Pitch</span>';
-    const coverImg=c.cover?`<img src="${esc(c.cover)}" style="width:100%;height:100%;object-fit:cover;border-radius:6px" alt="">`:
-      `<span style="font-size:14px">\uD83C\uDFB5</span>`;
-    return `<div class="cf-item" onclick="dashOpenProject('${esc(c.id)}','album')">
-      <div class="cf-avatar">${initials}</div>
-      <div class="cf-body">
-        <div class="cf-header">
-          <span class="cf-author">${esc(c.author)}</span>
-          ${typeTag}
-          <span class="cf-on">p\u00e5</span>
-          <span class="cf-proj">${esc(c.name)}</span>
-          <span class="cf-time">${_cfTimeAgo(c.date)}</span>
-        </div>
-        ${c.text?`<div class="cf-text">${esc(c.text)}</div>`:''}
-      </div>
-      <div class="cf-cover">${coverImg}</div>
-    </div>`;
-  }).join('');
-};
-
-// Call async comment feed without blocking dashboard render
-if(typeof window.renderCommentFeed==='function') setTimeout(()=>window.renderCommentFeed(),0);
-
-window.dashOpenProject=function(id,type){
-  if(type==='album'){
-    document.querySelector('.tab-btn[data-tab="albums"]')?.click();
-    setTimeout(()=>{if(typeof openAlbum==='function')openAlbum(id);
-      setTimeout(()=>document.getElementById('albumDetailView')?.scrollIntoView({behavior:'smooth',block:'start'}),120);},80);
-  } else {
-    document.querySelector('.tab-btn[data-tab="mixtapes"]')?.click();
-    setTimeout(()=>{if(typeof openMixtape==='function')openMixtape(id);
-      setTimeout(()=>document.getElementById('mixtapeDetailView')?.scrollIntoView({behavior:'smooth',block:'start'}),120);},80);
-  }
-};
+window.dashOpenProject=function(id,type){if(type==='album'){document.querySelector('.tab-btn[data-tab="albums"]')?.click();setTimeout(()=>{if(typeof openAlbum==='function')openAlbum(id);setTimeout(()=>document.getElementById('albumDetailView')?.scrollIntoView({behavior:'smooth',block:'start'}),120);},80);}else{document.querySelector('.tab-btn[data-tab="mixtapes"]')?.click();setTimeout(()=>{if(typeof openMixtape==='function')openMixtape(id);setTimeout(()=>document.getElementById('mixtapeDetailView')?.scrollIntoView({behavior:'smooth',block:'start'}),120);},80);}};
 window.dashNewAlbum=function(){document.querySelector('.tab-btn[data-tab="albums"]')?.click();setTimeout(()=>document.getElementById('newAlbumBtn')?.click(),80);};
 window.dashNewMixtape=function(){document.querySelector('.tab-btn[data-tab="mixtapes"]')?.click();setTimeout(()=>document.getElementById('newMixtapeBtn')?.click(),80);};
 window.dashOpenLyricLab=function(){document.querySelector('.tab-btn[data-tab="lyriclab"]')?.click();};
 window.dashUploadTrigger=function(){document.getElementById('dashUploadInput')?.click();};
-window.dashUpload=async function(files){
-  if(!files||!files.length)return;
-  for(const file of files){if(typeof createBeatFromFileIDB==='function')await createBeatFromFileIDB(file);}
-  renderDashboard();showToast('\u2713 '+files.length+' sang'+(files.length>1?'er':'')+' lastet opp');
-};
+window.dashUpload=async function(files){if(!files||!files.length)return;for(const file of files){if(typeof createBeatFromFileIDB==='function')await createBeatFromFileIDB(file);}renderDashboard();showToast('\u2713 '+files.length+' sang'+(files.length>1?'er':'')+' lastet opp');};
 
 
 // ── BEATS ──
@@ -824,44 +617,36 @@ function renderAlbumDetail(){
   const album=state.albums.find(a=>a.id===currentAlbumId);
   if(!album){currentAlbumId=null;renderAlbums();return;}
   const hd=document.getElementById("albumDetailHd");
-  const n=(album.beatIds||[]).filter(id=>{const b=state.beats.find(x=>x.id===id);return b&&!b.archived;}).length;
-  const coverContent=album.cover
-    ?`<img src="${esc(album.cover)}" alt="${esc(album.name)}">`
-    :`<div class="alb-cover-ph">&#127925;</div>`;
-  // Reset ALL styles from #albumDetailHd.album-detail-hd in main.css
-  hd.style.cssText="background:none!important;border:none!important;box-shadow:none!important;padding:0!important;min-height:0!important;border-radius:0!important;overflow:visible!important;margin:0 0 24px!important;";
+  const label=album.cover
+    ?`<div class="vinyl-label"><img src="${esc(album.cover)}" alt="${esc(album.name)}"></div>`
+    :`<div class="vinyl-label"><div class="vinyl-label-ph">♪</div></div>`;
+  const sleeve=album.cover
+    ?`<div class="detail-sleeve"><img src="${esc(album.cover)}" alt="${esc(album.name)}"></div>`
+    :`<div class="detail-sleeve"><div class="record-sleeve-ph">🎵</div></div>`;
   hd.innerHTML=`
-    <div class="mixtape-detail-head">
-      <div class="alb-visual">
-        <div class="alb-vinyl-wrap" id="albumVinylWrap">
-          <div class="alb-vinyl-disc" id="albumVinylDisc">
-            <div class="alv-g1"></div><div class="alv-g2"></div>
-            <div class="alv-g3"></div><div class="alv-g4"></div>
-            <div class="alv-label"><div class="alv-dot"></div></div>
-            <div class="alv-hole"></div>
-          </div>
-        </div>
-        <div class="alb-cover">${coverContent}</div>
+    <div class="detail-record">
+      <div class="vinyl-disc">
+        <div class="vinyl-groove"></div>
+        ${label}
+        <div class="vinyl-hole"></div>
       </div>
-      <div class="mixtape-detail-copy">
-        <div class="mixtape-detail-kicker">Album</div>
-        <h2 style="display:flex;align-items:center;gap:8px">${esc(album.name)}</h2>
-        <span style="color:var(--muted);font-size:13px">${n} beat${n===1?"":"s"}</span>
-        <div id="albumNowPlaying" class="hint" style="margin-top:6px"></div>
-      </div>
-      <div class="mixtape-detail-actions">
-        <button class="primary-btn" id="playAlbumBtn" onclick="playAlbumFromStart('${album.id}')">&#9654; Spill fra start</button>
-        <button class="ghost-btn" data-share="album|${album.id}|${esc(album.name)}" onclick="mvShare(this)">&#128100; Del med bruker</button>
-        ${isAdmin()?'<label class="ghost-btn" style="cursor:pointer">Bytt bilde<input type="file" accept="image/*" hidden onchange="setAlbumCover(\''+album.id+'\',this.files[0])"></label>':''}
-        ${isAdmin()?'<button class="ghost-btn" data-pitch="album|'+album.id+'|" onclick="mvPitch(this)">Pitch</button>':''}
-        <button class="small-btn danger hidden" id="stopAlbumBtn" onclick="stopCollectionPlayback()">&#9209; Stopp</button>
-      </div>
+      ${sleeve}
+    </div>
+    <div class="album-detail-info" style="flex:1">
+      <div class="eyebrow">Album</div>
+      <h2>${esc(album.name)}</h2>
+      <span>${(()=>{const n=(album.beatIds||[]).filter(id=>{const b=state.beats.find(x=>x.id===id);return b&&!b.archived;}).length;return n+' beat'+(n===1?'':'s');})()}</span>
+      <div id="albumNowPlaying" class="hint" style="margin-top:8px"></div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="primary-btn" id="playAlbumBtn" onclick="playAlbumFromStart('${album.id}')">▶ Spill fra start</button>
+      <button class="small-btn danger hidden" id="stopAlbumBtn" onclick="stopCollectionPlayback()">⏹ Stopp</button>
     </div>`;
   const beats=beatsFromIds(album.beatIds);
   renderAlbumBeats(beats);
   updateCollectionPlayerUI();
   updateArchiveToolbarButtons?.();
-  if(typeof renderCollectionComments==='function') renderCollectionComments('album', currentAlbumId);
+  if(typeof renderCollectionComments==='function')renderCollectionComments('album',currentAlbumId);
 }
 
 let collectionDrag={beatId:null,mode:null};
@@ -973,26 +758,20 @@ function renderAlbumBeats(beats,mode,customEl){
     }
     const stars=Array.from({length:10},(_,i)=>`<button class="${i<(b.rating||0)?"on":""}" onclick="setAlbumBeatRating('${b.id}',${i+1})">★</button>`).join("");
     const dragAttrs=canDrag?`draggable="true" ondragstart="startCollectionDrag(event,'${b.id}','${listMode}')" ondragend="endCollectionDrag()" ondragover="dragBeatOver(event,'${b.id}')" ondragleave="dragBeatLeave(event,'${b.id}')" ondrop="dropCollectionBeat(event,'${b.id}','${listMode}')"`:"";
-    return`<div${songBorderAttrs(b.id,listMode)} id="abi-${b.id}" data-beat-id="${b.id}" ${dragAttrs} style="user-select:none;-webkit-user-select:none">
+    return`<div${songBorderAttrs(b.id,listMode)} id="abi-${b.id}" data-beat-id="${b.id}" ${dragAttrs}>
       <div class="ab-top">
-        ${canDrag?'<div class="ab-drag-handle" title="Dra for å endre rekkefølge">&#8942;&#8942;</div>':''}
-        <div class="ab-cover-wrap" onclick="toggleAlbumBeat('${b.id}')" draggable="true">
+        <div class="ab-cover-wrap" onclick="toggleAlbumBeat('${b.id}')">
           ${coverHtml}
         </div>
         <div class="ab-body">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
-            <div style="display:flex;align-items:center;gap:8px;min-width:0;flex:1">
+            <div style="display:flex;align-items:center;gap:8px;min-width:0">
               <span style="font-size:11px;color:rgba(255,255,255,.25);font-variant-numeric:tabular-nums;font-weight:700;flex-shrink:0">${String(idx+1).padStart(2,'0')}</span>
-              <div class="ab-title" id="abt-${b.id}" style="min-width:0;flex:1">${esc(b.name)}</div>
+              <div class="ab-title" style="min-width:0">${esc(b.name)}</div>
               ${b.uploadedBy?`<span style="font-size:10px;font-weight:700;letter-spacing:.06em;color:var(--mv-amber,#ff8a1f);opacity:.8;white-space:nowrap">👤 ${esc(b.uploadedBy)}</span>`:''}
             </div>
-            <div style="display:flex;align-items:center;gap:3px;flex-shrink:0">
-              ${(()=>{ const noAudio=!(b.audio_url||b.url); if(noAudio) return '<span title="Mangler lydfil" style="width:6px;height:6px;border-radius:50%;background:#fb7185;display:block;margin-right:2px"></span>'; return ''; })()}
-              <button onclick="event.stopPropagation();playSingleBeat('${b.id}');sessionStorage.setItem('mv_last_beat','${b.id}')" title="Spill sang" style="width:28px;height:28px;border-radius:50%;background:rgba(244,164,67,.18);border:1px solid rgba(244,164,67,.4);color:#f4a443;font-size:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;padding:0">&#9654;</button>
-              <button class="ab-rename-btn" onclick="event.stopPropagation();renameBeatInline('${b.id}')" title="Gi nytt navn" style="width:24px;height:24px;background:none;border:none;color:rgba(255,255,255,.4);font-size:14px;cursor:pointer;flex-shrink:0;padding:0;opacity:0;transition:opacity .15s;border-radius:4px;display:flex;align-items:center;justify-content:center">&#9998;</button>
-              <button class="ab-remove-btn" onclick="event.stopPropagation();removeFromCollection('${b.id}','${listMode}')" title="Fjern" style="width:24px;height:24px;background:none;border:none;color:rgba(251,113,133,.4);font-size:13px;font-weight:900;cursor:pointer;flex-shrink:0;padding:0;opacity:0;transition:opacity .15s;border-radius:4px;display:flex;align-items:center;justify-content:center">&#215;</button>
-              <button class="star-btn${b.favorite?" active":""}" data-fav-id="${b.id}" onclick="event.stopPropagation();toggleFav('${b.id}',this)" style="width:24px;height:24px;font-size:18px;padding:0;flex-shrink:0;background:none;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center">&#9733;</button>
-            </div>
+            <button class="star-btn${b.favorite?" active":""}" data-fav-id="${b.id}" onclick="event.stopPropagation();toggleFav('${b.id}',this)" style="font-size:20px;padding:0;flex-shrink:0">★</button>
+            ${(()=>{ const noAudio=!(b.audio_url||b.url); const noLyric=!(b.lyrics||(b.lyricSections||[]).some(s=>s.text?.trim())); if(noAudio) return '<span title="Mangler lydfil" style="width:7px;height:7px;border-radius:50%;background:#fb7185;flex-shrink:0;display:inline-block;margin-top:2px"></span>'; if(noLyric) return '<span title="Mangler tekst" style="width:7px;height:7px;border-radius:50%;background:#f97316;flex-shrink:0;display:inline-block;margin-top:2px"></span>'; return ''; })()}
           </div>
           <div class="ab-stars" onclick="event.stopPropagation()">${stars}</div>
           ${listMode==="album"?`<div class="progress-wrap" onclick="event.stopPropagation()">
@@ -1188,103 +967,30 @@ window.downloadBeat = function(id) {
 
 
 
-// ══════════════════════════════════════════════════════════════════════════════
-// Comments on albums and mixtapes
-// ══════════════════════════════════════════════════════════════════════════════
 window.renderCollectionComments = async function(type, id) {
   const elId = type==='album' ? 'albumComments' : 'mixtapeComments';
   const el = document.getElementById(elId);
   if(!el || !id) return;
-
   const SBU='https://ylvqkfdvijqnecuqznyr.supabase.co', SBK='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlsdnFrZmR2aWpxbmVjdXF6bnlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzMzA4MzIsImV4cCI6MjA5MzkwNjgzMn0.bYPTaxQK8n7I7w5Ri2DVYW5_LbFHg2IXkuhHsLTDDqc';
   let token=SBK, uid=window._mvCurrentUserId||sessionStorage.getItem('mv_user_id');
-  try {
-    const {data:{session}}=await window.supabaseClient.auth.getSession();
-    if(session?.access_token) token=session.access_token;
-    if(session?.user?.id) uid=session.user.id;
-  } catch(e) {}
+  try {const {data:{session}}=await window.supabaseClient.auth.getSession();if(session?.access_token)token=session.access_token;if(session?.user?.id)uid=session.user.id;}catch(e){}
   const hdrs={'apikey':SBK,'Authorization':'Bearer '+token,'Content-Type':'application/json'};
-
-  let pitchComments=[], labelComments=[];
-  try {
-    const r=await fetch(`${SBU}/rest/v1/pitch_comments?album_id=eq.${id}&order=created_at.asc&select=*`,{headers:hdrs});
-    if(r.ok) pitchComments=await r.json();
-  }catch(e){}
-  try {
-    const r=await fetch(`${SBU}/rest/v1/notifications?content_id=eq.${id}&type=eq.label_comment&order=created_at.asc&select=*`,{headers:hdrs});
-    if(r.ok) labelComments=await r.json();
-  }catch(e){}
-
+  let pitchComments=[],labelComments=[];
+  try{const r=await fetch(`${SBU}/rest/v1/pitch_comments?album_id=eq.${id}&order=created_at.asc&select=*`,{headers:hdrs});if(r.ok)pitchComments=await r.json();}catch(e){}
+  try{const r=await fetch(`${SBU}/rest/v1/notifications?content_id=eq.${id}&type=eq.label_comment&order=created_at.asc&select=*`,{headers:hdrs});if(r.ok)labelComments=await r.json();}catch(e){}
   const all=[
-    ...pitchComments.map(c=>{
-      const initials=(c.author||'?').slice(0,2).toUpperCase();
-      const dt=new Date(c.created_at);
-      const timeStr=dt.toLocaleDateString('nb-NO',{day:'numeric',month:'short'})+' '+dt.toLocaleTimeString('nb-NO',{hour:'2-digit',minute:'2-digit'});
-      const canDelete=isAdmin()||uid===c.sender_id;
-      return `<div class="cc-item" id="cc-${c.id}">
-        <div class="cc-avatar">${initials}</div>
-        <div class="cc-body">
-          <div class="cc-header">
-            <span class="cc-author">${esc(c.author||'Anonym')}</span>
-            <span class="cc-tag cc-tag-pitch">Pitch</span>
-            <span class="cc-time">${timeStr}</span>
-            ${canDelete?`<button class="cc-del" onclick="deleteCollectionComment('pitch','${c.id}','${type}','${id}')" title="Slett kommentar">&#215;</button>`:''}
-          </div>
-          <div class="cc-text">${esc(c.comment||'')}</div>
-        </div>
-      </div>`;
-    }),
-    ...labelComments.map(n=>{
-      const author=n.content_name||'Label';
-      const initials=author.slice(0,2).toUpperCase();
-      const dt=new Date(n.created_at);
-      const timeStr=dt.toLocaleDateString('nb-NO',{day:'numeric',month:'short'})+' '+dt.toLocaleTimeString('nb-NO',{hour:'2-digit',minute:'2-digit'});
-      const canDelete=isAdmin()||uid===n.recipient_id||uid===n.sender_id;
-      return `<div class="cc-item" id="cc-${n.id}">
-        <div class="cc-avatar cc-avatar-label">${initials}</div>
-        <div class="cc-body">
-          <div class="cc-header">
-            <span class="cc-author">${esc(author)}</span>
-            <span class="cc-tag cc-tag-label">Label</span>
-            <span class="cc-time">${timeStr}</span>
-            ${canDelete?`<button class="cc-del" onclick="deleteCollectionComment('notification','${n.id}','${type}','${id}')" title="Slett">&#215;</button>`:''}
-          </div>
-        </div>
-      </div>`;
-    })
+    ...pitchComments.map(c=>{const initials=(c.author||'?').slice(0,2).toUpperCase();const dt=new Date(c.created_at);const ts=dt.toLocaleDateString('nb-NO',{day:'numeric',month:'short'})+' '+dt.toLocaleTimeString('nb-NO',{hour:'2-digit',minute:'2-digit'});const canDel=isAdmin()||uid===c.sender_id;return `<div class="cc-item" id="cc-${c.id}"><div class="cc-avatar">${initials}</div><div class="cc-body"><div class="cc-header"><span class="cc-author">${esc(c.author||'Anonym')}</span><span class="cc-tag cc-tag-pitch">Pitch</span><span class="cc-time">${ts}</span>${canDel?`<button class="cc-del" onclick="deleteCollectionComment('pitch','${c.id}','${type}','${id}')">&#215;</button>`:''}</div><div class="cc-text">${esc(c.comment||'')}</div></div></div>`}),
+    ...labelComments.map(n=>{const author=n.content_name||'Label';const initials=author.slice(0,2).toUpperCase();const dt=new Date(n.created_at);const ts=dt.toLocaleDateString('nb-NO',{day:'numeric',month:'short'})+' '+dt.toLocaleTimeString('nb-NO',{hour:'2-digit',minute:'2-digit'});const canDel=isAdmin()||uid===n.recipient_id||uid===n.sender_id;return `<div class="cc-item" id="cc-${n.id}"><div class="cc-avatar cc-avatar-label">${initials}</div><div class="cc-body"><div class="cc-header"><span class="cc-author">${esc(author)}</span><span class="cc-tag cc-tag-label">Label</span><span class="cc-time">${ts}</span>${canDel?`<button class="cc-del" onclick="deleteCollectionComment('notification','${n.id}','${type}','${id}')">&#215;</button>`:''}</div></div></div>`})
   ];
-
-  el.innerHTML=`
-    <div class="cc-wrap">
-      <div class="cc-title">&#128172; Kommentarer ${all.length?'<span class="cc-count">'+all.length+'</span>':''}</div>
-      <div class="cc-list">${all.length
-        ? all.join('')
-        : '<div class="cc-empty">Ingen kommentarer enn\u00e5. Del et pitch-album for \u00e5 f\u00e5 tilbakemeldinger.</div>'
-      }</div>
-    </div>`;
+  el.innerHTML=`<div class="cc-wrap"><div class="cc-title">&#128172; Kommentarer ${all.length?'<span class="cc-count">'+all.length+'</span>':''}</div><div class="cc-list">${all.length?all.join(''):'<div class="cc-empty">Ingen kommentarer enn\u00e5.</div>'}</div></div>`;
 };
-
-window.deleteCollectionComment = async function(source, commentId, type, collectionId) {
-  if(!confirm('Slette denne kommentaren?')) return;
-  const SBU='https://ylvqkfdvijqnecuqznyr.supabase.co', SBK='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlsdnFrZmR2aWpxbmVjdXF6bnlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzMzA4MzIsImV4cCI6MjA5MzkwNjgzMn0.bYPTaxQK8n7I7w5Ri2DVYW5_LbFHg2IXkuhHsLTDDqc';
-  let token=SBK, uid=window._mvCurrentUserId||sessionStorage.getItem('mv_user_id');
-  try {
-    const {data:{session}}=await window.supabaseClient.auth.getSession();
-    if(session?.access_token) token=session.access_token;
-  }catch(e){}
+window.deleteCollectionComment = async function(source,commentId,type,collId) {
+  if(!confirm('Slette denne kommentaren?'))return;
+  const SBU='https://ylvqkfdvijqnecuqznyr.supabase.co',SBK='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlsdnFrZmR2aWpxbmVjdXF6bnlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzMzA4MzIsImV4cCI6MjA5MzkwNjgzMn0.bYPTaxQK8n7I7w5Ri2DVYW5_LbFHg2IXkuhHsLTDDqc';
+  let token=SBK;try{const {data:{session}}=await window.supabaseClient.auth.getSession();if(session?.access_token)token=session.access_token;}catch(e){}
   const hdrs={'apikey':SBK,'Authorization':'Bearer '+token};
   const table=source==='pitch'?'pitch_comments':'notifications';
-  try {
-    const r=await fetch(`${SBU}/rest/v1/${table}?id=eq.${commentId}`,{method:'DELETE',headers:hdrs});
-    if(r.ok||r.status===204){
-      document.getElementById('cc-'+commentId)?.remove();
-      if(typeof showToast==='function') showToast('\u2713 Kommentar slettet');
-    } else {
-      if(typeof showToast==='function') showToast('\u26a0 Kunne ikke slette');
-    }
-  }catch(e){
-    if(typeof showToast==='function') showToast('\u26a0 Feil: '+e.message);
-  }
+  try{const r=await fetch(`${SBU}/rest/v1/${table}?id=eq.${commentId}`,{method:'DELETE',headers:hdrs});if(r.ok||r.status===204){document.getElementById('cc-'+commentId)?.remove();if(typeof showToast==='function')showToast('\u2713 Kommentar slettet');};}catch(e){if(typeof showToast==='function')showToast('\u26a0 Feil: '+e.message);}
 };
 
 function toggleAlbumBeat(id){
@@ -1626,8 +1332,6 @@ function renderMixtapeDetail(){
       </div>
       <div class="mixtape-detail-actions">
         <button class="primary-btn" id="playMixtapeBtn" onclick="playMixtapeFromStart('${mt.id}')">▶ Spill fra start</button>
-        <button class="ghost-btn" data-share="mixtape|${mt.id}|${esc(mt.name)}" onclick="mvShare(this)">👤 Del med bruker</button>
-        <button class="ghost-btn" data-pitch="mixtape|${mt.id}|" onclick="mvPitch(this)">📄 Pitch</button>
         <button class="small-btn danger hidden" id="stopMixtapeBtn" onclick="stopCollectionPlayback()">⏹ Stopp</button>
       </div>
     </div>
@@ -1638,7 +1342,6 @@ function renderMixtapeDetail(){
   renderAlbumBeats(beats,"mixtape",document.getElementById("mixtapeBeatList"));
   updateCollectionPlayerUI();
   updateArchiveToolbarButtons?.();
-  if(typeof renderCollectionComments==='function') renderCollectionComments('mixtape', currentMixtapeId);
 }
 
 function renderIntegrations(){
@@ -1653,19 +1356,18 @@ const _dirtyTabs = new Set(['albums','mixtapes','pipeline','integrations','beats
 function markDirty(tab){ if(tab) _dirtyTabs.add(tab); else ['albums','mixtapes','pipeline','integrations','beats'].forEach(t=>_dirtyTabs.add(t)); }
 
 function renderActiveTab(tab){
-  const t=tab||document.querySelector('.tab-btn.active')?.dataset?.tab||'hjem';
-  if(t==='hjem'||t===''){renderDashboard();return;}
   renderStats();
-  if(t==='mixtapes'&&_dirtyTabs.has('mixtapes')){renderMixtapes();_dirtyTabs.delete('mixtapes');}
-  if(t==='albums'&&_dirtyTabs.has('albums')){renderAlbums();_dirtyTabs.delete('albums');}
-  if(t==='pipeline'){(window.renderPipelineV2||renderPipeline)();_dirtyTabs.delete('pipeline');}
-  if(t==='integrations'&&_dirtyTabs.has('integrations')){renderIntegrations();_dirtyTabs.delete('integrations');}
-  if(t==='beats'){if(typeof renderBeatsTab==='function')renderBeatsTab();}
-  if(t==='archive'){
-    if(typeof window.renderArchiveView==='function')window.renderArchiveView();
-    else if(typeof window.openArchiveTab==='function')window.openArchiveTab();
+  const t = tab || document.querySelector('.tab-btn.active')?.dataset?.tab || '';
+  if((t==='mixtapes'||t==='')  && _dirtyTabs.has('mixtapes'))  { renderMixtapes();  _dirtyTabs.delete('mixtapes'); }
+  if(t==='albums'   && _dirtyTabs.has('albums'))   { renderAlbums();   _dirtyTabs.delete('albums'); }
+  if(t==='pipeline') { (window.renderPipelineV2||renderPipeline)(); _dirtyTabs.delete('pipeline'); } // always re-render pipeline
+  if(t==='integrations' && _dirtyTabs.has('integrations')){ renderIntegrations(); _dirtyTabs.delete('integrations'); }
+  if(t==='beats') { if(typeof renderBeatsTab==='function') renderBeatsTab(); }
+  if(t==='archive') {
+    if(typeof window.renderArchiveView==='function') window.renderArchiveView();
+    else if(typeof window.openArchiveTab==='function') window.openArchiveTab();
   }
-  if(t==='lyriclab'&&typeof window.renderLyricLab==='function')window.renderLyricLab();
+  if(t==='lyriclab' && typeof window.renderLyricLab==='function') window.renderLyricLab();
 }
 
 function renderAll(){
@@ -2010,31 +1712,20 @@ async function handleMixtapeDrop(e){
   e.preventDefault();document.getElementById("mixtapeDrop").classList.remove("drag-over");
   const files=[...e.dataTransfer.files].filter(f=>f.type.startsWith("audio")||/\.(mp3|wav|flac|m4a|ogg|aac)$/i.test(f.name));
   if(!files.length){showToast("Ingen lydfiler funnet");return;}
-  const mt=currentMixtapeId?state.mixtapes.find(m=>m.id===currentMixtapeId):null;
-  for(const f of files){
-    const b=await createBeatFromFile(f);
-    if(mt?.cover&&!b.cover) b.cover=mt.cover;
-    addBeatToMixtape(b);uploadBeatToR2(b,f);
-  }
+  for(const f of files){const b=await createBeatFromFile(f);addBeatToMixtape(b);uploadBeatToR2(b,f);}
   renderMixtapeDetail();showToast(`✓ ${files.length} beat${files.length===1?"":"s"} lagt til`);
 }
 async function handleAlbumDrop(e){
   e.preventDefault();document.getElementById("albumDrop").classList.remove("drag-over");
   const files=[...e.dataTransfer.files].filter(f=>f.type.startsWith("audio")||/\.(mp3|wav|flac|m4a|ogg|aac)$/i.test(f.name));
   if(!files.length){showToast("Ingen lydfiler funnet");return;}
-  const album=currentAlbumId?state.albums.find(a=>a.id===currentAlbumId):null;
-  for(const f of files){
-    const b=await createBeatFromFile(f);
-    if(album?.cover&&!b.cover) b.cover=album.cover;
-    addBeatToAlbum(b);uploadBeatToR2(b,f);
-  }
+  for(const f of files){const b=await createBeatFromFile(f);addBeatToAlbum(b);uploadBeatToR2(b,f);}
   renderAlbumDetail();showToast(`✓ ${files.length} beat${files.length===1?"":"s"} lagt til`);
 }
 document.getElementById("mixtapeUploadInput").addEventListener("change",async e=>{
   if(!window.isAdminMode){showToast("⚠ Kun admin kan laste opp lydfiler");e.target.value="";return;}
   const files=[...e.target.files].filter(f=>f.type.startsWith("audio")||/\.(mp3|wav|flac|m4a|ogg|aac)$/i.test(f.name));
-  const mt2=currentMixtapeId?state.mixtapes.find(m=>m.id===currentMixtapeId):null;
-  for(const f of files){const b=await createBeatFromFile(f);if(mt2?.cover&&!b.cover)b.cover=mt2.cover;addBeatToMixtape(b);uploadBeatToR2(b,f);}
+  for(const f of files){const b=await createBeatFromFile(f);addBeatToMixtape(b);uploadBeatToR2(b,f);}
   renderMixtapeDetail();showToast(`✓ ${files.length} beat${files.length===1?"":"s"} lagt til`);
   e.target.value="";
 });
@@ -2051,8 +1742,7 @@ document.getElementById("mixtapeCoverInput").addEventListener("change",e=>{
 document.getElementById("albumUploadInput").addEventListener("change",async e=>{
   if(!window.isAdminMode){showToast("⚠ Kun admin kan laste opp lydfiler");e.target.value="";return;}
   const files=[...e.target.files].filter(f=>f.type.startsWith("audio")||/\.(mp3|wav|flac|m4a|ogg|aac)$/i.test(f.name));
-  const alb2=currentAlbumId?state.albums.find(a=>a.id===currentAlbumId):null;
-  for(const f of files){const b=await createBeatFromFile(f);if(alb2?.cover&&!b.cover)b.cover=alb2.cover;addBeatToAlbum(b);uploadBeatToR2(b,f);}
+  for(const f of files){const b=await createBeatFromFile(f);addBeatToAlbum(b);uploadBeatToR2(b,f);}
   renderAlbumDetail();showToast(`✓ ${files.length} beat${files.length===1?"":"s"} lagt til`);
   e.target.value="";
 });
