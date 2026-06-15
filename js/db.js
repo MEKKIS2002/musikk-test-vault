@@ -973,9 +973,10 @@ function renderAlbumBeats(beats,mode,customEl){
     }
     const stars=Array.from({length:10},(_,i)=>`<button class="${i<(b.rating||0)?"on":""}" onclick="setAlbumBeatRating('${b.id}',${i+1})">★</button>`).join("");
     const dragAttrs=canDrag?`draggable="true" ondragstart="startCollectionDrag(event,'${b.id}','${listMode}')" ondragend="endCollectionDrag()" ondragover="dragBeatOver(event,'${b.id}')" ondragleave="dragBeatLeave(event,'${b.id}')" ondrop="dropCollectionBeat(event,'${b.id}','${listMode}')"`:"";
-    return`<div${songBorderAttrs(b.id,listMode)} id="abi-${b.id}" data-beat-id="${b.id}" ${dragAttrs}>
+    return`<div${songBorderAttrs(b.id,listMode)} id="abi-${b.id}" data-beat-id="${b.id}" ${dragAttrs} style="user-select:none;-webkit-user-select:none">
       <div class="ab-top">
-        <div class="ab-cover-wrap" onclick="toggleAlbumBeat('${b.id}')">
+        ${canDrag?'<div class="ab-drag-handle" title="Dra for å endre rekkefølge">&#8942;&#8942;</div>':''}
+        <div class="ab-cover-wrap" onclick="toggleAlbumBeat('${b.id}')" draggable="true">
           ${coverHtml}
         </div>
         <div class="ab-body">
@@ -2009,20 +2010,31 @@ async function handleMixtapeDrop(e){
   e.preventDefault();document.getElementById("mixtapeDrop").classList.remove("drag-over");
   const files=[...e.dataTransfer.files].filter(f=>f.type.startsWith("audio")||/\.(mp3|wav|flac|m4a|ogg|aac)$/i.test(f.name));
   if(!files.length){showToast("Ingen lydfiler funnet");return;}
-  for(const f of files){const b=await createBeatFromFile(f);addBeatToMixtape(b);uploadBeatToR2(b,f);}
+  const mt=currentMixtapeId?state.mixtapes.find(m=>m.id===currentMixtapeId):null;
+  for(const f of files){
+    const b=await createBeatFromFile(f);
+    if(mt?.cover&&!b.cover) b.cover=mt.cover;
+    addBeatToMixtape(b);uploadBeatToR2(b,f);
+  }
   renderMixtapeDetail();showToast(`✓ ${files.length} beat${files.length===1?"":"s"} lagt til`);
 }
 async function handleAlbumDrop(e){
   e.preventDefault();document.getElementById("albumDrop").classList.remove("drag-over");
   const files=[...e.dataTransfer.files].filter(f=>f.type.startsWith("audio")||/\.(mp3|wav|flac|m4a|ogg|aac)$/i.test(f.name));
   if(!files.length){showToast("Ingen lydfiler funnet");return;}
-  for(const f of files){const b=await createBeatFromFile(f);addBeatToAlbum(b);uploadBeatToR2(b,f);}
+  const album=currentAlbumId?state.albums.find(a=>a.id===currentAlbumId):null;
+  for(const f of files){
+    const b=await createBeatFromFile(f);
+    if(album?.cover&&!b.cover) b.cover=album.cover;
+    addBeatToAlbum(b);uploadBeatToR2(b,f);
+  }
   renderAlbumDetail();showToast(`✓ ${files.length} beat${files.length===1?"":"s"} lagt til`);
 }
 document.getElementById("mixtapeUploadInput").addEventListener("change",async e=>{
   if(!window.isAdminMode){showToast("⚠ Kun admin kan laste opp lydfiler");e.target.value="";return;}
   const files=[...e.target.files].filter(f=>f.type.startsWith("audio")||/\.(mp3|wav|flac|m4a|ogg|aac)$/i.test(f.name));
-  for(const f of files){const b=await createBeatFromFile(f);addBeatToMixtape(b);uploadBeatToR2(b,f);}
+  const mt2=currentMixtapeId?state.mixtapes.find(m=>m.id===currentMixtapeId):null;
+  for(const f of files){const b=await createBeatFromFile(f);if(mt2?.cover&&!b.cover)b.cover=mt2.cover;addBeatToMixtape(b);uploadBeatToR2(b,f);}
   renderMixtapeDetail();showToast(`✓ ${files.length} beat${files.length===1?"":"s"} lagt til`);
   e.target.value="";
 });
@@ -2039,7 +2051,8 @@ document.getElementById("mixtapeCoverInput").addEventListener("change",e=>{
 document.getElementById("albumUploadInput").addEventListener("change",async e=>{
   if(!window.isAdminMode){showToast("⚠ Kun admin kan laste opp lydfiler");e.target.value="";return;}
   const files=[...e.target.files].filter(f=>f.type.startsWith("audio")||/\.(mp3|wav|flac|m4a|ogg|aac)$/i.test(f.name));
-  for(const f of files){const b=await createBeatFromFile(f);addBeatToAlbum(b);uploadBeatToR2(b,f);}
+  const alb2=currentAlbumId?state.albums.find(a=>a.id===currentAlbumId):null;
+  for(const f of files){const b=await createBeatFromFile(f);if(alb2?.cover&&!b.cover)b.cover=alb2.cover;addBeatToAlbum(b);uploadBeatToR2(b,f);}
   renderAlbumDetail();showToast(`✓ ${files.length} beat${files.length===1?"":"s"} lagt til`);
   e.target.value="";
 });
